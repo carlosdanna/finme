@@ -256,7 +256,12 @@ function generateSeries(
     baseLogPrice[t] = baseLogPrice[t - 1] + step;
     logPrice[t] = logPrice[t - 1] + step + overlay[t];
     // Rounded once, from the float log path — so rounding never compounds.
-    priceCents[t] = Math.round(Math.exp(logPrice[t]) * 100);
+    // Floored at one cent: a price below the smallest representable currency
+    // unit is not a price. Without it, a collapsed asset divides by zero at
+    // every share-count site downstream — CRYP reaches it in 21% of 30-year
+    // runs. The float log path keeps falling underneath, so a recovery still
+    // has to climb all the way back.
+    priceCents[t] = Math.max(1, Math.round(Math.exp(logPrice[t]) * 100));
   }
 
   return { id: params.id, logPrice, priceCents, baseLogPrice };

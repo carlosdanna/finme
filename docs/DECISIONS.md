@@ -205,3 +205,19 @@ CLAUDE.md's content rule names only events and Logbook templates as data files.
 **Consequences:** no Zod round-trip for five rows of numbers that only the engine
 reads, and a constant cannot drift away from the formula it parameterizes. Events,
 Logbook templates and jobs still go to `packages/content` as CLAUDE.md requires.
+
+## 2026-09-03 — Prices are floored at one cent (ruleset 0.1.0 → 0.2.0)
+**Context:** found by C1. `Math.round(exp(logP)*100)` reaches 0 for a collapsed
+asset — CRYP in **21% of 30-year runs**, MOON in 0.07%. Every site that derives a
+share count divides by the price, so a zero price produced `Infinity` holdings,
+which propagated into `NaN` percentiles and silently corrupted the whole C1 table.
+**Decision:** `priceCents = max(1, round(exp(logP) * 100))`. A price below the
+smallest representable currency unit is not a price. The float log path keeps
+falling underneath the floor, so a recovery still has to climb all the way back.
+`RULESET_VERSION` bumped to 0.2.0 in the same commit.
+**Consequences:** the golden fixture is unchanged (no sampled week was affected).
+The harness now also throws on a non-finite terminal rather than reporting it —
+this class of bug is invisible in a table and fatal to the conclusion. A residual
+distortion remains: an asset pinned at the floor whose log path recovers appears
+to rise from 1 cent, so a holder at the floor sees an outsized gain. It is
+confined to assets that have already lost 99.99% of their value.

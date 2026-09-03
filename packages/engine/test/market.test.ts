@@ -103,6 +103,24 @@ describe('base price process (TDD §3.2)', () => {
     }
   });
 
+  it('never prices an asset below one cent, even when it collapses', () => {
+    // CRYP reaches the floor in about a fifth of 30-year runs. A zero price
+    // divides by zero everywhere a share count is derived.
+    let lowest = Infinity;
+    let floored = 0;
+    for (let i = 0; i < 500; i++) {
+      const history = generateMarket(`C1${i}`, YEARS);
+      for (const id of ASSET_IDS) {
+        for (const price of history.series[id].priceCents) {
+          if (price < lowest) lowest = price;
+          if (price === 1) floored++;
+        }
+      }
+    }
+    expect(lowest).toBe(1);
+    expect(floored).toBeGreaterThan(0); // the floor is genuinely reached
+  }, 30_000);
+
   it('covers exactly one price point per week of the run', () => {
     for (const years of [10, 30, 50]) {
       const history = generateMarket(SEED, years);
