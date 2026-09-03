@@ -60,3 +60,54 @@ and BUILD-PLAN both reference the short names.
 **Decision:** renamed to match the references.
 **Consequences:** none beyond the rename; every session prompt points at the
 short paths.
+
+## 2026-09-03 — `normal()` discards the second Box-Muller output
+**Context:** TDD §2.4's code comment says "Box-Muller, cached pair", but the prose
+immediately below it says the opposite: "Do not cache the second Box-Muller
+output — it makes consumption count depend on call parity."
+**Decision:** followed the prose. `normal()` consumes exactly two draws every
+call and throws the sine term away. The comment in the TDD is stale.
+**Consequences:** roughly 2× the draws for normally-distributed quantities, which
+costs nothing — the market series is generated once at init. In exchange, draw
+count is a function of call count alone, so a refactor that changes how often
+`normal()` is called cannot silently shift every downstream value. A test asserts
+the two-draw count directly, and a mutation check confirms it fails when caching
+is reintroduced.
+
+## 2026-09-03 — Seed alphabet is Crockford base32
+**Context:** TDD §2.3 specifies `{BASE32_SEED}/v{RULESET_VERSION}` but does not
+name an alphabet, and seeds are meant to be shared (GDD §13).
+**Decision:** Crockford base32 — `0123456789ABCDEFGHJKMNPQRSTVWXYZ`, excluding
+I, L, O and U. `parseSeedString` upcases and trims before matching.
+**Consequences:** a seed can be read aloud or copied off a screenshot without the
+1/I and 0/O confusions. Seeds are validated, never coerced: an invalid seed
+returns `null` rather than silently becoming a different valid world.
+
+## 2026-09-03 — `parseSeedString` returns null instead of throwing
+**Context:** a shared seed is untrusted input typed by a player.
+**Decision:** returns `null` on malformed input. A ruleset *mismatch* is not a
+parse failure — it parses fine, and `isCurrentRuleset` reports separately.
+**Consequences:** keeps the TDD §14 behaviour available to the UI: load the run,
+show the non-blocking "outcomes may differ" banner, and mark it non-comparable.
+The engine does not decide what a mismatch means for the player.
+
+## 2026-09-03 — `monthOfYear` normalizes its argument modulo 52
+**Context:** TDD §1.2 writes the signature as `monthOfYear(weekOfYear)`, but most
+call sites hold a `weekIndex`. Passing one where the other is expected would
+return December for every week past the first year, silently.
+**Decision:** the function takes `week % 52` internally, so it is correct given
+either. Same treatment as `isMonthBoundary`, which the TDD already writes this way.
+**Consequences:** removes a whole class of off-by-a-year bug at no cost. It does
+not weaken `weekIndex` as the single source of truth — nothing is stored.
+
+## 2026-09-03 — A golden RNG fixture lands at prompt 2, not prompt 14
+**Context:** BUILD-PLAN Part 6 item 3 flags that waiting until prompt 14 for
+golden fixtures leaves RNG consumption order unguarded through the whole build,
+and suggests a minimal price-series fixture earlier.
+**Decision:** went earlier still — `rng.test.ts` pins the first four draws of the
+`market` and `eventSlots` streams for seed `4F2A9C1B` to twelve decimal places.
+**Consequences:** any change to mulberry32, FNV-1a, or the `${seed}::${name}`
+derivation string fails immediately with an obvious cause, rather than surfacing
+later as a diff in a 200-week state snapshot. If this fixture fails, the first
+question is whether the ruleset version should change — never whether to update
+the numbers.
