@@ -144,6 +144,38 @@ export type {
 // Debt instruments (TDD §5.1-5.4).
 export * from './debt/index.ts';
 
+// Credit score (TDD §5.5).
+export {
+  THIN_FILE_WEEKS,
+  ENTRY_SCORE_MIN,
+  ENTRY_SCORE_MAX,
+  SCORE_FLOOR,
+  SCORE_SPAN,
+  MAX_MONTHLY_MOVE,
+  PAYMENT_DECAY_PER_WEEK,
+  MISSED_PAYMENT_WEIGHT,
+  COMPONENT_WEIGHTS,
+  emptyCreditState,
+  drawEntryScore,
+  hasFile,
+  openCreditLine,
+  recordOnTimePayment,
+  recordMissedPayment,
+  recordCollection,
+  recordBankruptcy,
+  decayWeek,
+  paymentHistoryScore,
+  utilizationScore,
+  utilization,
+  ageScore,
+  mixScore,
+  derogatoryScore,
+  compositeScore,
+  targetScore,
+  updateMonthly,
+} from './credit.ts';
+export type { CreditState, CreditInputs } from './credit.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 

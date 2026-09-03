@@ -367,3 +367,56 @@ is refused outright, since it needs a score of 620.
 **Consequences:** a player who has never borrowed pays the 13% personal rate and
 the 11% auto rate, not the middle. That is how thin-file lending actually works,
 and it gives the credit-building path something to be worth.
+
+## 2026-09-03 — Decay alone does not fade a missed payment; accumulating on-time payments do
+**Context:** §5.5 says both payment counters decay at 0.995/week "so old sins
+fade". Measured: because *both* decay at the same rate, `onTime / (onTime + 2.5 ·
+missed)` is scale-invariant — 300 weeks of pure decay leaves the payment-history
+score bit-for-bit unchanged.
+**Decision:** implemented exactly as specified. What actually fades a miss is the
+on-time weight that keeps arriving while the miss decays.
+**Consequences:** the half-life the design intends is real — the missed *weight*
+halves at ln(0.5)/ln(0.995) = **138.3 weeks**, matching the stated ~140 — but it
+only reaches the score through continued good behaviour. That is arguably the
+better lesson: recovery comes from paying, not from waiting. A test pins the
+scale-invariance so a future "fix" to one decay rate cannot pass unnoticed.
+
+## 2026-09-03 — §5.3's "−80 equivalent" collection hit is unreachable from §5.5
+**Context:** §5.3 gives a BNPL collection a "severe credit hit (−80 equivalent)".
+§5.5's derogatory component is 10% of a 550-point span — 55 points total — and
+one collection carries a 0.25 penalty, so it is capped at **13.75 points**.
+**Decision:** §5.5's formula is authoritative; §5.3's figures are treated as
+descriptive intent. No parameters changed.
+**Consequences:** measured against a mature file, a missed payment costs **−14
+points** (§5.3 says −15, so that one agrees closely) and a collection **−14**, not
+−80. Even a bankruptcy is only −33. Reaching −80 requires the payment-history
+damage that accompanies a collection, which happens on a thin file and not on a
+mature one.
+
+*If the −80 is meant literally*, the minimal change is raising
+`COMPONENT_WEIGHTS.derogatory` from 0.10 to ~0.25 with `COLLECTION_PENALTY` at
+0.6 — but that takes weight from payment history or utilization, which are the
+two components the game actually teaches through. I would leave it and soften the
+TDD's wording instead.
+
+## 2026-09-03 — A miss costs far more on a thin file than a mature one
+**Context:** emerged from the formula rather than being specified.
+**Decision:** kept, and pinned by a test.
+**Consequences:** a missed payment costs **−59 points** on a 26-week-old file
+against **−14** on a mature one, because the miss is weighed against a much
+smaller on-time history. This is how real scoring behaves and it gives early
+mistakes genuine weight without needing a special case. Combined with the ±20/month
+cap, a thin-file miss takes three months to fully land.
+
+## 2026-09-03 — The entry score is drawn from `startingDraw`, not an in-play stream
+**Context:** §5.5 draws `uniform(620, 660)` when the file establishes, which
+happens 26 weeks after the player opens their first line — a player-dependent
+week. None of the in-play streams fits: `flavor` must never touch simulation
+state, and `eventOutcome`/`jobApplication` belong to other subsystems.
+**Decision:** `drawEntryScore(rng)` is a pure function; run init draws it once
+from `startingDraw` and holds it until the file establishes. `credit.ts` never
+touches a stream itself.
+**Consequences:** preserves the [F] rule that pre-drawn streams are fully consumed
+at init and never touched again, so the entry score is a property of the world
+rather than of when the player happened to borrow. Two runs on the same seed get
+the same entry score no matter how differently they behave.
