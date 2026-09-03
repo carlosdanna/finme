@@ -1,0 +1,96 @@
+{
+  "seed": "4F2A9C1B",
+  "runLengthYears": 30,
+  "weeks": 1560,
+  "sampleWeeks": [
+    0,
+    1,
+    13,
+    52,
+    520,
+    1000,
+    1559
+  ],
+  "priceCents": {
+    "BOND": [
+      10000,
+      10046,
+      9920,
+      10245,
+      9179,
+      8663,
+      8015
+    ],
+    "SAFE": [
+      10000,
+      9825,
+      11189,
+      13896,
+      7610,
+      16017,
+      94301
+    ],
+    "BLUE": [
+      10000,
+      10256,
+      10259,
+      8240,
+      4356,
+      1936,
+      1944
+    ],
+    "MOON": [
+      10000,
+      9618,
+      10237,
+      17756,
+      43104,
+      28756,
+      287518
+    ],
+    "CRYP": [
+      10000,
+      10477,
+      6054,
+      6774,
+      464,
+      520,
+      456
+    ]
+  },
+  "episodeCount": 9,
+  "firstEpisodes": [
+    {
+      "kind": "crash",
+      "startWeek": 331,
+      "declineWeeks": 14,
+      "recoveryWeeks": 35,
+      "depth": 0.380706485196,
+      "assetId": null
+    },
+    {
+      "kind": "crash",
+      "startWeek": 487,
+      "declineWeeks": 10,
+      "recoveryWeeks": 22,
+      "depth": 0.376912145608,
+      "assetId": null
+    },
+    {
+      "kind": "crash",
+      "startWeek": 1473,
+      "declineWeeks": 19,
+      "recoveryWeeks": 26,
+      "depth": 0.338867341501,
+      "assetId": null
+    }
+  ],
+  "inflationRates": [
+    0.02,
+    0.005765008538,
+    0.01565911457,
+    0.025622572199,
+    0.020180137503
+  ],
+  "finalCpi": 1.908870633143
+}
