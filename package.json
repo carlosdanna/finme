@@ -1,14 +1,20 @@
 {
   "name": "finme",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A browser life-sim game about money.",
+  "license": "UNLICENSED",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "pnpm -F @finme/ui dev",
+    "build": "pnpm -F @finme/ui build",
+    "preview": "pnpm -F @finme/ui preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "check": "pnpm lint && pnpm typecheck && pnpm test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
@@ -17,5 +23,15 @@
     }
   },
   "packageManager": "pnpm@11.25.0",
-  "type": "module"
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.13.3",
+    "eslint": "^10.9.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.4",
+    "globals": "^17.11.0",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.67.0",
+    "vitest": "^4.0.0"
+  }
 }
