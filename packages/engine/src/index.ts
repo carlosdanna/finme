@@ -141,6 +141,9 @@ export type {
   AnnualTaxSettlement,
 } from './tax.ts';
 
+// Debt instruments (TDD §5.1-5.4).
+export * from './debt/index.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 

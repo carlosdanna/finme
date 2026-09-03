@@ -310,3 +310,60 @@ lifetime income across every run, so C6 (starting-position fairness) and the C1
 contribution schedule both shift; and the job-hop step (8-18%) becomes even more
 dominant relative to staying put, which is the intended lesson. Needs a balance
 pass before adopting.
+
+## 2026-09-03 — A credit card statement is "paid in full" only when it clears to zero
+**Context:** §5.1 says grace holds "if the previous statement was paid in full",
+but its formula splits the cycle into `statementBalance` (carried) and
+`newCharges` (this cycle). Reading "paid in full" as covering only the carried
+portion means the very first statement on a new card is always paid in full —
+`statementBalance` is 0 — so a player could charge indefinitely and never break
+grace. My first implementation had exactly this bug; the tests caught it.
+**Decision:** grace continues only when the statement clears to a zero balance,
+new charges included.
+**Consequences:** the card behaves the way a real one does. Paying the carried
+balance while charging more does not preserve grace, which is what makes the card
+a trap rather than free money. Overpaying clears to zero and never creates a
+credit balance.
+
+## 2026-09-03 — §5.2's "~78% interest" contradicts §5.2's own mortgage rate table
+**Context:** §5.2 says a 30-year mortgage's first payment is "~78% interest" and
+calls it the amortization lesson. Its rate table gives `0.075 − 0.02·creditQuality`
+— 5.5% at perfect credit, 7.5% on a thin file.
+**Decision:** parameters left as specified, the discrepancy pinned by tests
+rather than silently retuned.
+**Consequences:** the first payment's interest share is exactly `1 − (1+r)^−n`,
+with no principal term — a $100k and a $900k mortgage front-load identically.
+For n=360 the stated 75-80% band is the **APR band 4.63%-5.38%**, and "~78%" is
+5.06%. The table's own floor of 5.5% already yields **80.7%**, and it runs to
+**89.4%** for a thin file. The amortization math is correct; a test asserts the
+75-80% band at 5.06% to prove it, and a second pins the 80.7-89.4% the table
+actually produces.
+
+*Minimal proposed change, not applied:* `MORTGAGE_BASE_APR` 0.075 → 0.06, putting
+a mid-credit borrower at 5.0% and 77.7% — the stated figure. Note that no base
+rate can put the whole range inside 75-80%: the 2pp credit spread is wider than
+the 0.75pp band that 75-80% corresponds to, so the figure can only ever describe
+one point on the curve. Collateral effects: cheaper mortgages raise home
+affordability and shift every net-worth trajectory that includes a home, so C6
+and the §8 underwater-car/home tests both move. Needs a balance pass.
+
+## 2026-09-03 — Payday rollovers pay a fee and start a new term
+**Context:** §5.4 says "three rollovers and the player has paid 45% of principal
+in fees with the principal untouched", which fixes the accounting: 45% is three
+fees of 15%, not four.
+**Decision:** origination charges the fee due at the first term. Each rollover
+*pays* that fee and charges a fresh one on the full principal for another two
+weeks. So after N rollovers `feesPaidCents` is N × 15% of principal, and one more
+fee is always outstanding.
+**Consequences:** matches the stated 45% exactly. `balanceCents` stays
+`principal + currentFee` no matter how many times it rolls, which is the whole
+point of the instrument and what the Debts panel shows beside the 390% APR.
+
+## 2026-09-03 — A thin credit file is priced as the worst credit, not the average
+**Context:** §5.2 prices every loan off `creditQuality = (score−580)/270`, but a
+score is `null` before 26 weeks (§5.5) and the TDD does not say what to do then.
+**Decision:** `creditQuality(null) === 0` — the bottom of the range. A mortgage
+is refused outright, since it needs a score of 620.
+**Consequences:** a player who has never borrowed pays the 13% personal rate and
+the 11% auto rate, not the middle. That is how thin-file lending actually works,
+and it gives the credit-building path something to be worth.
