@@ -85,3 +85,6 @@ yarn-error.log*
 .temp/
 .tmp/
 *.local
+
+# --- CodeGraph ---
+.codegraph/
