@@ -1,0 +1,87 @@
+# --- Dependencies ---
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# NOTE: pnpm-lock.yaml is intentionally NOT ignored. Commit it.
+
+# --- Build output ---
+dist/
+build/
+out/
+*.tsbuildinfo
+packages/*/dist/
+
+# --- Vite / Rolldown ---
+.vite/
+vite.config.*.timestamp-*
+.rolldown/
+
+# --- Testing ---
+coverage/
+.vitest/
+.nyc_output/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+blob-report/
+
+# NOTE: engine golden fixtures under packages/engine/test/golden/ are
+# committed deliberately. They are the determinism contract. Do not ignore them.
+
+# --- Balance harness output ---
+# C1-C6 runs produce large CSV/JSON distributions. Keep the summaries you
+# reference in DECISIONS.md; ignore the raw dumps.
+packages/sim/output/
+*.simrun.json
+*.simrun.csv
+
+# --- Environment ---
+.env
+.env.*
+!.env.example
+
+# --- PWA generated assets ---
+packages/ui/dev-dist/
+packages/ui/public/sw.js
+packages/ui/public/workbox-*.js
+packages/ui/public/registerSW.js
+
+# --- Native shells (Capacitor, if/when added) ---
+packages/ui/ios/
+packages/ui/android/
+capacitor.config.json.bak
+
+# --- Editors ---
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# --- OS ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# --- Logs ---
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Misc ---
+.cache/
+.temp/
+.tmp/
+*.local
