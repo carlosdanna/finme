@@ -7,7 +7,8 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "c1": "node --experimental-strip-types src/tests/c1.ts"
   },
   "dependencies": {
     "@finme/content": "workspace:*",

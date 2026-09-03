@@ -221,3 +221,41 @@ this class of bug is invisible in a table and fatal to the conclusion. A residua
 distortion remains: an asset pinned at the floor whose log path recovers appears
 to rise from 1 cent, so a holder at the floor sees an outsized gain. It is
 confined to assets that have already lost 99.99% of their value.
+
+## 2026-09-03 — C1 harness parameters
+**Context:** neither the GDD nor the TDD gives C1 a capital base or contribution
+schedule, and the pass condition is a comparison between strategies rather than
+an absolute number.
+**Decision:** $5,000 deployed at t=0 plus $6,000 at each year boundary — 29
+contributions over a 30-year run, $179,000 total. Nominal, not indexed to
+inflation. Dividends auto-reinvest into the paying asset (TDD §3.5), so no
+strategy is penalized by cash drag it did not choose. Fractional shares; cash is
+integer cents.
+**Consequences:** every strategy faces the identical schedule, so the comparison
+holds regardless of the level chosen. Contributions being nominal means later
+ones are worth less in real terms — identical across strategies, so it does not
+affect the C1 conclusion, but it does mean these terminal figures are nominal.
+
+## 2026-09-03 — C1 measures a same-seed head-to-head, not just marginal percentiles
+**Context:** the GDD's real question is "can a player discover that dumping
+everything into Moonshot is the winning play." Comparing each strategy's
+percentiles separately cannot answer that — it compares different worlds.
+**Decision:** the report also computes, for each strategy, the share of seeds
+where it beats all-in index *in the same market history*.
+**Consequences:** this turned out to be the decisive statistic. All-in Moonshot
+beats the index in 20.8% of worlds and Crypto-ish in 8.5%, which is a far more
+direct answer than the percentile table gives. Kept as a CI assertion.
+
+## 2026-09-03 — C1 PASSES at 10,000 seeds
+**Context:** the gate before any gameplay work (BUILD-PLAN prompt 4).
+**Decision:** recorded as passing; no parameter changes were needed.
+**Consequences:** medians — index $552k, 60/40 $498k, Moonshot $155k, Crypto-ish
+$56k, momentum $149k. Ruin rates — index 0.1%, 60/40 0.0%, Moonshot 33.0%,
+Crypto-ish 66.5%, momentum 34.4%. Right tail stays fat: Moonshot's p99 is 2.9x
+the index's and its max 19x. The speculative assets cross above the index between
+p90 and p95, so a player sees index-beating outcomes only in the top ~7% of runs.
+Caveat for prompt 17: this is **pre-tax**. Dividends are ordinary income (§6.3),
+which drags the dividend-paying strategies by roughly 0.4%/yr; the margin here is
+3-10x, so the conclusion should survive, but C1 must be re-run once tax exists.
+Note also that the boom subsidy recorded above makes C1 *harder* to pass, and it
+passes anyway.
