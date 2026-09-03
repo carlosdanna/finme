@@ -259,3 +259,54 @@ which drags the dividend-paying strategies by roughly 0.4%/yr; the margin here i
 3-10x, so the conclusion should survive, but C1 must be re-run once tax exists.
 Note also that the boom subsidy recorded above makes C1 *harder* to pass, and it
 passes anyway.
+
+## 2026-09-03 — Short-term gains are taxed once, through the brackets
+**Context:** TDD §6.3 puts short-term realized gains inside taxable income *and*
+says capital gains are taxed at `holdingWeeks >= 52 ? 0.15 : marginalIncomeRate`,
+then sums `incomeTax(totalTaxable) + capitalGainsTax`. Read literally that taxes
+short-term gains twice.
+**Decision:** `longTermGainsTaxCents` covers long-term gains only, at the flat
+15%. Short-term gains reach the marginal rate by sitting in taxable income, which
+is what "rate = marginalIncomeRate" describes. Long-term gains stay out of
+taxable income entirely, so they never push the player into a higher bracket.
+**Consequences:** the 51-week vs 52-week cliff is sharper than a literal reading
+would give — at 51 weeks a gain is ordinary income at up to 32%, at 52 it is 15%
+and invisible to the brackets. Net losses produce no tax and no refund; there is
+no loss carryforward.
+
+## 2026-09-03 — Overtime hours are a subset of hours worked
+**Context:** §6.1 writes `hourlyRate · hoursWorked · (overtimeHours > 0 ? blended : 1)`
+without defining `blended` or saying whether overtime sits inside `hoursWorked`.
+**Decision:** `overtimeHours` is the portion of `hoursWorked` paid at 1.5x, so
+pay is `rate · (hours + 0.5 · overtime)`. 45 hours with 5 of overtime pays 47.5
+hours' worth. Overtime is clamped to hours worked, so it cannot invent pay.
+`OVERTIME_THRESHOLD_HOURS = 40` [T] is new — the TDD gives no threshold.
+**Consequences:** matches the "blended multiplier" the formula gestures at. The
+alternative reading (overtime on top of hours) would pay 45+5 hours for a 45-hour
+week.
+
+## 2026-09-03 — §6.2's raise does NOT erode real income for a young player
+**Context:** §6.2 calls the 0.80 inflation factor "the quiet villain of the whole
+game" and says a passive player "loses real income slowly over three decades".
+Measured, it does not.
+**Decision:** parameters left exactly as specified. Recorded, with the measured
+trajectory pinned by a test, rather than retuned unilaterally.
+**Consequences:** net real drift per year is `careerCurve − 0.2 · inflation`. At
+the model's 2% baseline that is **+0.8%/yr under 30**, +0.4%/yr to 45, −0.2%/yr
+to 55, −0.4%/yr after. A passive average performer aged 22→52 ends **~10% ahead**
+in real terms; real pay peaks at age 44. The erosion only appears at 5%+ inflation
+(−7.4% over the run) or for a start age past 45.
+
+**It is the career curve, not `RAISE_INFLATION_FACTOR`, that defeats the intent.**
+Erosion at every age needs `careerCurve < 0.2 · inflation` — i.e. under 0.004 at
+2% inflation, against the specified 0.012/0.008. Reaching it through the lag
+instead would need the factor below 0.4, which makes a raise 0.8% at 2% inflation
+and looks broken to a player.
+
+*Minimal proposed change, not applied:* `CAREER_CURVE` to `[0.004, 0.002, 0.000,
+0.000]`, giving real drift of 0.0 / −0.2% / −0.4% / −0.4%/yr — flat early career,
+slow erosion after 30, which is what §6.2 describes. Collateral effects: lower
+lifetime income across every run, so C6 (starting-position fairness) and the C1
+contribution schedule both shift; and the job-hop step (8-18%) becomes even more
+dominant relative to staying put, which is the intended lesson. Needs a balance
+pass before adopting.

@@ -88,6 +88,59 @@ export {
 } from './inflation.ts';
 export type { InflationPath } from './inflation.ts';
 
+// Income (TDD §6.1, §6.2, §6.4).
+export {
+  OVERTIME_THRESHOLD_HOURS,
+  OVERTIME_MULTIPLIER,
+  RAISE_INFLATION_FACTOR,
+  RAISE_PERFORMANCE_SPAN,
+  CAREER_CURVE,
+  JOB_HOP_RAISE_MIN,
+  JOB_HOP_RAISE_MAX,
+  DEFAULT_CONTRIBUTION_PCT,
+  EMPLOYER_MATCH_CAP_PCT,
+  EARLY_WITHDRAWAL_PENALTY_RATE,
+  EARLY_WITHDRAWAL_AGE,
+  weeklyGrossHourlyCents,
+  weeklyGrossSalariedCents,
+  overtimeHoursFor,
+  careerCurveRate,
+  performanceBonusRate,
+  annualRaiseRate,
+  applyRaiseCents,
+  jobHopRaiseRate,
+  retirementContributionCents,
+  earlyWithdrawalPenaltyCents,
+} from './income.ts';
+export type { RetirementContribution } from './income.ts';
+
+// Taxes (TDD §6.3).
+export {
+  BRACKETS,
+  LONG_TERM_HOLDING_WEEKS,
+  LONG_TERM_GAINS_RATE,
+  UNPAID_BILL_PENALTY_APR,
+  incomeTaxCents,
+  marginalRate,
+  averageRate,
+  weeklyWithholdingCents,
+  isLongTerm,
+  sellLotsFifo,
+  shortTermGainsCents,
+  longTermGainsCents,
+  longTermGainsTaxCents,
+  settleAnnualTax,
+  unpaidBillPenaltyCents,
+} from './tax.ts';
+export type {
+  TaxBracket,
+  TaxLot,
+  RealizedGain,
+  SaleResult,
+  AnnualTaxInput,
+  AnnualTaxSettlement,
+} from './tax.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 
