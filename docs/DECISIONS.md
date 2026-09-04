@@ -753,3 +753,58 @@ throwing — content arrives in batches, and a missing variant must not end a
 the gap is visible without being fatal.
 
 `lifeStage` is absent from §11.1's priority list; it is ranked just above `quiet`.
+
+## 2026-09-04 — The flavor call-site risk is now closed by the golden fixture
+**Context:** prompt 13 recorded that the §2.2 flavor-isolation guarantee was
+structural inside the Logbook, but that the residual risk sat at the call site —
+the tick pipeline could pass the wrong stream.
+**Decision:** the golden snapshot pins the whole run, and a dedicated test
+re-runs seed 4F2A9C1B with every template pool reversed and asserts every
+simulation field is identical.
+**Consequences:** a mutation that passes `streams.eventOutcome` instead of
+`streams.flavor` to `emitEntries` now fails the golden snapshot immediately. The
+risk is closed. The snapshot deliberately records logbook *keys* and the entry
+count but **not the prose**, since pinning the text would make the guarantee
+untestable.
+
+## 2026-09-04 — §10 step 14's "raise" was missing until the fixture exposed it
+**Context:** the first golden run came out with `lastRaisePct: 0` after four
+in-game years and a wage that had never moved. §10's step 14 is "tax settlement,
+raise, inflation step, annual review"; only the tax had been implemented.
+**Decision:** the annual raise now applies at the year boundary, reading the
+inflation of the year just finished — the year the player actually lived through.
+**Consequences:** wages grow. In the golden run, pay goes from $750/week to
+$851/week over four years. It also changed which events fire:
+`CAR_RAISE_BELOW_INFLATION` stopped appearing, because a 4.45% raise for a
+high-performing 22-year-old beats 2% inflation and its gate correctly fails. That
+is the §6.2 finding from 2026-09-04 showing up end to end — the "quiet villain"
+does not bite a young strong performer.
+
+The fixture is what caught this. An idle golden run would not have.
+
+## 2026-09-04 — State invented where the TDD stops short
+**Context:** the pipeline needs numbers §10 references but no section defines.
+**Decision:** added as documented [T] constants in `state.ts`:
+`HOUSING_TIER_RENT_CENTS` (65/110/160/235 dollars a month, year-0),
+`BASE_MONTHLY_EXPENSES_CENTS` ($950), `DISCRETIONARY_BASELINE_CENTS` ($400), and
+the interrupt floors (energy 20, mood 25, unsecured DTI 0.75).
+**Consequences:** all guesses, and all load-bearing for pacing. The housing tier
+rents must be reconciled with `HOME_PRICE_TO_RENT = 16` before the home path is
+playable — tier 3 at $2,350/month implies a ~$450k home, which is in range, but
+the two were set independently and should be checked together.
+
+`RunState.flags` is a **sorted array**, not §4.1's `Set`: a Set serializes as
+`{}` and iterates in insertion order, so two runs with identical flags would
+produce different snapshots. Gate evaluation builds a Set from it per tick.
+
+## 2026-09-04 — Systems the pipeline stubs rather than fakes
+**Context:** §10 references subsystems that later prompts build.
+**Decision:** step 6e sets a `bankruptcy_eligible` flag rather than implementing
+§13's three branches (prompt 17). Job applications, promotions and job-hopping
+are wired in `jobs.ts` but nothing in the tick calls them yet — the run keeps its
+starting job or loses it to the firing track. Skills and `experienceWeeks` are
+absent from `RunState` entirely.
+**Consequences:** the golden fixture pins what exists today, so each of those
+prompts will legitimately change it. That is the moment to ask "did I intend
+this?" — the answer will be yes, and the fixture gets regenerated with a
+DECISIONS entry saying so.

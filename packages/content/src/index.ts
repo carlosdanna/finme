@@ -29,3 +29,8 @@ export {
   templatesFileSchema,
   namesFileSchema,
 } from './logbook.ts';
+
+export { DEFAULT_ALLOCATION, scenarioConfig, createScenarioRun } from './scenario.ts';
+export type { ScenarioOptions } from './scenario.ts';
+
+export { serializeState } from './snapshot.ts';

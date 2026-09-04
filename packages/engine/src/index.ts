@@ -312,6 +312,11 @@ export * from './events/index.ts';
 // Logbook engine (TDD §11).
 export * from './logbook/index.ts';
 
+// Run state, the tick pipeline, and the advance control (TDD §4.1, §10).
+export * from './state.ts';
+export * from './tick.ts';
+export * from './run.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 
