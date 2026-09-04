@@ -237,6 +237,9 @@ importers:
 
   packages/content:
     dependencies:
+      '@finme/engine':
+        specifier: workspace:*
+        version: link:../engine
       zod:
         specifier: ^4.1.13
         version: 4.5.4

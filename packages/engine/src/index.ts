@@ -268,6 +268,44 @@ export type {
   EmploymentStanding,
 } from './vitals.ts';
 
+// Employment (GDD §3.1, TDD §6.2).
+export {
+  JOB_TIERS,
+  OPENINGS_PER_YEAR,
+  OPENING_WEEKS_MIN,
+  OPENING_WEEKS_MAX,
+  APPLICATION_BASE,
+  APPLICATION_PER_EXPERIENCE_YEAR,
+  APPLICATION_EXPERIENCE_CAP,
+  APPLICATION_NETWORKING_BONUS,
+  APPLICATION_LONG_UNEMPLOYED_PENALTY,
+  LONG_UNEMPLOYMENT_WEEKS,
+  APPLICATION_MIN_PROBABILITY,
+  APPLICATION_MAX_PROBABILITY,
+  APPLICATION_TIME_POINTS,
+  APPLICATION_FAILURE_MOOD_COST,
+  tierRank,
+  weeklyGrossCents,
+  ineligibleReasons,
+  isEligible,
+  applicationProbability,
+  rollApplication,
+  generateJobTimeline,
+  availableJobIds,
+  applicableJobs,
+} from './jobs.ts';
+export type {
+  JobDef,
+  JobTier,
+  JobPay,
+  JobRequirements,
+  JobOpening,
+  Applicant,
+  ApplicationContext,
+  ApplicationResult,
+  IneligibleReason,
+} from './jobs.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 

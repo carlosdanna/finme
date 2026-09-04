@@ -577,3 +577,42 @@ assertion compared `moodDecay(20)` against `MOOD_DECAY_LOW`, the very constant i
 returns, so changing the constant kept it green. It now asserts the literal 0.5
 and 1, plus the behavioural consequence — the last 10 mood points take twice as
 long to lose as the 10 above the threshold.
+
+## 2026-09-04 — `content` depends on `engine`, never the reverse
+**Context:** prompt 10 puts job definitions in `packages/content/jobs.json` with
+a Zod schema, but `packages/engine` declares no dependencies at all, and having
+it import content would make the engine's purity contingent on a data package.
+**Decision:** the engine defines `JobDef` and the logic; `content` declares
+`@finme/engine` as a dependency, owns the JSON and the schema, and asserts
+`satisfies readonly JobDef[]` on the parsed result.
+**Consequences:** the dependency graph stays one-directional — engine → nothing,
+content → engine, sim/ui → both. If the engine's `JobDef` changes, the content
+package stops compiling rather than failing at runtime. The tick pipeline will
+take job definitions as an argument rather than importing them.
+
+## 2026-09-04 — Job opening arrival rates are invented [T] constants
+**Context:** neither the GDD nor the TDD gives an arrival rate or duration for
+job openings, but "the seeded `jobTimeline` availability schedule" needs both.
+**Decision:** `OPENINGS_PER_YEAR` by tier — entry 3.0, skilled 1.5, professional
+0.8, specialist 0.4 — with openings staying on the board for `intIn(3, 8)` weeks.
+Same exponential inter-arrival machinery as the market regimes.
+**Consequences:** across a 30-year run a player sees roughly 90 entry-level
+openings and 12 specialist ones, so a specialist role is genuinely something to
+wait and prepare for. These are guesses and should be validated by C4 (decision
+density) once it exists — if openings are too rare the career track stalls, and
+if too common the job-hop step (8-18%) becomes a treadmill the player can farm.
+
+Always-available jobs are deliberately excluded from the timeline: they consume
+no draws and are simply always on the board, which is what keeps the early game
+from dead-ending.
+
+## 2026-09-04 — Application odds are clamped to 5-95%, though nothing reaches either bound
+**Context:** GDD §3.1's modifiers span 15% (base less the long-unemployment
+penalty) to 100% (base + experience cap + networking). The prompt requires the
+probability be bounded 5-95%.
+**Decision:** clamped to [0.05, 0.95]. The ceiling binds today — a networked
+applicant with 3+ years of relevant experience computes to exactly 1.00 and is
+held at 0.95. The floor does not bind yet.
+**Consequences:** meeting the requirements is never the same as being hired, and
+no future modifier can turn a job into a formality or an impossibility. A test
+asserts both bounds against deliberately absurd inputs.

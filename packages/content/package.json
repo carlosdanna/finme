@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@finme/engine": "workspace:*",
     "zod": "^4.1.13"
   }
 }

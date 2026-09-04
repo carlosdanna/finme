@@ -1,0 +1,147 @@
+{
+  "jobs": [
+    {
+      "id": "barista",
+      "title": "Barista",
+      "employer": "Daily Grind",
+      "tier": "entry",
+      "pay": { "kind": "hourly", "rateCents": 1550, "hoursPerWeek": 30 },
+      "workMode": "part-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 0, "experienceYears": 0 },
+      "alwaysAvailable": true
+    },
+    {
+      "id": "retail-associate",
+      "title": "Retail Associate",
+      "employer": "Kesler & Co",
+      "tier": "entry",
+      "pay": { "kind": "hourly", "rateCents": 1600, "hoursPerWeek": 32 },
+      "workMode": "part-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 0, "experienceYears": 0 },
+      "alwaysAvailable": true
+    },
+    {
+      "id": "warehouse-picker",
+      "title": "Warehouse Picker",
+      "employer": "Northgate Logistics",
+      "tier": "entry",
+      "pay": { "kind": "hourly", "rateCents": 1875, "hoursPerWeek": 40 },
+      "workMode": "full-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 0, "experienceYears": 0 },
+      "alwaysAvailable": true
+    },
+    {
+      "id": "delivery-driver",
+      "title": "Delivery Driver",
+      "employer": "Northgate Logistics",
+      "tier": "entry",
+      "pay": { "kind": "hourly", "rateCents": 2150, "hoursPerWeek": 40 },
+      "workMode": "full-time",
+      "requiresVehicle": true,
+      "requirements": { "educationYears": 0, "experienceYears": 0 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "line-cook",
+      "title": "Line Cook",
+      "employer": "Fennel Street Kitchen",
+      "tier": "entry",
+      "pay": { "kind": "hourly", "rateCents": 1900, "hoursPerWeek": 38 },
+      "workMode": "full-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 0, "experienceYears": 0 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "office-admin",
+      "title": "Office Administrator",
+      "employer": "Brightwater Group",
+      "tier": "skilled",
+      "pay": { "kind": "salaried", "annualSalaryCents": 4200000 },
+      "workMode": "full-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 0, "experienceYears": 1 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "hvac-technician",
+      "title": "HVAC Technician",
+      "employer": "Marris Mechanical",
+      "tier": "skilled",
+      "pay": { "kind": "hourly", "rateCents": 2950, "hoursPerWeek": 40 },
+      "workMode": "full-time",
+      "requiresVehicle": true,
+      "requirements": { "educationYears": 1, "experienceYears": 0 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "dental-hygienist",
+      "title": "Dental Hygienist",
+      "employer": "Rowan Family Dental",
+      "tier": "skilled",
+      "pay": { "kind": "salaried", "annualSalaryCents": 5800000 },
+      "workMode": "full-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 2, "experienceYears": 0 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "junior-accountant",
+      "title": "Junior Accountant",
+      "employer": "Brightwater Group",
+      "tier": "professional",
+      "pay": { "kind": "salaried", "annualSalaryCents": 6400000 },
+      "workMode": "full-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 4, "experienceYears": 0 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "software-developer",
+      "title": "Software Developer",
+      "employer": "Halcyon Systems",
+      "tier": "professional",
+      "pay": { "kind": "salaried", "annualSalaryCents": 8900000 },
+      "workMode": "full-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 4, "experienceYears": 1 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "registered-nurse",
+      "title": "Registered Nurse",
+      "employer": "St. Aldwin Hospital",
+      "tier": "professional",
+      "pay": { "kind": "salaried", "annualSalaryCents": 8100000 },
+      "workMode": "full-time",
+      "requiresVehicle": true,
+      "requirements": { "educationYears": 4, "experienceYears": 0 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "nurse-practitioner",
+      "title": "Nurse Practitioner",
+      "employer": "St. Aldwin Hospital",
+      "tier": "specialist",
+      "pay": { "kind": "salaried", "annualSalaryCents": 12600000 },
+      "workMode": "full-time",
+      "requiresVehicle": true,
+      "requirements": { "educationYears": 6, "experienceYears": 4 },
+      "alwaysAvailable": false
+    },
+    {
+      "id": "engineering-lead",
+      "title": "Engineering Lead",
+      "employer": "Halcyon Systems",
+      "tier": "specialist",
+      "pay": { "kind": "salaried", "annualSalaryCents": 14500000 },
+      "workMode": "full-time",
+      "requiresVehicle": false,
+      "requirements": { "educationYears": 4, "experienceYears": 8 },
+      "alwaysAvailable": false
+    }
+  ]
+}

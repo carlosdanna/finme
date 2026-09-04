@@ -8,7 +8,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['packages/{engine,sim}/**/*.test.ts'],
+    include: ['packages/{engine,sim,content}/**/*.test.ts'],
     passWithNoTests: true,
   },
 });
