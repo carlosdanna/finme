@@ -431,7 +431,7 @@ describe('effect application (TDD §9.3)', () => {
       ],
     };
     let likely = 0;
-    for (let i = 0; i < 10_000; i++) if (rollOutcome(roll, rng).logbookKey === 'likely') likely++;
+    for (let i = 0; i < 10_000; i++) if (rollOutcome(roll, rng, context).logbookKey === 'likely') likely++;
     expect(likely / 10_000).toBeGreaterThan(0.68);
     expect(likely / 10_000).toBeLessThan(0.72);
   });

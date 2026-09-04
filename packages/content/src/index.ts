@@ -7,3 +7,14 @@
  */
 export { JOBS, jobById, jobSchema, jobPaySchema, jobsFileSchema } from './jobs.ts';
 export type { JobsFile } from './jobs.ts';
+
+export {
+  EVENTS,
+  eventById,
+  eventSchema,
+  eventsFileSchema,
+  referencedLogbookKeys,
+  collectFormulas,
+  ALLOWED_FORMULA_FUNCTIONS,
+} from './events.ts';
+export type { EventsFile } from './events.ts';

@@ -44,7 +44,18 @@ export type Gate =
   | { readonly type: 'ownsHome'; readonly value?: boolean }
   | { readonly type: 'hasDebtType'; readonly value: string }
   | { readonly type: 'holdsAsset'; readonly value: string }
-  | { readonly type: 'stat'; readonly stat: string; readonly op: ComparisonOp; readonly value: number }
+  | {
+      readonly type: 'stat';
+      readonly stat: string;
+      readonly op: ComparisonOp;
+      /**
+       * A number, or the name of another stat to compare against — §9.4's
+       * CAR_RAISE_BELOW_INFLATION compares `lastRaisePct` to
+       * `inflationThisYear`, which is how "below inflation" stays true at any
+       * inflation level.
+       */
+      readonly value: number | string;
+    }
   | { readonly type: 'lifeStage'; readonly value: string };
 
 export interface Multiplier {
@@ -83,9 +94,15 @@ export interface DeferredEffect {
   readonly logbookKey?: string;
 }
 
+/** The literal that means "whatever probability the other branches leave". */
+export const REST_BRANCH = 'rest';
+
 export interface OutcomeBranch {
-  /** Probability of this branch. Branches are drawn in order and sum to 1. */
-  readonly p: number;
+  /**
+   * Probability of this branch: a number, a formula (`"0.25 + 0.3*performanceNorm"`),
+   * or `"rest"` for the remainder. Branches are walked in declared order.
+   */
+  readonly p: Magnitude | typeof REST_BRANCH;
   readonly effects: readonly Effect[];
   readonly logbookKey: string;
 }
@@ -101,6 +118,12 @@ export interface Choice {
   readonly label: string;
   readonly requires?: readonly Gate[];
   readonly effects: readonly Effect[];
+  /**
+   * Marks a choice that deliberately does nothing mechanically — §9.4's "Say
+   * thank you" is the canonical case. The content lint rejects an empty choice
+   * without this, so an author who simply forgot the effects is caught.
+   */
+  readonly noop?: boolean;
   readonly deferred?: readonly DeferredEffect[];
   readonly outcomeRoll?: OutcomeRoll;
   readonly logbookKey: string;

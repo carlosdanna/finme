@@ -4,6 +4,7 @@ export {
   BASE_WEIGHT_COMMON,
   BASE_WEIGHT_UNCOMMON,
   BASE_WEIGHT_RARE,
+  REST_BRANCH,
 } from './schema.ts';
 export type {
   EventDef,
@@ -54,6 +55,7 @@ export {
   emptyOutcome,
   applyEffects,
   rollOutcome,
+  branchProbabilities,
   resolveChoice,
   interpolate,
 } from './effects.ts';

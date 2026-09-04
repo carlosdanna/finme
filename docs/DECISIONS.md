@@ -674,3 +674,42 @@ without one cannot shift the stream; a test asserts the draw count directly.
 The Zod schema for `EventDef` lives in `@finme/content`, not the engine, matching
 the jobs decision — the engine declares no dependencies, and content asserts
 `satisfies` against the engine's types.
+
+## 2026-09-04 — §9.4's third event needs three schema features the first two do not
+**Context:** implementing `CAR_RAISE_BELOW_INFLATION` verbatim required
+extending the §9.3 schema, which does not describe any of them.
+**Decision:** all three added, since the TDD's own worked example uses them.
+**Consequences:**
+1. A `stat` gate's `value` may name **another stat** rather than a number, so
+   "below inflation" stays true at any inflation level instead of being frozen to
+   a percentage.
+2. An outcome branch's `p` may be a **formula** — `"0.25 + 0.3*performanceNorm"`
+   makes negotiating better when the player has performed.
+3. `"p": "rest"` takes whatever the other branches leave, so probabilities cannot
+   drift out of sum as content is edited.
+
+## 2026-09-04 — The "no choice without effects" lint would reject §9.4's own event
+**Context:** the prompt's lint fails any choice with no effects. §9.4's
+`CAR_RAISE_BELOW_INFLATION` has exactly that: "Say thank you" accepts a
+below-inflation raise and does nothing mechanically, deliberately.
+**Decision:** a choice must declare effects, an `outcomeRoll`, or a `deferred`,
+**or** set `"noop": true`.
+**Consequences:** the lint still catches what it exists to catch — an author who
+wrote a choice and forgot its effects — while permitting the "do nothing" branch
+that several events need. `noop` makes the intent explicit in the data rather
+than inferred from an empty array, and a mutation check confirms removing the
+rule fails the test.
+
+## 2026-09-04 — Content lint runs as schema refinement, not a separate pass
+**Context:** prompt 12 asks for a lint over missing `logbookKey`s, effect-less
+choices and colliding ids.
+**Decision:** implemented as Zod `superRefine` rules on the schema that already
+parses at module load, rather than as a separate tool.
+**Consequences:** the lint cannot be forgotten — importing `EVENTS` runs it, so a
+malformed event is a load-time throw rather than something a CI step might skip.
+The lint also covers what the prompt did not ask for but the design requires: at
+least two choices per event, unique choice ids within an event, and ids matching
+`PREFIX_UPPER_SNAKE` so a rename is a schema error rather than a silent seed
+change. A test additionally scans every choice label for words that would rank
+the options for the player (GDD §1), and parses every formula in the content
+against the evaluator's whitelist.

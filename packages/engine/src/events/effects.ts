@@ -7,6 +7,7 @@
  */
 import type { Rng } from '../rng.ts';
 import { type FormulaContext, resolveCents, resolveMagnitude } from './formula.ts';
+import { REST_BRANCH } from './schema.ts';
 import type { Choice, DebtInstrument, DeferredEffect, Effect, OutcomeRoll } from './schema.ts';
 
 export interface EffectOutcome {
@@ -133,17 +134,36 @@ export function applyEffects(
 }
 
 /**
+ * Resolve each branch's probability. Numbers pass through, formulas are
+ * evaluated, and `"rest"` takes whatever the others leave (never below zero).
+ */
+export function branchProbabilities(roll: OutcomeRoll, context: FormulaContext): number[] {
+  const resolved = roll.branches.map((branch) =>
+    branch.p === REST_BRANCH ? null : resolveMagnitude(branch.p, context),
+  );
+  const explicit = resolved.reduce<number>((sum, p) => sum + (p ?? 0), 0);
+  const restCount = resolved.filter((p) => p === null).length;
+  const remainder = restCount === 0 ? 0 : Math.max(0, 1 - explicit) / restCount;
+  return resolved.map((p) => p ?? remainder);
+}
+
+/**
  * Pick a branch from an outcome roll. One draw, from the `eventOutcome` stream.
  *
  * Branches are walked in declared order, so re-ordering them in content changes
  * what a given draw selects — treat branch order as part of the event's identity.
  */
-export function rollOutcome(roll: OutcomeRoll, rng: Rng): OutcomeRoll['branches'][number] {
-  const total = roll.branches.reduce((sum, branch) => sum + branch.p, 0);
+export function rollOutcome(
+  roll: OutcomeRoll,
+  rng: Rng,
+  context: FormulaContext,
+): OutcomeRoll['branches'][number] {
+  const probabilities = branchProbabilities(roll, context);
+  const total = probabilities.reduce((sum, p) => sum + p, 0);
   let x = rng() * total;
-  for (const branch of roll.branches) {
-    x -= branch.p;
-    if (x <= 0) return branch;
+  for (let i = 0; i < roll.branches.length; i++) {
+    x -= probabilities[i];
+    if (x <= 0) return roll.branches[i];
   }
   return roll.branches[roll.branches.length - 1];
 }
@@ -165,7 +185,7 @@ export function resolveChoice(
   out = { ...out, logbookKeys: [...out.logbookKeys, choice.logbookKey] };
 
   if (choice.outcomeRoll !== undefined) {
-    const branch = rollOutcome(choice.outcomeRoll, rng);
+    const branch = rollOutcome(choice.outcomeRoll, rng, context);
     out = applyEffects(branch.effects, context, out);
     out = { ...out, logbookKeys: [...out.logbookKeys, branch.logbookKey] };
   }

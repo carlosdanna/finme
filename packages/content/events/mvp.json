@@ -1,0 +1,335 @@
+{
+  "events": [
+    {
+      "id": "EMG_CAR_BREAKDOWN",
+      "category": "emergency",
+      "baseWeight": 100,
+      "cooldownWeeks": 60,
+      "gates": [{ "type": "ownsCar" }],
+      "multipliers": [
+        { "when": { "type": "stat", "stat": "carAgeYears", "op": ">", "value": 6 }, "factor": 2.0 },
+        { "when": { "type": "stat", "stat": "emergencyFundMonths", "op": "<", "value": 1 }, "factor": 1.4 }
+      ],
+      "title": "The noise got worse",
+      "body": "It started three weeks ago and you've been pretending not to hear it. This morning the car made the noise and then stopped making any noise at all. The shop says {{repairCost}}.",
+      "choices": [
+        {
+          "id": "repair",
+          "label": "Pay for the repair",
+          "effects": [{ "k": "cash", "cents": "-clamp(0.6*monthlyIncome, cpi*40000, cpi*180000)" }],
+          "logbookKey": "car_repair_paid"
+        },
+        {
+          "id": "bnpl",
+          "label": "Put it on the card",
+          "requires": [{ "type": "hasDebtType", "value": "CREDIT_CARD" }],
+          "effects": [
+            {
+              "k": "debt",
+              "instrument": "CREDIT_CARD",
+              "principalCents": "clamp(0.6*monthlyIncome, cpi*40000, cpi*180000)"
+            }
+          ],
+          "logbookKey": "car_repair_carded"
+        },
+        {
+          "id": "scrap",
+          "label": "Let it go",
+          "effects": [
+            { "k": "flag", "remove": "owns_car" },
+            { "k": "cash", "cents": "carScrapValue" },
+            { "k": "mood", "delta": -8 }
+          ],
+          "deferred": [
+            {
+              "afterWeeks": 1,
+              "condition": { "type": "flag", "value": "job_requires_vehicle" },
+              "effects": [{ "k": "flag", "add": "job_at_risk_no_vehicle" }]
+            }
+          ],
+          "logbookKey": "car_scrapped"
+        }
+      ]
+    },
+    {
+      "id": "SCM_COWORKER_CRYPTO",
+      "category": "scam",
+      "baseWeight": 100,
+      "cooldownWeeks": 78,
+      "gates": [{ "type": "employed" }],
+      "multipliers": [
+        { "when": { "type": "stat", "stat": "cryptoPriceChange52w", "op": ">", "value": 0.5 }, "factor": 2.5 },
+        { "when": { "type": "stat", "stat": "mood", "op": "<", "value": 40 }, "factor": 1.3 }
+      ],
+      "title": "Dev is very confident about this",
+      "body": "He's shown you the chart twice. He is up, he says, {{coworkerClaim}} percent. He is not lying, exactly — he just isn't mentioning the part before the part he's showing you.",
+      "choices": [
+        {
+          "id": "in_big",
+          "label": "Put in a month's pay",
+          "effects": [
+            { "k": "asset", "assetId": "CRYP", "sharesDelta": "monthlyIncome / price('CRYP')" },
+            { "k": "cash", "cents": "-monthlyIncome" }
+          ],
+          "logbookKey": "crypto_in_big"
+        },
+        {
+          "id": "in_small",
+          "label": "Put in a little",
+          "effects": [
+            { "k": "asset", "assetId": "CRYP", "sharesDelta": "(0.15*monthlyIncome)/price('CRYP')" },
+            { "k": "cash", "cents": "-0.15*monthlyIncome" }
+          ],
+          "logbookKey": "crypto_in_small"
+        },
+        {
+          "id": "pass",
+          "label": "Say you'll think about it",
+          "effects": [{ "k": "mood", "delta": -2 }],
+          "logbookKey": "crypto_passed"
+        }
+      ]
+    },
+    {
+      "id": "CAR_RAISE_BELOW_INFLATION",
+      "category": "career",
+      "baseWeight": 100,
+      "cooldownWeeks": 52,
+      "gates": [
+        { "type": "employed" },
+        { "type": "stat", "stat": "weeksInCurrentJob", "op": ">", "value": 52 },
+        { "type": "stat", "stat": "lastRaisePct", "op": "<", "value": "inflationThisYear" }
+      ],
+      "multipliers": [],
+      "title": "Annual review",
+      "body": "Your manager says the number out loud like it's good news: {{raisePct}} percent. Prices went up {{inflationPct}} percent this year.",
+      "choices": [
+        {
+          "id": "accept",
+          "label": "Say thank you",
+          "effects": [],
+          "noop": true,
+          "logbookKey": "raise_accepted"
+        },
+        {
+          "id": "negotiate",
+          "label": "Ask for more",
+          "effects": [],
+          "outcomeRoll": {
+            "stream": "eventOutcome",
+            "branches": [
+              {
+                "p": "0.25 + 0.3*performanceNorm",
+                "effects": [{ "k": "flag", "add": "raise_negotiated" }],
+                "logbookKey": "raise_negotiated_win"
+              },
+              {
+                "p": "rest",
+                "effects": [
+                  { "k": "performance", "delta": -3 },
+                  { "k": "mood", "delta": -6 }
+                ],
+                "logbookKey": "raise_negotiated_loss"
+              }
+            ]
+          },
+          "logbookKey": "raise_negotiate_attempt"
+        }
+      ]
+    },
+    {
+      "id": "WIN_TAX_REFUND",
+      "category": "windfall",
+      "baseWeight": 100,
+      "cooldownWeeks": 52,
+      "gates": [{ "type": "employed" }],
+      "multipliers": [],
+      "title": "The refund landed",
+      "body": "It's more than you expected. {{refundAmount}}, sitting in the account, already spent four times over in your head.",
+      "choices": [
+        {
+          "id": "save",
+          "label": "Move it to savings",
+          "effects": [{ "k": "flag", "add": "refund_saved" }],
+          "logbookKey": "refund_saved"
+        },
+        {
+          "id": "spend",
+          "label": "Spend it on something you've wanted",
+          "effects": [
+            { "k": "cash", "cents": "-clamp(0.5*monthlyIncome, cpi*20000, cpi*120000)" },
+            { "k": "mood", "delta": 9 }
+          ],
+          "logbookKey": "refund_spent"
+        },
+        {
+          "id": "debt",
+          "label": "Put it against the balance",
+          "requires": [{ "type": "hasDebtType", "value": "CREDIT_CARD" }],
+          "effects": [{ "k": "flag", "add": "refund_to_debt" }],
+          "logbookKey": "refund_to_debt"
+        }
+      ]
+    },
+    {
+      "id": "MKT_INFLATION_SPIKE",
+      "category": "market",
+      "baseWeight": 45,
+      "cooldownWeeks": 104,
+      "gates": [],
+      "multipliers": [],
+      "title": "Everything costs more",
+      "body": "Nothing announced itself. The same basket is {{inflationPct}} percent more than it was, and your pay is the number it was in January.",
+      "choices": [
+        {
+          "id": "absorb",
+          "label": "Absorb it",
+          "effects": [{ "k": "mood", "delta": -4 }],
+          "logbookKey": "inflation_absorbed"
+        },
+        {
+          "id": "cut_back",
+          "label": "Cut back somewhere",
+          "effects": [
+            { "k": "expense", "category": "discretionary", "cents": "-cpi*8000", "recurring": true },
+            { "k": "mood", "delta": -7 }
+          ],
+          "logbookKey": "inflation_cut_back"
+        }
+      ]
+    },
+    {
+      "id": "SOC_FRIEND_WEDDING",
+      "category": "social",
+      "baseWeight": 100,
+      "cooldownWeeks": 78,
+      "gates": [{ "type": "age", "op": ">", "value": 21 }],
+      "multipliers": [],
+      "title": "Save the date",
+      "body": "The invitation is beautiful and the venue is four hours away. Between the gift, the travel and the outfit, it's {{weddingCost}}.",
+      "choices": [
+        {
+          "id": "go_all_in",
+          "label": "Go, and go properly",
+          "effects": [
+            { "k": "cash", "cents": "-clamp(0.4*monthlyIncome, cpi*25000, cpi*150000)" },
+            { "k": "mood", "delta": 11 }
+          ],
+          "logbookKey": "wedding_attended"
+        },
+        {
+          "id": "go_cheap",
+          "label": "Go, but keep it cheap",
+          "effects": [
+            { "k": "cash", "cents": "-clamp(0.15*monthlyIncome, cpi*8000, cpi*60000)" },
+            { "k": "mood", "delta": 5 }
+          ],
+          "logbookKey": "wedding_attended_cheap"
+        },
+        {
+          "id": "decline",
+          "label": "Send your apologies",
+          "effects": [{ "k": "mood", "delta": -9 }],
+          "logbookKey": "wedding_declined"
+        }
+      ]
+    },
+    {
+      "id": "HOU_RENT_INCREASE",
+      "category": "housing",
+      "baseWeight": 100,
+      "cooldownWeeks": 52,
+      "gates": [{ "type": "ownsHome", "value": false }],
+      "multipliers": [],
+      "title": "The renewal letter",
+      "body": "Same apartment, same everything, {{rentIncrease}} more a month starting in sixty days.",
+      "choices": [
+        {
+          "id": "absorb",
+          "label": "Sign it",
+          "effects": [
+            { "k": "expense", "category": "rent", "cents": "clamp(0.06*monthlyIncome, cpi*5000, cpi*40000)", "recurring": true }
+          ],
+          "logbookKey": "rent_increase_absorbed"
+        },
+        {
+          "id": "move",
+          "label": "Find somewhere cheaper",
+          "effects": [
+            { "k": "cash", "cents": "-clamp(1.0*monthlyIncome, cpi*80000, cpi*300000)" },
+            { "k": "mood", "delta": -6 },
+            { "k": "energy", "delta": -20 }
+          ],
+          "logbookKey": "rent_increase_moved"
+        },
+        {
+          "id": "negotiate",
+          "label": "Ask them to hold it",
+          "effects": [],
+          "outcomeRoll": {
+            "stream": "eventOutcome",
+            "branches": [
+              { "p": 0.3, "effects": [], "logbookKey": "rent_negotiated_win" },
+              {
+                "p": "rest",
+                "effects": [
+                  { "k": "expense", "category": "rent", "cents": "clamp(0.06*monthlyIncome, cpi*5000, cpi*40000)", "recurring": true }
+                ],
+                "logbookKey": "rent_negotiated_loss"
+              }
+            ]
+          },
+          "logbookKey": "rent_negotiate_attempt"
+        }
+      ]
+    },
+    {
+      "id": "HLT_UNEXPECTED_DENTAL",
+      "category": "health",
+      "baseWeight": 45,
+      "cooldownWeeks": 78,
+      "gates": [],
+      "multipliers": [
+        { "when": { "type": "stat", "stat": "emergencyFundMonths", "op": "<", "value": 1 }, "factor": 1.3 }
+      ],
+      "title": "Not covered",
+      "body": "The appointment was routine. The x-ray was not. The receptionist reads the number off the screen in the same voice she used to confirm your address: {{dentalCost}}.",
+      "choices": [
+        {
+          "id": "pay",
+          "label": "Pay it today",
+          "effects": [{ "k": "cash", "cents": "-clamp(0.45*monthlyIncome, cpi*30000, cpi*140000)" }],
+          "logbookKey": "dental_paid"
+        },
+        {
+          "id": "payment_plan",
+          "label": "Take the payment plan",
+          "effects": [
+            {
+              "k": "debt",
+              "instrument": "PERSONAL_LOAN",
+              "principalCents": "clamp(0.45*monthlyIncome, cpi*30000, cpi*140000)"
+            }
+          ],
+          "logbookKey": "dental_financed"
+        },
+        {
+          "id": "postpone",
+          "label": "Book it for later",
+          "effects": [{ "k": "mood", "delta": -3 }],
+          "deferred": [
+            {
+              "afterWeeks": 26,
+              "effects": [
+                { "k": "cash", "cents": "-clamp(0.8*monthlyIncome, cpi*60000, cpi*260000)" },
+                { "k": "mood", "delta": -6 }
+              ],
+              "logbookKey": "dental_postponed_worse"
+            }
+          ],
+          "logbookKey": "dental_postponed"
+        }
+      ]
+    }
+  ]
+}

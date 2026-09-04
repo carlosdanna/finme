@@ -75,7 +75,11 @@ export function passesGate(gate: Gate, state: EventState): boolean {
     case 'stat': {
       const actual = state.stats[gate.stat];
       if (actual === undefined) return false;
-      return compare(actual, gate.op, gate.value);
+      // A string value names another stat to compare against, so a gate can say
+      // "below inflation" rather than "below some fixed percentage".
+      const expected = typeof gate.value === 'number' ? gate.value : state.stats[gate.value];
+      if (expected === undefined) return false;
+      return compare(actual, gate.op, expected);
     }
   }
 }
