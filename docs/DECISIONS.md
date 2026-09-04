@@ -890,3 +890,26 @@ altering it, so no existing seed's behaviour moved and `RULESET_VERSION` stays a
 0.2.0. This is the "did I intend this?" check working as designed: had any
 existing field moved, that would have been a simulation change needing a bump.
 
+## 2026-09-04 — Counterfactuals are limited to what is honestly computable
+**Context:** GDD §4.2 wants "two or three concrete counterfactuals, drawn from
+decisions the player actually made", e.g. "You took the payday loan in March.
+Covering it from savings would have cost $180 less."
+**Decision:** implemented the counterfactuals derivable from the annual snapshot
+— the employer match forgone, interest paid against the cash balance held, and
+income restated in real terms. The payday-loan example is **not** implemented.
+**Consequences:** §4.1's `decisionLog: DecisionRecord[]` does not exist yet, and
+without it there is no record of *which* decision was taken *when* to
+counterfactually re-run. The match-forgone line is real and lands well — the
+golden run shows $1,560 unclaimed in year one. Richer counterfactuals need the
+decision log, which belongs with §14's replay work in prompt 17.
+
+## 2026-09-04 — uPlot ships no touch gestures, so they are written here
+**Context:** BUILD-PLAN Part 2b requires pinch-zoom and drag-pan with no reliance
+on hover.
+**Decision:** a `touchGestures()` uPlot plugin — one-finger drag to pan,
+two-finger pinch to zoom, `touch-action: none` on the overlay so the browser does
+not claim the gesture first.
+**Consequences:** uPlot has mouse drag-to-zoom built in but nothing for touch, so
+without this a phone gets a chart it can only look at. **Not yet verified on a
+real device or under CPU throttling** — that is prompt 18's device pass, and the
+"1,560 points pan at 60fps" requirement is unproven until then.

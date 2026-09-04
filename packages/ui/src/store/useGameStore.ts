@@ -28,7 +28,15 @@ import { create } from 'zustand';
 export type Tab = 'dashboard' | 'money' | 'life' | 'logbook';
 
 /** Secondary panels, opened as sheets over the current tab. */
-export type Panel = 'budget' | 'debts' | 'investing' | 'balance-sheet' | 'allocation' | null;
+export type Panel =
+  | 'budget'
+  | 'debts'
+  | 'investing'
+  | 'balance-sheet'
+  | 'allocation'
+  | 'annual-review'
+  | 'epilogue'
+  | null;
 
 export interface PendingEvent {
   readonly event: EventDef;

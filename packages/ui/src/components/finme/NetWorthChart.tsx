@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { formatCents } from '@/lib/format';
+import { touchGestures, weekAxisValues } from '@/lib/chartTouch';
 
 /**
  * The net worth series, drawn with uPlot.
@@ -54,11 +55,13 @@ export function NetWorthChart({
           points: { show: true, size: 8 },
           drag: { x: true, y: false, uni: 20 },
         },
+        // One-finger pan, two-finger pinch. uPlot ships neither.
+        plugins: [touchGestures()],
         legend: { show: false },
         scales: { x: { time: false } },
         axes: [
           { stroke: 'currentColor', grid: { show: false }, ticks: { show: false },
-            values: (_u, splits) => splits.map((week) => `Y${Math.floor(week / 52) + 1}`) },
+            values: weekAxisValues },
           { stroke: 'currentColor', grid: { stroke: 'currentColor', width: 0.4 },
             ticks: { show: false },
             values: (_u, splits) => splits.map((dollars) => formatCents(dollars * 100, { compact: true })) },

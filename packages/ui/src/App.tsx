@@ -7,7 +7,9 @@ import { AllocationPanel } from '@/panels/AllocationPanel';
 import { BalanceSheetPanel } from '@/panels/BalanceSheetPanel';
 import { BudgetPanel } from '@/panels/BudgetPanel';
 import { DashboardPanel } from '@/panels/DashboardPanel';
+import { AnnualReviewPanel } from '@/panels/AnnualReviewPanel';
 import { DebtsPanel } from '@/panels/DebtsPanel';
+import { EpiloguePanel } from '@/panels/EpiloguePanel';
 import { EventModal } from '@/panels/EventModal';
 import { InvestingPanel } from '@/panels/InvestingPanel';
 import { LogbookPanel } from '@/panels/LogbookPanel';
@@ -21,6 +23,8 @@ const SECONDARY: readonly { readonly id: Exclude<Panel, null>; readonly label: s
   { id: 'investing', label: 'Investing' },
   { id: 'balance-sheet', label: 'Balance sheet' },
   { id: 'allocation', label: 'This week' },
+  { id: 'annual-review', label: 'Annual review' },
+  { id: 'epilogue', label: 'If nothing else changed' },
 ];
 
 /**
@@ -95,7 +99,9 @@ export default function App() {
           />
         )}
 
-        {tab === 'logbook' && <LogbookPanel entries={state.logbookEntries} />}
+        {tab === 'logbook' && (
+          <LogbookPanel entries={state.logbookEntries} snapshots={state.annualSnapshots} />
+        )}
       </main>
 
       {/* Secondary panels open as sheets over the current tab. */}
@@ -121,6 +127,8 @@ export default function App() {
           )}
           {panel === 'investing' && <InvestingPanel state={state} world={world} />}
           {panel === 'balance-sheet' && <BalanceSheetPanel sheet={sheet} />}
+          {panel === 'annual-review' && <AnnualReviewPanel snapshots={state.annualSnapshots} />}
+          {panel === 'epilogue' && <EpiloguePanel state={state} world={world} />}
         </SheetContent>
       </Sheet>
 
