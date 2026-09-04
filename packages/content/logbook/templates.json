@@ -1,0 +1,144 @@
+{
+  "templates": {
+    "quiet": [
+      "Nothing much. Rent, groceries, a Tuesday that felt like a Wednesday.",
+      "A week went by. You are {{age}}. The balance says {{cash}}.",
+      "No decisions worth the name. The month kept its own accounts."
+    ],
+    "car_repair_paid": [
+      "Paid the {{amount}}. The car makes a different noise now, which the mechanic says is the correct noise.",
+      "{{amount}}, and the account felt it. It starts on the first turn again.",
+      "You handed over {{amount}} and drove home the long way, listening."
+    ],
+    "car_repair_carded": [
+      "The card took it. {{amount}} that will still be there next month, and the month after.",
+      "Swiped for {{amount}}. The car is fixed. The balance is not.",
+      "It went on the card. You did the arithmetic later, in the car park."
+    ],
+    "car_scrapped": [
+      "Let it go for {{amount}}. The bus takes fifty minutes.",
+      "Sold for parts. {{amount}}, and a set of keys with nothing to open.",
+      "You watched it go onto the truck. {{amount}}, which is less than one repair."
+    ],
+    "crypto_in_big": [
+      "A month's pay into whatever {{friendName}} was so sure about. The chart is somebody else's now.",
+      "{{amount}} in. You refreshed the price four times before lunch.",
+      "In for {{amount}}. Dev clapped you on the shoulder like you'd joined something."
+    ],
+    "crypto_in_small": [
+      "A small amount, {{amount}}, enough to have an opinion at lunch.",
+      "{{amount}} in — small enough to lose, large enough to check.",
+      "You put in {{amount}}. Not nothing. Not a month's rent either."
+    ],
+    "crypto_passed": [
+      "You said you'd think about it. You did think about it, for about nine days.",
+      "Passed. Dev sent a screenshot on Thursday. You did not open it.",
+      "Not this time. The chart went on doing whatever charts do."
+    ],
+    "dental_paid": [
+      "{{amount}} for a tooth you had never thought about until Tuesday.",
+      "Paid it there and then. {{amount}}, and a follow-up in six months.",
+      "The receptionist read out {{amount}} and you said yes in the same flat voice."
+    ],
+    "dental_financed": [
+      "Signed the payment plan. {{amount}} in instalments, at a rate printed small.",
+      "Financed. The tooth is fixed and the paperwork is in a drawer.",
+      "Twelve payments. The first one is next month and feels reasonable."
+    ],
+    "dental_postponed": [
+      "Booked it for later. Later is a place you have been before.",
+      "Not this month. It only hurts when you think about it.",
+      "You put the card back in your pocket and made an appointment for autumn."
+    ],
+    "dental_postponed_worse": [
+      "The tooth came back, and it brought {{amount}} with it.",
+      "Autumn arrived. So did {{amount}} — more than the spring number.",
+      "It was a filling in March. In September it was {{amount}}."
+    ],
+    "inflation_absorbed": [
+      "The same shop, the same list, {{amount}} more at the till.",
+      "Nothing changed except every price. You paid it.",
+      "Absorbed it. The number at the bottom of the receipt kept moving."
+    ],
+    "inflation_cut_back": [
+      "Cancelled two things you liked. It came to {{amount}} a month.",
+      "Cut back. The list is shorter and so is the receipt.",
+      "You went through the statements line by line and found {{amount}}."
+    ],
+    "raise_accepted": [
+      "{{pct}} percent. You said thank you, and meant most of it.",
+      "The number was {{pct}} percent. Prices were not {{pct}} percent.",
+      "You took the {{pct}} percent and went back to your desk."
+    ],
+    "raise_negotiate_attempt": [
+      "You asked for more. The room got quieter by a degree.",
+      "You said the sentence you had practised in the car.",
+      "You asked. It is a short question and it takes a long time to say."
+    ],
+    "raise_negotiated_win": [
+      "They went away and came back with a better number.",
+      "It worked. Nobody said so out loud, but it worked.",
+      "A revised letter arrived on Friday. The figure had moved."
+    ],
+    "raise_negotiated_loss": [
+      "The answer was the budget, which is a way of saying no.",
+      "No. Politely, and with a reference to the wider picture.",
+      "They said they'd revisit it. The word 'revisit' did a lot of work."
+    ],
+    "refund_saved": [
+      "The refund went straight into savings, where it is extremely boring.",
+      "{{amount}} moved across before it could be spent on anything.",
+      "Into savings. It sat there earning almost nothing, which is more than nothing."
+    ],
+    "refund_spent": [
+      "Spent it on the thing you had been looking at since February.",
+      "{{amount}} gone in an afternoon, and a good afternoon it was.",
+      "The refund became an object. The object is in the hall."
+    ],
+    "refund_to_debt": [
+      "Straight onto the balance. The statement looked shorter.",
+      "{{amount}} against the card. The minimum payment went down a little.",
+      "It went to the balance, which absorbed it without comment."
+    ],
+    "rent_increase_absorbed": [
+      "Signed it. {{amount}} more a month for exactly the same flat.",
+      "The rent went up {{amount}}. The taps still do the thing.",
+      "You signed on the Friday. Nothing about the place changed."
+    ],
+    "rent_increase_moved": [
+      "Moved. Boxes, a van, {{amount}}, and a new bus route to learn.",
+      "New address. Cheaper by the month, expensive on the day.",
+      "You moved out on a Saturday. It cost {{amount}} and a weekend."
+    ],
+    "rent_negotiate_attempt": [
+      "You emailed the landlord and read it back twice before sending.",
+      "You asked them to hold it. It took four days to hear anything.",
+      "You made the case in writing. It was a polite email."
+    ],
+    "rent_negotiated_win": [
+      "They held it for another year. No reason given.",
+      "The increase quietly did not happen.",
+      "A one-line reply: same rent, twelve months."
+    ],
+    "rent_negotiated_loss": [
+      "They held firm. The increase stands from the first.",
+      "No movement. The new figure starts next quarter.",
+      "The reply mentioned market rates twice."
+    ],
+    "wedding_attended": [
+      "Two nights, a gift, and a suit that will be worn again, probably. {{amount}}.",
+      "You went, properly. It cost {{amount}} and there are photographs.",
+      "{{friendName}} got married. You were there for all of it."
+    ],
+    "wedding_attended_cheap": [
+      "You went for the day and drove back the same night. {{amount}}.",
+      "One night, a smaller gift, the early train. {{amount}} all in.",
+      "You made it work for {{amount}} and nobody counted."
+    ],
+    "wedding_declined": [
+      "You sent apologies and a card. The photographs came anyway.",
+      "You didn't go. {{friendName}} said it was fine, and mostly meant it.",
+      "Declined. You were free that weekend and stayed in."
+    ]
+  }
+}

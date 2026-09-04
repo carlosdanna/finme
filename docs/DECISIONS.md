@@ -713,3 +713,43 @@ least two choices per event, unique choice ids within an event, and ids matching
 change. A test additionally scans every choice label for words that would rank
 the options for the player (GDD §1), and parses every formula in the content
 against the evaluator's whitelist.
+
+## 2026-09-04 — The flavor-isolation guarantee is structural, and the test proves sensitivity
+**Context:** §2.2 marks it **[F]** that `flavor` must never influence simulation
+state, and prompt 13 requires a test that shuffling Logbook variants changes no
+number. Writing that test surfaced a subtlety about what it can actually prove.
+**Decision:** `emitEntries` takes exactly one `Rng`, and the caller supplies
+`flavor`. There is no path from inside the Logbook to any other stream, so the
+isolation is structural rather than checked at runtime.
+**Consequences:** three tests run a full 30-year simulation — market prices,
+dividends, weekly withholding, annual settlement, plus a live `eventOutcome` roll
+every 11 weeks — with the Logbook emitting alongside, and assert every simulation
+value is byte-identical after variants are **reordered, added, or a whole key
+removed**, while the prose genuinely changes.
+
+A fourth test guards the guard: it points the Logbook at the simulation's own
+live stream and asserts the outputs **do** diverge. Without it the other three
+would prove nothing, since a harness that consumes no live stream would pass them
+trivially. Two mutation attempts were rejected as non-leaks before landing on
+that framing — an extra `flavor` draw is harmless by design, which is the whole
+point of the separate stream.
+
+**The residual risk is at the call site, not here.** The tick pipeline (prompt 14)
+must pass the `flavor` stream to `emitEntries` and nothing else; that is the one
+place this could still be got wrong.
+
+## 2026-09-04 — Logbook keys for non-event triggers are derived, not authored
+**Context:** §11.1 defines seven trigger kinds but only event triggers carry an
+explicit key — an event's key lives on the chosen `Choice`.
+**Decision:** `logbookKeyFor` derives a key for the other six:
+`first_<action>`, `threshold_<metric>_<up|down>`, `delta_<metric>_<up|down>`,
+`streak_<streak>`, `stage_<stage>`, `quiet`. Event triggers derive
+`<eventId>.<choiceId>[.<branch>]` as a fallback, though the tick supplies the
+choice's own key.
+**Consequences:** content authors know exactly which key to write prose against
+without a lookup table. A key with no prose yet emits nothing rather than
+throwing — content arrives in batches, and a missing variant must not end a
+30-year run. A content test asserts every key the events reference has prose, so
+the gap is visible without being fatal.
+
+`lifeStage` is absent from §11.1's priority list; it is ranked just above `quiet`.

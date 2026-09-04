@@ -309,6 +309,9 @@ export type {
 // Event system (TDD §9.1-9.3).
 export * from './events/index.ts';
 
+// Logbook engine (TDD §11).
+export * from './logbook/index.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 
