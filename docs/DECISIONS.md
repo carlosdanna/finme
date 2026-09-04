@@ -526,3 +526,54 @@ arithmetic alone with no special-casing. A test in `probes.test.ts` guards it.
 
 The housing tiers in `packages/content` are now constrained: rent must be set
 against the home price range at roughly `price / 16`, never independently.
+
+## 2026-09-04 — §7.3's mood formula has no part-time term; GDD §3.6's table does
+**Context:** GDD §3.6 tabulates part-time work at −3 mood. TDD §7.3's formula has
+only `−5 · (workFullTime ? 1 : 0)` — no part-time term at all. §7.2's energy
+formula *does* carry part-time (−24), so this looks like an omission rather than
+a decision.
+**Decision:** implemented the TDD formula exactly, since the TDD is the formula
+authority. The gap is a named constant, `MOOD_PART_TIME = 0`, so closing it is a
+one-line change.
+**Consequences:** part-time work currently costs energy but no mood, which makes
+it strictly gentler than the GDD intends. Recommend setting it to −3 to match
+GDD §3.6 — it is a [T] constant with no downstream dependency yet, and doing it
+before the balance harness exercises time allocation would avoid a re-run later.
+
+## 2026-09-04 — `nextPerformance` reads energy *after* the week's allocation
+**Context:** §7.5's `energy >= 60` and `energy < 25` do not say whether they read
+energy before or after the week being scored. §10's pipeline puts energy, mood
+and performance all in step 9.
+**Decision:** performance reads post-allocation energy, matching the order the
+pipeline implies — energy is computed first, then performance consumes it.
+**Consequences:** a week that exhausts the player damages performance in that
+same week rather than the next one. Energy and mood both read the *previous*
+tick's values for each other, so those two have no ordering hazard between them;
+performance is the only one that reads a freshly-updated value, and it is
+documented on the `PerformanceContext.energy` field.
+
+## 2026-09-04 — Firing is structurally sustained, not a separate counter
+**Context:** §7.5 fires below performance 20; prompt 10 requires that firing need
+sustained low performance rather than one bad week.
+**Decision:** no separate counter. Performance moves at most −7 in a week
+(−4 exhaustion, −3 overtime), so 100 → 40 takes 9 weeks and 100 → 20 takes 12.
+**Consequences:** the requirement is satisfied by the rate limit itself, and a
+test asserts the 9-week and 12-week figures so a change to either penalty
+surfaces immediately. Once notice is served it stands — recovering to 100 the
+following week does not un-fire the player.
+
+## 2026-09-04 — The §7.4 property test recovers in 1-4 weeks against an 8-week budget
+**Context:** the invariant is that any reachable low state recovers above 50 mood
+and energy within 8 weeks under rest-and-free-social-only.
+**Decision:** implemented as a 500-state property test over a seeded RNG, so it is
+deterministic rather than flaky.
+**Consequences:** measured recovery is 1 week (214 states), 2 (175), 3 (103) and
+4 (8) — the worst case is half the budget, so the guarantee holds with real
+margin rather than scraping through. Mutation checks confirm the test bites:
+weakening free social to +1 mood, or raising debt stress to 60, both fail it.
+
+One flaw was found in the *test* rather than the code: the original guarantee-2
+assertion compared `moodDecay(20)` against `MOOD_DECAY_LOW`, the very constant it
+returns, so changing the constant kept it green. It now asserts the literal 0.5
+and 1, plus the behavioural consequence — the last 10 mood points take twice as
+long to lose as the 10 above the threshold.

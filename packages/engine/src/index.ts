@@ -210,6 +210,64 @@ export {
 } from './netWorth.ts';
 export type { BalanceSheet, BalanceSheetInput, Holdings } from './netWorth.ts';
 
+// Energy, mood and performance (TDD §7).
+export {
+  TIME_POINTS_PER_WEEK,
+  WORK_TIME_POINTS,
+  ENERGY_BASELINE_RECOVERY,
+  ENERGY_PER_REST,
+  ENERGY_FULL_TIME,
+  ENERGY_PART_TIME,
+  ENERGY_PER_OVERTIME,
+  ENERGY_PER_STUDY,
+  ENERGY_PER_SIDE_HUSTLE,
+  ENERGY_PER_PAID_SOCIAL,
+  ENERGY_PER_FREE_SOCIAL,
+  MOOD_PER_PAID_SOCIAL,
+  MOOD_PER_FREE_SOCIAL,
+  MOOD_PER_REST,
+  MOOD_FULL_TIME,
+  MOOD_PART_TIME,
+  MOOD_PER_OVERTIME,
+  MOOD_PER_STUDY,
+  MOOD_PER_SIDE_HUSTLE,
+  MOOD_DECAY,
+  MOOD_DECAY_LOW,
+  MOOD_DECAY_THRESHOLD,
+  HOUSING_MOOD_MODIFIER,
+  PERFORMANCE_WARNING_THRESHOLD,
+  PERFORMANCE_FIRING_THRESHOLD,
+  PERFORMANCE_WARNING_CLEAR_THRESHOLD,
+  FIRING_NOTICE_WEEKS,
+  REACH_OUT_MOOD_THRESHOLD,
+  REACH_OUT_CONSECUTIVE_WEEKS,
+  REACH_OUT_COOLDOWN_WEEKS,
+  REACH_OUT_MOOD_GRANT,
+  emptyAllocation,
+  allocationPoints,
+  availableTimePoints,
+  isValidAllocation,
+  moodEnergyCoupling,
+  nextEnergy,
+  discretionarySatisfaction,
+  housingMoodModifier,
+  debtStress,
+  moodDecay,
+  nextMood,
+  nextPerformance,
+  clearTrack,
+  evaluatePerformanceTrack,
+  shouldForceReachOut,
+} from './vitals.ts';
+export type {
+  Allocation,
+  WorkMode,
+  MoodContext,
+  PerformanceContext,
+  PerformanceTrack,
+  EmploymentStanding,
+} from './vitals.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 
