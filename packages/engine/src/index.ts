@@ -306,6 +306,9 @@ export type {
   IneligibleReason,
 } from './jobs.ts';
 
+// Event system (TDD §9.1-9.3).
+export * from './events/index.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 

@@ -616,3 +616,61 @@ held at 0.95. The floor does not bind yet.
 **Consequences:** meeting the requirements is never the same as being hired, and
 no future modifier can turn a job into a formality or an impossibility. A test
 asserts both bounds against deliberately absurd inputs.
+
+## 2026-09-04 — §9.1's slot formula undershoots both documents' stated targets
+**Context:** §9.1's comment claims "mean ≈ 4.5, ≈11.5 slots/year, ~345 over a
+30-year run". GDD §5.3 asks for "one event every 4-6 weeks, roughly 10 per
+in-game year, ~300 over a 30-year run". The formula produces neither.
+**Decision:** implemented exactly as specified, with the measured figures pinned
+by a test rather than retuned.
+**Consequences:** `clamp(3 + floor(−ln(U)/0.22), 3, 10)` adds 3 to the floor of
+an exponential whose mean is 4.55, giving a **6.16-week mean gap — 8.4 slots a
+year, ~253 a run**. The "mean ≈ 4.5" in the comment is the exponential's mean
+before the +3, not the gap. Seed 4F2A9C1B gets 247 slots.
+
+*Minimal proposed change, not applied:* `SLOT_LAMBDA` 0.22 → **0.34**, giving a
+5.22-week mean gap, 9.94 slots/year and 298 a run — inside GDD §5.3's 4-6 week
+band and on both stated targets. λ is marked **[T]** in §9.1 ("[F: mechanism,
+T: rate]"), so this is a tuning change rather than a mechanism change, and no
+seed has shipped. Collateral: it raises decision density by ~18%, which is C4's
+concern (150-250 decision points over 30 years) — worth setting before C4 runs
+rather than after.
+
+| λ | mean gap | slots/year | per 30y |
+|---|---|---|---|
+| 0.22 (as specified) | 6.16w | 8.42 | 253 |
+| 0.34 (proposed) | 5.22w | 9.94 | 298 |
+| 0.45 | 4.67w | 11.11 | 333 |
+
+## 2026-09-04 — The formula evaluator parses; it never evaluates
+**Context:** §9.3 requires magnitudes be expressions evaluated at fire time, and
+the prompt requires the evaluator reject anything outside a whitelist.
+**Decision:** a hand-written tokenizer and recursive-descent parser. No `eval`,
+no `new Function`, no property access in the grammar at all. Whitelist: `clamp`,
+`min`, `max`, `round`, `floor`, `ceil`, `abs`, `price`.
+**Consequences:** content is data and cannot reach the runtime — `Math.random()`
+does not parse, because `.` is not in the grammar. Unknown variables throw rather
+than reading as zero, so a content typo surfaces loudly instead of silently
+zeroing a magnitude. Determinism is preserved: `price()` is the only context
+lookup and it reads a pre-generated series.
+
+Two mutation checks initially passed and exposed weak *tests* rather than weak
+code: removing the whitelist check still threw, but only via a later finiteness
+check, and replacing every slot ticket with a constant `0.5` still satisfied "is
+a uniform in [0,1)". Both tests now assert the mechanism — the error message for
+an unknown function, and that the tickets equal the `eventSelection` stream's own
+draws in order.
+
+## 2026-09-04 — Effects resolve to a diff, not a mutation
+**Context:** §9.3's `Effect` union writes to cash, mood, debts, assets, flags and
+more. The game state object does not exist yet (prompt 14).
+**Decision:** `applyEffects` folds a list of effects into an `EffectOutcome` — an
+accumulated diff — which the tick pipeline applies.
+**Consequences:** effect resolution is pure and testable without a whole game
+state, and replayable for the §14 persistence model. A choice consumes a draw
+from `eventOutcome` **only** when it declares an `outcomeRoll`, so a choice
+without one cannot shift the stream; a test asserts the draw count directly.
+
+The Zod schema for `EventDef` lives in `@finme/content`, not the engine, matching
+the jobs decision — the engine declares no dependencies, and content asserts
+`satisfies` against the engine's types.
