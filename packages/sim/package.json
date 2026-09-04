@@ -8,7 +8,9 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "c1": "node --experimental-strip-types src/tests/c1.ts"
+    "c1": "node --experimental-strip-types src/tests/c1.ts",
+    "wages": "node --experimental-strip-types src/probes/wages.ts",
+    "housing": "node --experimental-strip-types src/probes/housing.ts"
   },
   "dependencies": {
     "@finme/content": "workspace:*",
