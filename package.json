@@ -9,7 +9,7 @@
     "dev": "pnpm -F @finme/ui dev",
     "build": "pnpm -F @finme/ui build",
     "preview": "pnpm -F @finme/ui preview",
-    "test": "vitest run",
+    "test": "vitest run && pnpm -F @finme/ui test",
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",

@@ -808,3 +808,56 @@ absent from `RunState` entirely.
 prompts will legitimately change it. That is the moment to ask "did I intend
 this?" — the answer will be yes, and the fixture gets regenerated with a
 DECISIONS entry saying so.
+
+## 2026-09-04 — A credit card's minimum payment can never produce "Never"
+**Context:** the Debts panel was built to show the payoff projection against the
+minimum payment. A render test that expected "Never" failed, and the reason is
+structural rather than a bug.
+**Decision:** the panel projects against the payment the player is **actually
+making** — the standing order's fixed amount when there is one, the minimum
+otherwise.
+**Consequences:** §5.1's minimum is `max($25, 2% of balance + interest)`. The 2%
+term means it always touches principal, so a card paid its minimum always clears
+eventually, however slowly. **"Never" only appears when a standing order pays a
+fixed amount the interest has since outgrown.** Projecting the minimum everywhere
+would have quietly hidden the case the panel exists to teach, while looking
+correct. A test asserts both halves: "Never" renders for a fixed underpayment,
+and never renders for a minimum payment.
+
+## 2026-09-04 — The glossary is tap-only, not tap-and-hover
+**Context:** GDD §7 specifies hover tooltips; BUILD-PLAN Part 2b resolves this to
+a tap-to-open popover "(and on hover, on desktop, as a bonus)".
+**Decision:** implemented as **tap only**. Hover is not added as a desktop bonus.
+**Consequences:** one interaction that works identically everywhere, rather than
+two paths where the desktop one is better and therefore the one that gets tested.
+The trigger is a real `<button>`, so it is keyboard-reachable and screen-reader
+announced, and it carries a 44px touch target through an `::after` overlay that
+does not disturb the text's line box. There is no `title` attribute anywhere in
+the UI, and a test asserts it.
+
+## 2026-09-04 — UI tests run in their own jsdom project
+**Context:** the root Vitest config runs the headless packages in a `node`
+environment. Mounting React components needs jsdom, and mixing environments in
+one project would slow every engine test down.
+**Decision:** `packages/ui` has its own `vitest.config.ts` with `environment:
+'jsdom'` and `globals: true`; the root `test` script runs both.
+**Consequences:** `globals: true` is load-bearing rather than stylistic — it is
+what registers Testing Library's automatic cleanup. Without it every `render`
+appends to the same document and tests start finding duplicate elements, which is
+exactly how three of these tests first failed.
+
+The render tests guard the GDD §1 tone rules directly: no `destructive` or
+red/green class reaches any figure, "Never" carries no styling of its own, the
+allocation steppers are 44px and nothing is draggable, and the Logbook contains
+no checkmarks.
+
+## 2026-09-04 — Event choices render with no primary action
+**Context:** GDD §1 requires that choices never signal which is correct — in
+label, order, or styling.
+**Decision:** every choice button in the event modal uses the identical
+`outline` variant and size, in the order the content declares. There is no
+default action and no emphasized option.
+**Consequences:** the modal is also not dismissible, since an event is a decision
+and the simulation has no "closed without choosing" outcome. Content order is
+therefore load-bearing for presentation as well as for the outcome roll, which
+the event schema already treats as part of an event's identity.
