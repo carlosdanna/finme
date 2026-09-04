@@ -9,11 +9,12 @@
     "dev": "pnpm -F @finme/ui dev",
     "build": "pnpm -F @finme/ui build",
     "preview": "pnpm -F @finme/ui preview",
-    "test": "vitest run && pnpm -F @finme/ui test",
+    "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
-    "check": "pnpm lint && pnpm typecheck && pnpm test"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:ui",
+    "test:ui": "pnpm -F @finme/ui test"
   },
   "devEngines": {
     "packageManager": {
