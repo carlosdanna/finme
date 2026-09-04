@@ -420,3 +420,63 @@ touches a stream itself.
 at init and never touched again, so the entry score is a property of the world
 rather than of when the player happened to borrow. Two runs on the same seed get
 the same entry score no matter how differently they behave.
+
+## 2026-09-03 — The home value path is appended last in the market draw order
+**Context:** §8.2's home value needs a pre-generated stochastic path — generated
+whether or not the player ever buys, since otherwise buying a home would consume
+draws and shift every other subsystem. Inserting it anywhere in the existing
+order would have shifted the inflation path and every GBM shock.
+**Decision:** appended as step 6, after the GBM shocks. Verified: the golden
+fixture is byte-identical, so no existing seed's prices, regimes or inflation
+moved and no ruleset bump is required.
+**Consequences:** the draw order is now crashes → booms → (sector) → inflation →
+GBM → home. The path is indexed from week 0 and a purchase reads
+`exp(path[t] − path[purchaseWeek])`, so when the player buys does not change the
+world. Housing is modelled as **independent of the equity regime overlay**, per
+§8.2 — realistically the two correlate sharply in a crisis (2008), so the model
+understates tail risk for a leveraged homeowner. Worth revisiting if the home
+path ever becomes more than v2 scaffolding.
+
+## 2026-09-03 — §4.2's liability formula double-counts the mortgage
+**Context:** §4.2 writes `liabilities = Σ_d balance_d + accruedUnpaidBills +
+mortgagePrincipal`. A mortgage is an amortizing `Debt`, so it is already inside
+`Σ_d balance_d`.
+**Decision:** the mortgage lives in the `debts` array and nowhere else. Taken
+literally the formula would report a homeowner as roughly $250k poorer than they
+are.
+**Consequences:** a test asserts a mortgage is counted exactly once.
+
+## 2026-09-03 — §8.1's "roughly 30 months" underwater is closer to 20
+**Context:** §8.1 says a 60-month-financed car with a low down payment has
+`loanBalance > carValue` for "roughly the first 30 months".
+**Decision:** parameters unchanged; the measured figure is pinned by a test.
+**Consequences:** at 5% down the car is underwater through month **17 (excellent
+credit) to 22 (thin file)** — about a third of the term, not a half. At 0% down
+it is 25 months; at 20% down it is never underwater. The demonstration still
+lands, and the model is realistic — 12% off the lot plus 16%/yr continuous means
+25% gone in year one, which matches real depreciation. It is the "30 months" that
+is optimistic.
+
+A nicer property fell out of the arithmetic and is now tested: **net worth drops
+by exactly the off-lot 12% on purchase, regardless of the down payment.** Paying
+cash and financing at 5% down cost the player the identical $2,880 on a $24,000
+car. That is a cleaner lesson than the underwater window itself.
+
+## 2026-09-03 — Buy-vs-rent needs no rent term in the home model
+**Context:** open question from the §5.2 mortgage discussion — at 5.5-7.5%
+mortgage rates, appreciation (3.0%) less maintenance (1.0%) and property tax
+(1.1%) is +0.9%/yr, which looks like buying can never win.
+**Decision:** no rent-avoided term is added to §8.2. Owning removes the rent line
+from the budget, so the comparison resolves through cash flow rather than through
+the asset model.
+**Consequences:** counting only *interest* as the cost of owning — principal is
+saving, not spending — a 20%-down buyer at 6.5% pays about 7.3% of value a year
+in interest, maintenance and tax, against 5.6% rent avoided plus 3.0%
+appreciation. Roughly break-even in year one and improving as the interest share
+falls, with the 6% sale cost punishing short holds. That is exactly §8.2's stated
+goal of "non-obvious over short horizons and clearly favourable over long ones".
+
+**This only holds if rent is priced consistently with home prices.** At a
+price-to-rent ratio far from 15-20x the comparison breaks in one direction or the
+other, so the housing tiers in `packages/content` must be set against the home
+price range, not independently of it.

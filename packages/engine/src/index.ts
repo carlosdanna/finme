@@ -176,6 +176,38 @@ export {
 } from './credit.ts';
 export type { CreditState, CreditInputs } from './credit.ts';
 
+// Owned assets (TDD §8).
+export {
+  CAR_OFF_LOT_DROP,
+  CAR_DEPRECIATION_RATE,
+  CAR_SCRAP_FLOOR,
+  HOME_DRIFT,
+  HOME_VOLATILITY,
+  HOME_MAINTENANCE_RATE,
+  HOME_PROPERTY_TAX_RATE,
+  HOME_SALE_TRANSACTION_COST,
+  carValueCents,
+  carValueAtPurchaseCents,
+  generateHomeValuePath,
+  homeValueCents,
+  homeMaintenanceWeeklyCents,
+  homePropertyTaxWeeklyCents,
+  homeCarryingCostWeeklyCents,
+  homeSaleProceedsCents,
+} from './assets.ts';
+export type { Car, Home } from './assets.ts';
+
+// Net worth (TDD §4.2).
+export {
+  portfolioValueCents,
+  assetsCents,
+  liabilitiesCents,
+  netWorthCents,
+  balanceSheet,
+  emptyBalanceSheetInput,
+} from './netWorth.ts';
+export type { BalanceSheet, BalanceSheetInput, Holdings } from './netWorth.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 

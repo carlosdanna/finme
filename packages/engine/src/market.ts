@@ -11,6 +11,7 @@
  * Reordering it, or inserting a draw in the middle, changes what every existing
  * seed produces. See docs/DECISIONS.md.
  */
+import { generateHomeValuePath } from './assets.ts';
 import { type InflationPath, generateInflationPath } from './inflation.ts';
 import { type Rng, intIn, normal, stream, uniform } from './rng.ts';
 import { WEEKS_PER_YEAR, isQuarterBoundary, totalWeeks } from './time.ts';
@@ -116,6 +117,12 @@ export interface MarketHistory {
   /** In construction order: crashes, then booms, then sector events. */
   readonly episodes: readonly RegimeEpisode[];
   readonly inflation: InflationPath;
+  /**
+   * Cumulative log path for housing (§8.2). Generated whether or not the player
+   * ever buys — otherwise buying a home would consume draws and shift every
+   * other subsystem.
+   */
+  readonly homeValuePath: Float64Array;
 }
 
 /**
@@ -127,6 +134,8 @@ export interface MarketHistory {
  *   3. sector events     — currently consumes nothing; see docs/DECISIONS.md
  *   4. inflation path    — 2 draws per year after the first
  *   5. GBM shocks        — asset-major, then week-major; 2 draws per Z
+ *   6. home value path   — appended last, so adding it left every series above
+ *                          byte-identical and the golden fixture valid
  */
 export function generateMarket(seed: string, runLengthYears: number): MarketHistory {
   return generateMarketFrom(stream(seed, 'market'), seed, runLengthYears);
@@ -155,7 +164,9 @@ export function generateMarketFrom(rng: Rng, seed: string, runLengthYears: numbe
     series[id] = generateSeries(rng, ASSETS[id], overlay[id], weeks);
   }
 
-  return { seed, runLengthYears, weeks, series, episodes, inflation };
+  const homeValuePath = generateHomeValuePath(rng, weeks);
+
+  return { seed, runLengthYears, weeks, series, episodes, inflation, homeValuePath };
 }
 
 /**
