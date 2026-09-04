@@ -1,0 +1,30 @@
+{
+  "terms": [
+    { "id": "apr", "label": "APR", "definition": "The yearly cost of borrowing, as a percentage. A card at 24% APR charges about 2% of the balance every month." },
+    { "id": "minimum-payment", "label": "minimum payment", "definition": "The smallest amount a lender will accept this month. Paying it keeps the account in good standing; it does not mean the balance is going down much." },
+    { "id": "payoff-projection", "label": "payoff projection", "definition": "How long the balance takes to reach zero at the payment you are making. If the payment does not cover the monthly interest, there is no answer." },
+    { "id": "principal", "label": "principal", "definition": "The amount borrowed, separate from the interest charged on it." },
+    { "id": "amortization", "label": "amortization", "definition": "Paying a loan off in level instalments. Early payments are mostly interest; later ones are mostly principal." },
+    { "id": "grace-period", "label": "grace period", "definition": "If a card statement is paid in full, new purchases accrue no interest. Carry a balance once and the grace period ends until it is cleared again." },
+    { "id": "utilization", "label": "utilization", "definition": "The share of your available credit you are using. It is one of the five inputs to a credit score." },
+    { "id": "credit-score", "label": "credit score", "definition": "A 300-850 number lenders use to price a loan. It does not exist until you have had a credit line open for about six months." },
+    { "id": "net-worth", "label": "net worth", "definition": "Everything you own minus everything you owe. It can be negative." },
+    { "id": "emergency-fund", "label": "emergency fund", "definition": "Cash set aside for the unplanned. Usually measured in months of expenses it would cover." },
+    { "id": "dividend", "label": "dividend", "definition": "A share of profit paid to shareholders, usually quarterly. It is taxed in the year you receive it, whether or not you spend it." },
+    { "id": "auto-reinvest", "label": "auto-reinvest", "definition": "Using dividends to buy more shares automatically. The tax is still owed, even though no cash arrived." },
+    { "id": "cost-basis", "label": "cost basis", "definition": "What you paid for shares. The gain that gets taxed is the sale price minus this." },
+    { "id": "capital-gain", "label": "capital gain", "definition": "The profit on selling an asset for more than you paid. Held under a year it is taxed as ordinary income; held a year or more, at a lower rate." },
+    { "id": "tax-lot", "label": "tax lot", "definition": "One purchase of shares, with its own price and date. Sales use the oldest lot first." },
+    { "id": "marginal-rate", "label": "marginal rate", "definition": "The rate charged on your next dollar of income — not on all of it." },
+    { "id": "withholding", "label": "withholding", "definition": "Tax taken from a paycheque before you see it. Side income and investment income are not withheld, which is where a year-end bill comes from." },
+    { "id": "nominal", "label": "nominal", "definition": "A figure before adjusting for inflation. A 3% raise in a 4% inflation year is a nominal rise and a real fall." },
+    { "id": "real-terms", "label": "real terms", "definition": "A figure adjusted for inflation, so amounts from different years can be compared." },
+    { "id": "cpi", "label": "CPI", "definition": "An index of what a basket of goods costs. Used here to restate past amounts in today's money." },
+    { "id": "underwater", "label": "underwater", "definition": "Owing more on a loan than the thing it bought is worth." },
+    { "id": "depreciation", "label": "depreciation", "definition": "The loss of value over time. A new car loses about 12% the moment it is driven away." },
+    { "id": "employer-match", "label": "employer match", "definition": "Money an employer adds to your retirement account when you contribute. Contributing less than the match leaves it unclaimed." },
+    { "id": "volatility", "label": "volatility", "definition": "How much a price moves around. High volatility drags the typical outcome below the average one." },
+    { "id": "diversification", "label": "diversification", "definition": "Holding several unrelated things so one of them going wrong does not decide everything." },
+    { "id": "bnpl", "label": "Buy Now Pay Later", "definition": "Four instalments over six weeks, interest-free. It is a debt from the moment of purchase and appears on the balance sheet as one." }
+  ]
+}

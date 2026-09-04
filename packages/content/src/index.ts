@@ -34,3 +34,6 @@ export { DEFAULT_ALLOCATION, scenarioConfig, createScenarioRun } from './scenari
 export type { ScenarioOptions } from './scenario.ts';
 
 export { serializeState } from './snapshot.ts';
+
+export { GLOSSARY, glossaryTerm, glossaryTermSchema, glossaryFileSchema } from './glossary.ts';
+export type { GlossaryTerm } from './glossary.ts';
