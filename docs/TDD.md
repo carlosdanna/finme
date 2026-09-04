@@ -332,7 +332,7 @@ principalPortion = monthlyPayment − interestPortion
 balance         -= principalPortion
 ```
 
-The Debts panel shows the interest/principal split per payment. On a 30-year mortgage the first payment is ~78% interest; this is the amortization lesson and it needs no commentary.
+The Debts panel shows the interest/principal split per payment. The share of the first payment that is interest is exactly `1 − (1 + r)^(−n)` — it has no principal term in it, so a $100k and a $900k mortgage front-load identically. At the rates in the table below, a 30-year mortgage's first payment is **81% interest at the best credit and 89% at the worst**, ~86% mid-range; a 15-year is ~63%. This is the amortization lesson and it needs no commentary.
 
 | Instrument | APR **[T]** | Term | Notes |
 |---|---|---|---|
@@ -418,7 +418,20 @@ careerCurve      = age < 30 ? 0.012 : age < 45 ? 0.008 : age < 55 ? 0.002 : 0.00
 raise            = max(0, inflation[y] · 0.80 + performanceBonus + careerCurve)
 ```
 
-The `· 0.80` factor is the quiet villain of the whole game: **the default raise lags inflation.** A player who never negotiates, never job-hops, and never builds skills loses real income slowly over three decades. This single coefficient does more teaching than any event in the catalogue, and it should be visible in the annual review's real-vs-nominal income line and nowhere else.
+The `· 0.80` factor is the quiet villain of the whole game: **the default raise lags inflation.** Measured over 800 seeded 30-year runs from age 22, what it actually produces is:
+
+| Career (average performer unless noted) | Real salary after 30 years | Lifetime after-tax income |
+|---|---|---|
+| Stay put, weak performer (20) | **0.79×** | $1.29M |
+| Stay put, average | 1.11× | $1.49M |
+| Stay put, strong performer (80) | 1.58× | $1.75M |
+| Hop every 7 years | 1.82× | $1.82M |
+| Hop every 5 years | 2.32× | $2.01M |
+| Hop every 3 years | 3.77× | $2.55M |
+
+So a player who performs *below* average and never moves does lose real income — 21% of it. An average performer who never negotiates and never job-hops does not lose ground outright; they **gain far less than they could have**, which is the more honest lesson and the more common real outcome. Never hopping costs **$513,000 of lifetime after-tax income, 34% more**, and more than doubles the ending salary.
+
+This single coefficient does more teaching than any event in the catalogue, and it should be visible in the annual review's real-vs-nominal income line and in its counterfactual line — and nowhere else. Note that the lifetime gap (34%) is much narrower than the ending-salary gap (2.1×), because early years dominate the sum; the two framings tell different stories, so choose deliberately. Re-run `pnpm -F @finme/sim wages` after changing any of these constants.
 
 Job-hopping (accepting a competitor offer) grants a one-time step of `uniform(0.08, 0.18)` **[T]**, which is why it dominates loyalty — again, discoverable, never stated.
 
@@ -576,6 +589,8 @@ maintenance = 0.010 · value / year                 // [T]
 propertyTax = 0.011 · value / year                 // [T]
 ```
 Transaction cost on sale: 6% **[T]**. Combined with maintenance and tax, this is what makes the buy-vs-rent question genuinely non-obvious over short horizons and clearly favorable over long ones — which is the correct real answer and should emerge from arithmetic, not from copy.
+
+**This property depends on the rent level, not on the home model.** Owning removes the rent line from the budget, so the comparison resolves through cash flow; there is deliberately no rent term here. Measured against a renter who invests the difference in `SAFE`, the buyer only comes out ahead if rent is priced at roughly **`homePrice / 16` per year [T]** — the housing tiers in `packages/content` must be set against the home price range, never independently of it. At that ratio the break-even mortgage rate is ~6.5%, which is a credit score of about 715: buying pays off for good credit and does not for a thin file, with no special-casing anywhere. At `/18` the buyer loses at every horizon and loses more the longer they hold, which inverts the intent above. Re-run `pnpm -F @finme/sim housing` after changing the mortgage rate, the home drift, or the rent tiers.
 
 ---
 

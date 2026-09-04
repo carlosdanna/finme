@@ -209,10 +209,11 @@ describe('amortizing loans (TDD §5.2)', () => {
     return first.interestCents / first.paymentCents;
   };
 
-  it("makes a 30-year mortgage's first payment 75-80% interest at the rate §5.2 describes", () => {
+  it('makes a 30-year mortgage first payment 75-80% interest at a 2010s-era rate', () => {
     // The share is exactly 1 - (1+r)^-n, so the band 75-80% is the APR band
-    // 4.63%-5.38%, and §5.2's "~78%" is 5.06%. The amortization math is right;
-    // it is the rate table that does not reach here — see the next test.
+    // 4.63%-5.38%. §5.2 originally claimed "~78%", which is 5.06% — a rate the
+    // table cannot reach. The amortization math is right; §5.2 has since been
+    // corrected to the 81-89% the table actually produces.
     expect(firstPaymentInterestShare(0.0506)).toBeGreaterThan(0.75);
     expect(firstPaymentInterestShare(0.0506)).toBeLessThan(0.8);
     expect(firstPaymentInterestShare(0.0506)).toBeCloseTo(0.78, 2);
@@ -222,9 +223,8 @@ describe('amortizing loans (TDD §5.2)', () => {
   });
 
   it('is 81-90% interest at the rates §5.2 actually offers', () => {
-    // Measured, and inconsistent with §5.2's own "~78%" narrative: the table
-    // floors at 5.5% for perfect credit, which is already 80.7%. Recorded
-    // rather than silently retuned; see docs/DECISIONS.md.
+    // The rate table floors at 5.5% for perfect credit, which is already 80.7%,
+    // and runs to 89.4% on a thin file. §5.2 now states this.
     expect(firstPaymentInterestShare(loanApr('mortgage', 850))).toBeCloseTo(0.807, 2);
     expect(firstPaymentInterestShare(loanApr('mortgage', 715))).toBeCloseTo(0.857, 2);
     expect(firstPaymentInterestShare(loanApr('mortgage', 620))).toBeCloseTo(0.884, 2);

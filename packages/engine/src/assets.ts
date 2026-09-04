@@ -62,6 +62,27 @@ export const HOME_PROPERTY_TAX_RATE = 0.011;
  */
 export const HOME_SALE_TRANSACTION_COST = 0.06;
 
+/**
+ * [T] Annual rent for an equivalent home is `price / 16`.
+ *
+ * There is deliberately no rent term in the home value model — owning removes
+ * the rent line from the budget, so buy-vs-rent resolves through cash flow. But
+ * that makes the *rent level* the parameter that decides whether buying is ever
+ * worth it, so the housing tiers in `packages/content` must be priced against
+ * the home price range rather than independently of it.
+ *
+ * At 16x, the break-even mortgage rate is ~6.5% — a credit score of about 715.
+ * Buying pays off for good credit and does not for a thin file, with no
+ * special-casing. At 18x the buyer loses at every horizon. Measured by
+ * `pnpm -F @finme/sim housing`; see docs/DECISIONS.md.
+ */
+export const HOME_PRICE_TO_RENT = 16;
+
+/** Annual rent for a home of this value, in integer cents. */
+export function equivalentAnnualRentCents(homeValueCents: number): number {
+  return Math.round(homeValueCents / HOME_PRICE_TO_RENT);
+}
+
 export interface Home {
   readonly purchasePriceCents: number;
   readonly purchasedWeek: number;

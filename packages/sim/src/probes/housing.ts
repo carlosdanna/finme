@@ -10,6 +10,7 @@
  */
 import {
   ASSETS,
+  HOME_PRICE_TO_RENT,
   HOME_SALE_TRANSACTION_COST,
   type MarketHistory,
   amortizationSchedule,
@@ -27,8 +28,11 @@ export const DOWN_PAYMENT_PCT = 0.2;
 export const TERM_MONTHS = 360;
 export const RUN_YEARS = 30;
 
-/** Annual rent as `price / PRICE_TO_RENT`. 18x is mid-range for the US. */
-export const PRICE_TO_RENT = 18;
+/**
+ * Annual rent as `price / PRICE_TO_RENT`, from the engine's own constant so the
+ * probe and the game cannot drift apart.
+ */
+export const PRICE_TO_RENT = HOME_PRICE_TO_RENT;
 
 const MONTHS = RUN_YEARS * 12;
 const weekOfMonth = (month: number) => Math.min(Math.round((month * WEEKS_PER_YEAR) / 12), 1_559);

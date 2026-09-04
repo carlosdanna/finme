@@ -480,3 +480,49 @@ goal of "non-obvious over short horizons and clearly favourable over long ones".
 price-to-rent ratio far from 15-20x the comparison breaks in one direction or the
 other, so the housing tiers in `packages/content` must be set against the home
 price range, not independently of it.
+
+## 2026-09-04 — RESOLVED: §6.2's raise parameters stay; the TDD's claim was amended
+**Context:** resolves the open question recorded on 2026-09-03. Measured with a
+new probe (`pnpm -F @finme/sim wages`, 800 seeds, age 22→52) rather than argued.
+**Decision:** `RAISE_INFLATION_FACTOR` and `CAREER_CURVE` are unchanged. §6.2's
+narrative sentence was rewritten to state what the parameters actually produce.
+**Consequences:** the erosion the TDD described is real, but only for a
+below-average performer who never moves — they lose 21% of real income. An
+average performer gains 11%, which matches real merit budgets (~3-3.5% nominal
+against 2-2.5% inflation) and the life-cycle earnings profile. The proposed
+reduced curve would have made everyone erode uniformly (average → 0.94×) while
+producing nominal raises of 1.6-2.0%, below any published merit budget and
+likely to read as a bug.
+
+The lesson survives intact and is bigger than the one that was intended: never
+job-hopping costs **$513,000 of lifetime after-tax income, 34% more**, and more
+than halves the ending salary. The annual review's counterfactual line is the
+vehicle. Note the lifetime gap (34%) is much narrower than the ending-salary gap
+(2.1×) because early years dominate the sum — the two framings tell different
+stories.
+
+## 2026-09-04 — RESOLVED: the mortgage rate stays; rent is priced at 1/16 of home value
+**Context:** resolves the open question recorded on 2026-09-03. Measured with
+`pnpm -F @finme/sim housing`, which runs buy-vs-rent with both households
+spending the same and the one paying less investing the difference in SAFE.
+**Decision:** `MORTGAGE_BASE_APR` stays at 0.075. `HOME_PRICE_TO_RENT = 16` was
+added to `assets.ts`, and §5.2's "~78% interest" was corrected to the 81-89% the
+rate table actually produces. §8.2 now records the rent dependency explicitly.
+**Consequences:** the mortgage rate turned out **not** to be the lever — the rent
+level is. At the originally assumed 1/18, the buyer loses at every horizon and
+loses *more* the longer they hold, inverting §8.2's stated intent. At 1/16, median
+buyer advantage over a renter at 30 years is:
+
+| APR | 3y | 5y | 10y | 30y |
+|---|---|---|---|---|
+| 5.5% (score 850) | −$1.8k | −$2.2k | +$22k | **+$155k** |
+| 6.5% (score ~715) | −$10k | −$17k | −$13k | **+$11k** |
+| 7.5% (thin file) | −$18k | −$32k | −$46k | **−$168k** |
+
+That is §8.2's goal exactly — non-obvious short, favourable long — and it produces
+a property worth more than the original: **the break-even sits at a ~715 credit
+score**, so buying pays off for good credit and does not for a thin file, through
+arithmetic alone with no special-casing. A test in `probes.test.ts` guards it.
+
+The housing tiers in `packages/content` are now constrained: rent must be set
+against the home price range at roughly `price / 16`, never independently.

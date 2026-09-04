@@ -186,6 +186,8 @@ export {
   HOME_MAINTENANCE_RATE,
   HOME_PROPERTY_TAX_RATE,
   HOME_SALE_TRANSACTION_COST,
+  HOME_PRICE_TO_RENT,
+  equivalentAnnualRentCents,
   carValueCents,
   carValueAtPurchaseCents,
   generateHomeValuePath,
