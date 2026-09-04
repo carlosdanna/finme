@@ -317,6 +317,9 @@ export * from './state.ts';
 export * from './tick.ts';
 export * from './run.ts';
 
+// Epilogue projection (TDD §12).
+export * from './epilogue.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 

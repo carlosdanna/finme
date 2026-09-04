@@ -137,6 +137,9 @@ export function createRun(config: RunConfig): Run {
     ytd: emptyYearToDate(),
     lastRaisePct: 0,
     netWorthHistory: [],
+    annualSnapshots: [],
+    interestPaidThisYearCents: 0,
+    employerMatchedThisYearCents: 0,
 
     logbook: openLogbook(streams.flavor),
     logbookEntries: [],

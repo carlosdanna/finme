@@ -350,6 +350,58 @@
     2165325,
     2227490
   ],
+  "annualSnapshots": [
+    {
+      "year": 1,
+      "age": 23,
+      "cpi": 1.02,
+      "assetsCents": 855628,
+      "liabilitiesCents": 0,
+      "netWorthCents": 855628,
+      "incomeCents": 3900000,
+      "taxPaidCents": 284400,
+      "interestPaidCents": 0,
+      "retirementContributedCents": 0,
+      "employerMatchedCents": 0,
+      "matchForgoneCents": 156000,
+      "cashCents": 542000,
+      "investedCents": 0
+    },
+    {
+      "year": 2,
+      "age": 24,
+      "cpi": 1.025880308709,
+      "assetsCents": 1996763,
+      "liabilitiesCents": 0,
+      "netWorthCents": 1996763,
+      "incomeCents": 4087200,
+      "taxPaidCents": 305806,
+      "interestPaidCents": 0,
+      "retirementContributedCents": 0,
+      "employerMatchedCents": 0,
+      "matchForgoneCents": 163488,
+      "cashCents": 938661,
+      "investedCents": 0
+    },
+    {
+      "year": 3,
+      "age": 25,
+      "cpi": 1.041944685998,
+      "assetsCents": 2403024,
+      "liabilitiesCents": 0,
+      "netWorthCents": 2403024,
+      "incomeCents": 4236856,
+      "taxPaidCents": 327780,
+      "interestPaidCents": 0,
+      "retirementContributedCents": 0,
+      "employerMatchedCents": 0,
+      "matchForgoneCents": 169474,
+      "cashCents": 1549640,
+      "investedCents": 0
+    }
+  ],
+  "interestPaidThisYearCents": 0,
+  "employerMatchedThisYearCents": 0,
   "logbook": {
     "weeksSinceEntry": 2,
     "quietGap": 6

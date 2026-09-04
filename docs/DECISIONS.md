@@ -861,3 +861,32 @@ default action and no emphasized option.
 and the simulation has no "closed without choosing" outcome. Content order is
 therefore load-bearing for presentation as well as for the outcome roll, which
 the event schema already treats as part of an event's identity.
+
+## 2026-09-04 — The epilogue's rng is a parameter, satisfying §12 and CLAUDE.md at once
+**Context:** TDD §12 says the epilogue "uses `Math.random()`, **not** a seeded
+stream — it is a post-run illustration, not part of the simulation, and seeding
+it would imply a determinism it doesn't need." CLAUDE.md bans `Math.random()` in
+the engine outright.
+**Decision:** `projectEpilogue(input, rng)` takes the generator as an argument.
+The UI passes `Math.random`; tests pass a seeded stream so they are reproducible.
+**Consequences:** both rules hold without either being bent. The engine never
+calls `Math.random` itself, so the ESLint rule and the balance harness stay
+intact, and the projection is genuinely unseeded in play.
+
+Assets are correlated through a single market factor, loaded by their §3.1
+regime beta scaled by the largest of them — so bonds load **negative** and the
+flight-to-quality the market model produces carries into the projection. That
+scaling is invented; §12 says only "correlated via a single market factor".
+
+## 2026-09-04 — Golden fixture regenerated: additive only
+**Context:** the annual review needs a year-over-year series, so `RunState`
+gained `annualSnapshots`, `interestPaidThisYearCents` and
+`employerMatchedThisYearCents`. That changes the golden snapshot.
+**Decision:** regenerated, after diffing to confirm the change was what I
+intended.
+**Consequences:** the diff is **purely additive** — three new fields, and *zero*
+changed values. The snapshots record what was already happening rather than
+altering it, so no existing seed's behaviour moved and `RULESET_VERSION` stays at
+0.2.0. This is the "did I intend this?" check working as designed: had any
+existing field moved, that would have been a simulation change needing a bump.
+

@@ -102,6 +102,12 @@ export function serializeState(state: RunState): Record<string, unknown> {
     ),
     lastRaisePct: round(state.lastRaisePct),
     netWorthHistory: state.netWorthHistory.map((value) => Math.round(value)),
+    annualSnapshots: state.annualSnapshots.map((snapshot) => ({
+      ...snapshot,
+      cpi: round(snapshot.cpi),
+    })),
+    interestPaidThisYearCents: state.interestPaidThisYearCents,
+    employerMatchedThisYearCents: state.employerMatchedThisYearCents,
 
     logbook: {
       weeksSinceEntry: state.logbook.weeksSinceEntry,

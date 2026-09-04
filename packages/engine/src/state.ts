@@ -82,6 +82,31 @@ export function emptyYearToDate(): YearToDate {
   };
 }
 
+/**
+ * A year's closing position, recorded at each year boundary.
+ *
+ * The annual review compares the player to their own past (GDD §4.2), so it
+ * needs the whole series, not just today. Every figure is nominal; `cpi` is
+ * carried alongside so the review can state real terms without re-deriving it.
+ */
+export interface AnnualSnapshot {
+  readonly year: number;
+  readonly age: number;
+  readonly cpi: number;
+  readonly assetsCents: number;
+  readonly liabilitiesCents: number;
+  readonly netWorthCents: number;
+  readonly incomeCents: number;
+  readonly taxPaidCents: number;
+  readonly interestPaidCents: number;
+  readonly retirementContributedCents: number;
+  readonly employerMatchedCents: number;
+  /** What the match would have added had the player contributed the full 4%. */
+  readonly matchForgoneCents: number;
+  readonly cashCents: number;
+  readonly investedCents: number;
+}
+
 export interface RunState {
   readonly seed: string;
   readonly rulesetVersion: string;
@@ -125,6 +150,10 @@ export interface RunState {
   readonly ytd: YearToDate;
   readonly lastRaisePct: number;
   readonly netWorthHistory: readonly number[];
+  readonly annualSnapshots: readonly AnnualSnapshot[];
+  /** Interest paid across the current year, for the review's debt trajectory. */
+  readonly interestPaidThisYearCents: number;
+  readonly employerMatchedThisYearCents: number;
 
   readonly logbook: LogbookState;
   readonly logbookEntries: readonly LogbookEntry[];

@@ -14,7 +14,7 @@
 import { carValueCents, homeCarryingCostWeeklyCents, homeValueCents } from './assets.ts';
 import { type CreditState, decayWeek, recordMissedPayment, recordOnTimePayment, updateMonthly } from './credit.ts';
 import { closeStatement, minimumPaymentCents } from './debt/creditCard.ts';
-import type { Debt } from './debt/types.ts';
+import { type Debt, totalLiabilitiesCents } from './debt/types.ts';
 import {
   type EffectOutcome,
   type EventState,
@@ -24,12 +24,18 @@ import {
   resolveChoice,
   selectEvent,
 } from './events/index.ts';
-import { annualRaiseRate, applyRaiseCents, retirementContributionCents } from './income.ts';
+import {
+  EMPLOYER_MATCH_CAP_PCT,
+  annualRaiseRate,
+  applyRaiseCents,
+  retirementContributionCents,
+} from './income.ts';
 import { type PendingEntry, emitEntries } from './logbook/index.ts';
 import { ASSET_IDS, type AssetId, dividendPaymentCents, isDividendWeek } from './market.ts';
 import { clamp } from './math.ts';
 import { balanceSheet, portfolioValueCents } from './netWorth.ts';
 import {
+  type AnnualSnapshot,
   type RunState,
   type RunStreams,
   type RunWorld,
@@ -216,6 +222,7 @@ export function tick(
       ...state,
       cashCents: state.cashCents + net,
       retirement: { ...state.retirement, balanceCents: state.retirement.balanceCents + contribution.totalCents },
+      employerMatchedThisYearCents: state.employerMatchedThisYearCents + contribution.employerCents,
       ytd: {
         ...state.ytd,
         employmentGrossCents: state.ytd.employmentGrossCents + gross,
@@ -274,7 +281,12 @@ export function tick(
 
     // 6b-c. Debt interest, minimums and BNPL installments.
     const serviced = serviceDebts(state, shortfall > 0);
-    state = { ...state, debts: serviced.debts, cashCents: state.cashCents - serviced.paidCents };
+    state = {
+      ...state,
+      debts: serviced.debts,
+      cashCents: state.cashCents - serviced.paidCents,
+      interestPaidThisYearCents: state.interestPaidThisYearCents + serviced.interestCents,
+    };
 
     // 6d. Credit score recompute.
     state = {
@@ -436,7 +448,7 @@ export function tick(
   //          (the inflation path is pre-generated, so the "step" is a lookup;
   //           the annual review screen is the UI's job)
   if (isYearBoundary(week)) {
-    state = settleYear(state, world, cpi);
+    state = settleYear(state, world, cpi, netWorth);
   }
 
   // ---- 15. Evaluate interrupt conditions
@@ -512,8 +524,9 @@ function revolvingLimitCents(debts: readonly Debt[]): number {
 function serviceDebts(
   state: RunState,
   broke: boolean,
-): { debts: readonly Debt[]; paidCents: number; missedAny: boolean } {
+): { debts: readonly Debt[]; paidCents: number; interestCents: number; missedAny: boolean } {
   let paidCents = 0;
+  let interestCents = 0;
   let missedAny = false;
   const debts: Debt[] = [];
 
@@ -529,10 +542,11 @@ function serviceDebts(
     if (due === 0 && card.balanceCents > 0) missedAny = true;
     const result = closeStatement(card, due);
     paidCents += result.paidCents;
+    interestCents += result.interestChargedCents;
     debts.push(result.card);
   }
 
-  return { debts, paidCents, missedAny };
+  return { debts, paidCents, interestCents, missedAny };
 }
 
 function applyOutcome(
@@ -598,7 +612,7 @@ function templateVarsFor(state: RunState, world: RunWorld, netWorth: number): Re
   };
 }
 
-function settleYear(state: RunState, world: RunWorld, cpi: number): RunState {
+function settleYear(state: RunState, world: RunWorld, cpi: number, netWorth: number): RunState {
   const settlement = settleAnnualTax({ ...state.ytd, cpi });
   const cash = state.cashCents + settlement.settlementCents;
 
@@ -608,6 +622,28 @@ function settleYear(state: RunState, world: RunWorld, cpi: number): RunState {
   const inflation = world.market.inflation.annualRate[Math.min(finishedYear, state.runLengthYears - 1)];
   const age = state.startAge + yearIndex(state.weekIndex);
   const raise = state.job === null ? 0 : annualRaiseRate(inflation, state.performance, age);
+
+  // What the employer match would have added at the full 4%, less what was
+  // actually matched. Stated as arithmetic in the review, with no adjective.
+  const fullMatch = Math.round(state.ytd.employmentGrossCents * EMPLOYER_MATCH_CAP_PCT);
+  const matchForgoneCents = Math.max(0, fullMatch - state.employerMatchedThisYearCents);
+
+  const snapshot: AnnualSnapshot = {
+    year: yearIndex(state.weekIndex),
+    age: age,
+    cpi,
+    assetsCents: netWorth + totalLiabilitiesCents(state.debts) + state.accruedUnpaidBillsCents,
+    liabilitiesCents: totalLiabilitiesCents(state.debts) + state.accruedUnpaidBillsCents,
+    netWorthCents: netWorth,
+    incomeCents: state.ytd.employmentGrossCents + state.ytd.sideHustleGrossCents,
+    taxPaidCents: settlement.totalOwedCents,
+    interestPaidCents: state.interestPaidThisYearCents,
+    retirementContributedCents: state.ytd.retirementContributionsCents,
+    employerMatchedCents: state.employerMatchedThisYearCents,
+    matchForgoneCents,
+    cashCents: Math.max(0, cash),
+    investedCents: 0,
+  };
 
   return {
     ...state,
@@ -620,6 +656,9 @@ function settleYear(state: RunState, world: RunWorld, cpi: number): RunState {
         ? null
         : { ...state.job, weeklyGrossCents: applyRaiseCents(state.job.weeklyGrossCents, raise) },
     lastRaisePct: raise,
+    annualSnapshots: [...state.annualSnapshots, snapshot],
+    interestPaidThisYearCents: 0,
+    employerMatchedThisYearCents: 0,
   };
 }
 
