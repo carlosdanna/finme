@@ -1,8 +1,11 @@
 import type { AnnualSnapshot } from '@finme/engine';
 import { Money } from '@/components/finme/Money';
+import { Nothing } from '@/components/finme/Nothing';
 import { Pct } from '@/components/finme/Pct';
+import { Stat } from '@/components/finme/Stat';
 import { Term } from '@/components/finme/Term';
-import { cn } from '@/lib/utils';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Item, ItemContent, ItemGroup, ItemTitle } from '@/components/ui/item';
 
 /**
  * The annual review — GDD §4.2, the game's main reflective beat.
@@ -40,11 +43,7 @@ export function AnnualReviewPanel({
   showReal?: boolean;
 }) {
   if (snapshots.length === 0) {
-    return (
-      <p className="py-8 text-center text-sm text-muted-foreground">
-        The first review arrives at the end of year one.
-      </p>
-    );
+    return <Nothing title="The first review arrives at the end of year one." />;
   }
 
   const latest = snapshots.at(-1)!;
@@ -56,21 +55,28 @@ export function AnnualReviewPanel({
 
   return (
     <div className="space-y-8">
-      <header>
-        <p className="text-sm text-muted-foreground">Year {latest.year}</p>
-        <h2 className="mt-1 text-2xl font-semibold">
-          <Money amountCents={latest.netWorthCents} />
-        </h2>
-        <p className="text-xs text-muted-foreground">
-          <Money amountCents={real(latest.netWorthCents, latest.cpi)} /> in{' '}
-          <Term id="real-terms">real terms</Term>
-        </p>
-      </header>
+      <Card>
+        <CardHeader>
+          <CardDescription>Year {latest.year}</CardDescription>
+          <CardTitle className="text-2xl">
+            <Money amountCents={latest.netWorthCents} />
+          </CardTitle>
+          <CardDescription>
+            <Money amountCents={real(latest.netWorthCents, latest.cpi)} /> in{' '}
+            <Term id="real-terms">real terms</Term>
+          </CardDescription>
+        </CardHeader>
+      </Card>
 
       {/* Year over year. Horizontally scrollable, first column pinned. */}
-      <section>
-        <h3 className="mb-3 text-sm font-medium text-muted-foreground">Against your own past</h3>
-        <div className="-mx-4 overflow-x-auto px-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Against your own past
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+        <div className="-mx-2 overflow-x-auto px-2">
           <table className="w-full min-w-max border-separate border-spacing-0 text-sm">
             <thead>
               <tr>
@@ -121,37 +127,15 @@ export function AnnualReviewPanel({
             <Term id="real-terms">real terms</Term>.
           </p>
         )}
-      </section>
+        </CardContent>
+      </Card>
 
-      <section>
-        <h3 className="mb-3 text-sm font-medium text-muted-foreground">This year</h3>
-        <dl className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <dt className="text-xs text-muted-foreground">Income</dt>
-            <dd className="tabular-nums">
-              <Money amountCents={latest.incomeCents} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Savings rate</dt>
-            <dd className="tabular-nums">
-              <Pct value={savingsRate} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Tax paid</dt>
-            <dd className="tabular-nums">
-              <Money amountCents={latest.taxPaidCents} />
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-muted-foreground">Interest paid</dt>
-            <dd className="tabular-nums">
-              <Money amountCents={latest.interestPaidCents} />
-            </dd>
-          </div>
-        </dl>
-      </section>
+      <div className="grid grid-cols-2 gap-3">
+        <Stat label="Income" value={<Money amountCents={latest.incomeCents} />} />
+        <Stat label="Savings rate" value={<Pct value={savingsRate} />} />
+        <Stat label="Tax paid" value={<Money amountCents={latest.taxPaidCents} />} />
+        <Stat label="Interest paid" value={<Money amountCents={latest.interestPaidCents} />} />
+      </div>
 
       <Counterfactuals snapshot={latest} />
     </div>
@@ -201,15 +185,23 @@ function Counterfactuals({ snapshot }: { snapshot: AnnualSnapshot }) {
   if (lines.length === 0) return null;
 
   return (
-    <section>
-      <h3 className="mb-3 text-sm font-medium text-muted-foreground">The arithmetic</h3>
-      <ul className="space-y-3">
-        {lines.slice(0, 3).map((line, index) => (
-          <li key={index} className={cn('border-l-2 pl-4 text-sm leading-relaxed')}>
-            {line}
-          </li>
-        ))}
-      </ul>
-    </section>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-sm font-medium text-muted-foreground">The arithmetic</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <ItemGroup className="gap-2">
+          {lines.slice(0, 3).map((line, index) => (
+            <Item key={index} size="sm" className="border-l-2">
+              <ItemContent>
+                <ItemTitle className="text-sm font-normal leading-relaxed whitespace-normal">
+                  {line}
+                </ItemTitle>
+              </ItemContent>
+            </Item>
+          ))}
+        </ItemGroup>
+      </CardContent>
+    </Card>
   );
 }

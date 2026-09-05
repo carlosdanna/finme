@@ -7,8 +7,18 @@ import {
   nextEnergy,
   nextMood,
 } from '@finme/engine';
+import { Meter } from '@/components/finme/Meter';
 import { Button } from '@/components/ui/button';
-import { Stat } from '@/components/finme/Stat';
+import { ButtonGroup } from '@/components/ui/button-group';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemTitle,
+} from '@/components/ui/item';
 
 /**
  * The weekly time allocation — **+/− steppers, not drag-and-drop.**
@@ -16,9 +26,9 @@ import { Stat } from '@/components/finme/Stat';
  * Drag-and-drop on a phone competes with scrolling and has no keyboard story.
  * Steppers are unambiguous, reachable one-handed, and every button here is 44px.
  *
- * The panel shows the projected energy and mood for the week as the player
- * adjusts, because the whole point of §7.2's arithmetic is that the tradeoff is
- * visible. It does not say whether the split is a good one.
+ * The projected energy and mood update as the player adjusts, because the whole
+ * point of §7.2's arithmetic is that the tradeoff is visible. It does not say
+ * whether the split is a good one.
  */
 const ACTIVITIES = [
   { key: 'rest', label: 'Rest', detail: '+18 energy, +2 mood' },
@@ -72,88 +82,88 @@ export function AllocationPanel({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-baseline justify-between">
-        <p className="text-sm text-muted-foreground">Time this week</p>
-        <p className="tabular-nums text-sm">
-          {used} of {TIME_POINTS_PER_WEEK} points
-        </p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-baseline justify-between text-base">
+            <span>Time this week</span>
+            <span className="text-sm font-normal tabular-nums text-muted-foreground">
+              {used} of {TIME_POINTS_PER_WEEK} points
+            </span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <ButtonGroup className="w-full">
+            {WORK_MODES.map(({ mode, label }) => (
+              <Button
+                key={mode}
+                type="button"
+                variant={allocation.work === mode ? 'default' : 'outline'}
+                onClick={() => setWork(mode)}
+                aria-pressed={allocation.work === mode}
+                className="h-11 flex-1"
+              >
+                {label}
+                {WORK_TIME_POINTS[mode] > 0 && (
+                  <span className="ml-1 text-xs opacity-70">{WORK_TIME_POINTS[mode]}p</span>
+                )}
+              </Button>
+            ))}
+          </ButtonGroup>
 
-      <div>
-        <p className="mb-2 text-sm font-medium">Work</p>
-        <div className="flex gap-2">
-          {WORK_MODES.map(({ mode, label }) => (
-            <Button
-              key={mode}
-              type="button"
-              variant={allocation.work === mode ? 'default' : 'outline'}
-              onClick={() => setWork(mode)}
-              className="h-11 flex-1"
-            >
-              {label}
-              {WORK_TIME_POINTS[mode] > 0 && (
-                <span className="ml-1 text-xs opacity-70">{WORK_TIME_POINTS[mode]}p</span>
-              )}
-            </Button>
-          ))}
-        </div>
-      </div>
+          <ItemGroup className="gap-2">
+            {ACTIVITIES.map(({ key, label, detail }) => {
+              const disabled = key === 'overtime' && allocation.work === 'none';
+              return (
+                <Item key={key} variant="outline" size="sm">
+                  <ItemContent>
+                    <ItemTitle>{label}</ItemTitle>
+                    <ItemDescription>{detail}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    {/* 44px minimum on both steppers — small controls doing
+                        high-frequency work. */}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-11"
+                      onClick={() => step(key, -1)}
+                      disabled={allocation[key] === 0}
+                      aria-label={`One less point of ${label}`}
+                    >
+                      −
+                    </Button>
+                    <span className="w-6 text-center tabular-nums" aria-live="polite">
+                      {allocation[key]}
+                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="size-11"
+                      onClick={() => step(key, 1)}
+                      disabled={disabled || remaining <= 0}
+                      aria-label={`One more point of ${label}`}
+                    >
+                      +
+                    </Button>
+                  </ItemActions>
+                </Item>
+              );
+            })}
+          </ItemGroup>
+        </CardContent>
+      </Card>
 
-      <ul className="space-y-2">
-        {ACTIVITIES.map(({ key, label, detail }) => {
-          const disabled = key === 'overtime' && allocation.work === 'none';
-          return (
-            <li key={key} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{label}</p>
-                <p className="truncate text-xs text-muted-foreground">{detail}</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-1">
-                {/* 44px minimum on both steppers — they are small controls doing
-                    high-frequency work. */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-11"
-                  onClick={() => step(key, -1)}
-                  disabled={allocation[key] === 0}
-                  aria-label={`One less point of ${label}`}
-                >
-                  −
-                </Button>
-                <span className="w-6 text-center tabular-nums" aria-live="polite">
-                  {allocation[key]}
-                </span>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="size-11"
-                  onClick={() => step(key, 1)}
-                  disabled={disabled || remaining <= 0}
-                  aria-label={`One more point of ${label}`}
-                >
-                  +
-                </Button>
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="grid grid-cols-2 gap-4 rounded-lg border p-4">
-        <Stat
-          label="Energy after this week"
-          value={Math.round(projectedEnergy)}
-          hint={`now ${Math.round(energy)}`}
-        />
-        <Stat
-          label="Mood after this week"
-          value={Math.round(projectedMood)}
-          hint={`now ${Math.round(mood)}`}
-        />
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">After this week</CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-2 gap-4">
+          <Meter label="Energy after this week" value={projectedEnergy} />
+          <Meter label="Mood after this week" value={projectedMood} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

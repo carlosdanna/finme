@@ -13,7 +13,9 @@ import { EpiloguePanel } from '@/panels/EpiloguePanel';
 import { EventModal } from '@/panels/EventModal';
 import { InvestingPanel } from '@/panels/InvestingPanel';
 import { LogbookPanel } from '@/panels/LogbookPanel';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { type Panel, useGameStore } from '@/store/useGameStore';
 
@@ -35,7 +37,7 @@ const SECONDARY: readonly { readonly id: Exclude<Panel, null>; readonly label: s
  * bottom-right thumb zone above it. `dvh` throughout, never `vh`.
  */
 export default function App() {
-  const { run, tab, panel, granularity, allocation, pendingEvent } = useGameStore();
+  const { run, tab, panel, granularity, allocation, pendingEvent, rulesetBanner } = useGameStore();
   const { start, setTab, openPanel, setGranularity, setAllocation, advanceTime, resolveEvent } =
     useGameStore();
 
@@ -67,6 +69,17 @@ export default function App() {
 
   return (
     <div className="min-h-dvh bg-background">
+      {rulesetBanner !== null && (
+        <div className="mx-auto max-w-2xl px-4 pt-4">
+          {/* Non-blocking, and `default` rather than `destructive`: a version
+              mismatch is a fact about the save, not an error the player caused. */}
+          <Alert>
+            <AlertTitle>Loaded from a checkpoint</AlertTitle>
+            <AlertDescription>{rulesetBanner}</AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       <main
         className="mx-auto max-w-2xl px-4 pt-6"
         style={{ paddingBottom: `calc(${TAB_BAR_CLEARANCE} + 6rem)` }}
@@ -76,17 +89,22 @@ export default function App() {
         {tab === 'money' && (
           <div className="space-y-3">
             <h2 className="text-lg font-semibold">Money</h2>
-            {SECONDARY.filter((entry) => entry.id !== 'allocation').map((entry) => (
-              <Button
-                key={entry.id}
-                type="button"
-                variant="outline"
-                className="h-14 w-full justify-start text-base"
-                onClick={() => openPanel(entry.id)}
-              >
-                {entry.label}
-              </Button>
-            ))}
+            {/* Navigation rows are buttons, not `Item`s: `Item` is a display
+                container with no `asChild`, and a tappable row must be a real
+                button for keyboard and screen-reader users. */}
+            <div className="flex flex-col gap-2">
+              {SECONDARY.filter((entry) => entry.id !== 'allocation').map((entry) => (
+                <Button
+                  key={entry.id}
+                  type="button"
+                  variant="outline"
+                  className="h-14 w-full justify-start rounded-2xl text-base"
+                  onClick={() => openPanel(entry.id)}
+                >
+                  {entry.label}
+                </Button>
+              ))}
+            </div>
           </div>
         )}
 
@@ -108,12 +126,13 @@ export default function App() {
       <Sheet open={panel !== null} onOpenChange={(open: boolean) => !open && openPanel(null)}>
         <SheetContent
           side="bottom"
-          className="max-h-[92dvh] overflow-y-auto"
+          className="max-h-[92dvh]"
           style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
         >
           <SheetHeader className="px-0">
             <SheetTitle className="text-left">{panelTitle}</SheetTitle>
           </SheetHeader>
+          <ScrollArea className="max-h-[75dvh] pr-2">
           {panel === 'budget' && <BudgetPanel state={state} world={world} />}
           {panel === 'debts' && (
             <DebtsPanel
@@ -129,6 +148,7 @@ export default function App() {
           {panel === 'balance-sheet' && <BalanceSheetPanel sheet={sheet} />}
           {panel === 'annual-review' && <AnnualReviewPanel snapshots={state.annualSnapshots} />}
           {panel === 'epilogue' && <EpiloguePanel state={state} world={world} />}
+          </ScrollArea>
         </SheetContent>
       </Sheet>
 

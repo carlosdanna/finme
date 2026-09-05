@@ -17,6 +17,8 @@ import {
   type TickInput,
   advance,
   defaultGranularity,
+  parseSave,
+  planLoad,
   tick,
   yearIndex,
 } from '@finme/engine';
@@ -51,6 +53,8 @@ interface GameStore {
   allocation: Allocation;
   interrupts: readonly Interrupt[];
   pendingEvent: PendingEvent | null;
+  /** §14's non-blocking ruleset-mismatch banner, or null when versions match. */
+  rulesetBanner: string | null;
 
   start: (seed: string) => void;
   setTab: (tab: Tab) => void;
@@ -59,6 +63,7 @@ interface GameStore {
   setAllocation: (allocation: Allocation) => void;
   advanceTime: () => void;
   resolveEvent: (choiceId: string) => void;
+  loadSave: (raw: string) => void;
   dismissInterrupts: () => void;
 }
 
@@ -70,6 +75,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   allocation: DEFAULT_ALLOCATION,
   interrupts: [],
   pendingEvent: null,
+  rulesetBanner: null,
 
   start: (seed) => {
     const run = createScenarioRun({ seed, runLengthYears: 30 });
@@ -98,6 +104,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }));
 
     set({ run: result.run, interrupts: result.interrupts, pendingEvent: captured });
+  },
+
+  loadSave: (raw: string) => {
+    const save = parseSave(raw);
+    if (save === null) return;
+    const plan = planLoad(save);
+    // The engine decides whether a mismatch means replay or checkpoint-only;
+    // the store only carries the banner it produced.
+    set({ rulesetBanner: plan.banner });
   },
 
   resolveEvent: (choiceId) => {

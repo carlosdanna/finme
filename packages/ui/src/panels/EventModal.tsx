@@ -1,6 +1,7 @@
 import type { EventDef } from '@finme/engine';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
+import { ButtonGroup } from '@/components/ui/button-group';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 
@@ -24,7 +25,7 @@ function Choices({
   const available = event.choices.filter((choice) => choiceIds.includes(choice.id));
 
   return (
-    <div className="flex flex-col gap-2">
+    <ButtonGroup orientation="vertical" className="w-full gap-2">
       {available.map((choice) => (
         <Button
           key={choice.id}
@@ -37,7 +38,7 @@ function Choices({
           {choice.label}
         </Button>
       ))}
-    </div>
+    </ButtonGroup>
   );
 }
 

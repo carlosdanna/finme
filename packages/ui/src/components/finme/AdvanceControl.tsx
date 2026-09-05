@@ -39,7 +39,7 @@ export function AdvanceControl({
         size="lg"
         onClick={onAdvance}
         disabled={disabled}
-        className="h-14 rounded-full px-6 text-base shadow-lg"
+        
       >
         Advance
       </Button>

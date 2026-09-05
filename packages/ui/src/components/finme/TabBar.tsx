@@ -1,12 +1,12 @@
-import { cn } from '@/lib/utils';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Tab } from '@/store/useGameStore';
 
 /**
- * Bottom tab bar — the four primary destinations.
+ * Bottom tab bar — the four primary destinations, on shadcn `Tabs`.
  *
- * Not a sidebar: six-to-eight panels do not fit in a phone sidebar, and the
- * bottom edge is where a thumb reaches. Secondary panels open as sheets over
- * whichever tab is showing.
+ * `Tabs` rather than hand-rolled buttons because it brings the roving-tabindex
+ * keyboard model and `aria-selected` with it. Not a sidebar: six-to-eight panels
+ * do not fit in a phone sidebar, and the bottom edge is where a thumb reaches.
  *
  * Fixed to the bottom with `env(safe-area-inset-bottom)` so it clears the home
  * indicator, and each target is 56px tall — comfortably over the 44px minimum.
@@ -25,23 +25,19 @@ export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab)
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Primary"
     >
-      <ul className="mx-auto flex max-w-2xl">
-        {TABS.map((tab) => (
-          <li key={tab.id} className="flex-1">
-            <button
-              type="button"
-              onClick={() => onChange(tab.id)}
-              aria-current={active === tab.id ? 'page' : undefined}
-              className={cn(
-                'flex h-14 w-full items-center justify-center text-sm font-medium transition-colors',
-                active === tab.id ? 'text-foreground' : 'text-muted-foreground',
-              )}
+      <Tabs value={active} onValueChange={(value) => onChange(value as Tab)}>
+        <TabsList className="mx-auto h-14 w-full max-w-2xl justify-between rounded-none border-0 bg-transparent p-0">
+          {TABS.map((tab) => (
+            <TabsTrigger
+              key={tab.id}
+              value={tab.id}
+              className="h-14 flex-1 rounded-none text-sm data-[selected]:bg-transparent"
             >
               {tab.label}
-            </button>
-          </li>
-        ))}
-      </ul>
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
     </nav>
   );
 }

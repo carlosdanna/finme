@@ -1,10 +1,11 @@
+import { Item, ItemContent, ItemDescription, ItemTitle } from '@/components/ui/item';
 import { cn } from '@/lib/utils';
 
 /**
- * A labelled figure. The label may contain `<Term>`s.
+ * A labelled figure, built on `Item`. The label may contain `<Term>`s.
  *
- * Deliberately has no "good" or "bad" variant. Every stat looks the same
- * whatever its value.
+ * Deliberately has no "good" or "bad" variant — `Item`'s `outline` is the only
+ * one used here. Every stat looks the same whatever its value (GDD §1).
  */
 export function Stat({
   label,
@@ -18,10 +19,12 @@ export function Stat({
   className?: string;
 }) {
   return (
-    <div className={cn('flex flex-col gap-0.5', className)}>
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-lg font-semibold tabular-nums">{value}</span>
-      {hint !== undefined && <span className="text-xs text-muted-foreground">{hint}</span>}
-    </div>
+    <Item variant="outline" size="sm" className={cn('items-start', className)}>
+      <ItemContent className="gap-0.5">
+        <ItemDescription className="text-xs">{label}</ItemDescription>
+        <ItemTitle className="text-lg font-semibold tabular-nums">{value}</ItemTitle>
+        {hint !== undefined && <ItemDescription className="text-xs">{hint}</ItemDescription>}
+      </ItemContent>
+    </Item>
   );
 }

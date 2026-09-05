@@ -42,6 +42,50 @@ const files = sourceFiles(UI_SRC).map((file) => ({
 
 const panels = files.filter((file) => file.path.includes('/panels/'));
 
+describe('the panels compose the vendored shadcn set', () => {
+  it('finds the panels it is meant to be checking', () => {
+    // Guards the guard: a broken walk would make everything below vacuous.
+    expect(panels.length).toBeGreaterThanOrEqual(7);
+    expect(panels.some((file) => file.path.endsWith('DebtsPanel.tsx'))).toBe(true);
+  });
+
+  it('imports from @/components/ui in every panel', () => {
+    const offenders = panels
+      .filter((file) => !file.source.includes("from '@/components/ui/"))
+      .map((file) => file.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it('builds the shared primitives on the vendored set, not on bare markup', () => {
+    // Panels compose the set both directly and through these. Counting a
+    // panel's direct imports would punish that factoring — `DashboardPanel`
+    // uses `Stat` and `Meter`, which is the right way round.
+    const built: Readonly<Record<string, string>> = {
+      'Stat.tsx': 'item',
+      'Meter.tsx': 'progress',
+      'Nothing.tsx': 'empty',
+      'TabBar.tsx': 'tabs',
+      'Term.tsx': 'popover',
+    };
+
+    for (const [name, expected] of Object.entries(built)) {
+      const file = files.find((candidate) => candidate.path.endsWith(`/finme/${name}`));
+      expect(file, `${name} is missing`).toBeDefined();
+      expect(file!.source, `${name} should be built on ${expected}`).toContain(
+        `@/components/ui/${expected}`,
+      );
+    }
+  });
+
+  it('does not re-implement a bordered card as a bare div', () => {
+    // `rounded-lg border p-4` on a div is the shape Card already provides.
+    const offenders = files
+      .filter((file) => /className="[^"]*\brounded-lg border\b/.test(file.source))
+      .map((file) => file.path);
+    expect(offenders).toEqual([]);
+  });
+});
+
 /**
  * The stylesheet the whole component set depends on.
  *
@@ -94,5 +138,30 @@ describe('the shadcn design tokens', () => {
   it('applies the base layer to body', () => {
     expect(css).toMatch(/@layer base/);
     expect(css).toMatch(/bg-background text-foreground/);
+  });
+});
+
+describe('the vendored set is used without its judging variants', () => {
+  it('never applies a destructive variant in our own code', () => {
+    // GDD §1: `destructive` is reserved for destructive *user actions* — delete
+    // a save, confirm bankruptcy. No figure, badge, alert or row may carry it.
+    const offenders = files
+      .filter((file) => /variant=["']destructive["']/.test(file.source))
+      .map((file) => file.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it('never hard-codes a red or green utility class', () => {
+    const offenders = files
+      .filter((file) => /\b(text|bg|border)-(red|green|emerald|rose)-\d/.test(file.source))
+      .map((file) => file.path);
+    expect(offenders).toEqual([]);
+  });
+
+  it('would catch a violation', () => {
+    // The patterns above are only worth anything if they match when they should.
+    expect(/variant=["']destructive["']/.test('<Alert variant="destructive" />')).toBe(true);
+    expect(/\b(text|bg|border)-(red|green|emerald|rose)-\d/.test('className="text-red-500"')).toBe(true);
+    expect(/className="[^"]*\brounded-lg border\b/.test('<div className="rounded-lg border p-4">')).toBe(true);
   });
 });

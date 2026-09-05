@@ -36,8 +36,10 @@ describe('the Debts panel (BUILD-PLAN Part 2b)', () => {
       <DebtsPanel debts={[carryingCard()]} paymentFor={payingTooLittle} />,
     );
 
-    const cardList = container.querySelector('ul.md\\:hidden');
-    const table = container.querySelector('div.hidden.md\\:block');
+    // Queried by role and slot rather than tag name, so swapping the markup
+    // for shadcn primitives cannot silently make this vacuous.
+    const cardList = container.querySelector('[data-slot="item-group"]');
+    const table = container.querySelector('table');
     expect(cardList).not.toBeNull();
     expect(table).not.toBeNull();
 
@@ -187,9 +189,8 @@ describe('the Logbook panel', () => {
         ]}
       />,
     );
-    const items = container.querySelectorAll('li');
-    expect(items[0].textContent).toContain('The later thing.');
-    expect(items[1].textContent).toContain('The first thing.');
+    const text = container.textContent ?? '';
+    expect(text.indexOf('The later thing.')).toBeLessThan(text.indexOf('The first thing.'));
     expect(container.innerHTML).not.toMatch(/destructive|text-red|✓|✔/);
   });
 });

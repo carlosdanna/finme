@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { AnnualSnapshot, LogbookEntry } from '@finme/engine';
 import { AnnualReviewPanel } from '@/panels/AnnualReviewPanel';
 import { LogbookPanel } from '@/panels/LogbookPanel';
@@ -71,9 +71,12 @@ describe('the annual review (GDD §4.2)', () => {
 
   it('states counterfactuals as arithmetic, with no adjective or verdict', () => {
     render(<AnnualReviewPanel snapshots={years} />);
-    const section = screen.getByText('The arithmetic').parentElement!;
-    const text = within(section).getByText(/employer match/).parentElement?.textContent ?? '';
+    // Scope to the whole card, not the title's parent — the title lives in
+    // CardHeader and the lines live in CardContent.
+    const section = screen.getByText('The arithmetic').closest('[data-slot="card"]')!;
+    const text = section.textContent ?? '';
 
+    expect(text).toContain('employer match');
     expect(text).toContain('did not take');
     // No verdict language anywhere in the counterfactual.
     for (const banned of ['should', 'mistake', 'wisely', 'better', 'worse', 'unfortunately']) {
@@ -97,13 +100,17 @@ describe('the Logbook with reviews pinned inline', () => {
     const { container } = render(
       <LogbookPanel entries={entries} snapshots={[snapshot({ year: 1 })]} />,
     );
-    const list = container.querySelector('ol');
-    const items = [...(list?.children ?? [])];
+    // Week 100 entry, then the year-1 review at week 52, then the week-10
+    // entry. Asserted by reading order rather than by element type, so the
+    // markup can change without the ordering guarantee going untested.
+    const text = container.textContent ?? '';
+    const later = text.indexOf('Later.');
+    const review = text.indexOf('Annual review');
+    const early = text.indexOf('Early on.');
 
-    // Week 100 entry, then the year-1 review at week 52, then the week-10 entry.
-    expect(items[0].textContent).toContain('Later.');
-    expect(items[1].textContent).toContain('Annual review');
-    expect(items[2].textContent).toContain('Early on.');
+    expect(later).toBeGreaterThanOrEqual(0);
+    expect(review).toBeGreaterThan(later);
+    expect(early).toBeGreaterThan(review);
   });
 
   it('opens a review on demand, as §4.2 requires', () => {

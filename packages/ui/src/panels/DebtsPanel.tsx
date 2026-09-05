@@ -6,20 +6,30 @@ import {
   payoffMonths,
 } from '@finme/engine';
 import { Money } from '@/components/finme/Money';
+import { Nothing } from '@/components/finme/Nothing';
 import { Pct } from '@/components/finme/Pct';
 import { Term } from '@/components/finme/Term';
+import {
+  Item,
+  ItemContent,
+  ItemDescription,
+  ItemGroup,
+  ItemHeader,
+  ItemTitle,
+} from '@/components/ui/item';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { formatPayoff } from '@/lib/format';
 
 /**
  * The Debts panel — where the game does its most important teaching.
  *
- * **Card list below `md:`, table above.** A five-column table with APR, balance,
- * minimum and payoff projection is unreadable at 390px, and this cannot be the
- * panel that degrades worst. The payoff projection is visible in both.
+ * **`Item` card list below `md:`, `Table` above.** A five-column table with APR,
+ * balance, minimum and payoff projection is unreadable at 390px, and this cannot
+ * be the panel that degrades worst. The payoff projection is visible in both.
  *
  * The "Never" projection renders in the same weight and colour as any other
- * number. No `destructive` styling appears anywhere in this file.
+ * number. No `destructive` variant appears anywhere in this file — not on a
+ * `Badge`, not on an `Item`, not on a figure.
  *
  * The projection is computed against the payment the player is **actually
  * making**, not the minimum. §5.1's minimum is 2% of the balance *plus* the
@@ -76,55 +86,55 @@ export function DebtsPanel({
 }) {
   const rows = debts.map((debt) => toRow(debt, paymentFor));
 
-  if (rows.length === 0) {
-    return <p className="py-8 text-center text-sm text-muted-foreground">Nothing owed.</p>;
-  }
+  if (rows.length === 0) return <Nothing title="Nothing owed." />;
 
   return (
     <div className="space-y-4">
       {/* Card list — the phone layout, and the design target. */}
-      <ul className="space-y-3 md:hidden">
+      <ItemGroup className="gap-3 md:hidden">
         {rows.map(({ debt, minimumCents, payingCents, payoff }) => (
-          <li key={debt.id} className="rounded-lg border p-4">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="font-medium">{KIND_LABEL[debt.kind] ?? debt.kind}</span>
+          <Item key={debt.id} variant="outline" className="flex-col items-stretch">
+            <ItemHeader>
+              <ItemTitle className="text-base">{KIND_LABEL[debt.kind] ?? debt.kind}</ItemTitle>
               <Money amountCents={debt.balanceCents} className="text-lg font-semibold" />
-            </div>
-            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-              <div>
-                <dt className="text-xs text-muted-foreground">
-                  <Term id="apr" />
-                </dt>
-                <dd>
-                  <Pct value={debt.aprAnnual} />
-                </dd>
-              </div>
-              <div>
-                <dt className="text-xs text-muted-foreground">
-                  {payingCents === minimumCents ? (
-                    <Term id="minimum-payment">Minimum</Term>
-                  ) : (
-                    'Paying'
-                  )}
-                </dt>
-                <dd>
-                  <Money amountCents={payingCents} />
-                </dd>
-              </div>
-              <div className="col-span-2">
-                <dt className="text-xs text-muted-foreground">
-                  <Term id="payoff-projection">Paid off in</Term>
-                </dt>
-                {/* Same weight, same colour, whatever it says. */}
-                <dd className="tabular-nums">{formatPayoff(payoff)}</dd>
-              </div>
-            </dl>
-          </li>
+            </ItemHeader>
+            <ItemContent>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                <div>
+                  <dt className="text-xs text-muted-foreground">
+                    <Term id="apr" />
+                  </dt>
+                  <dd>
+                    <Pct value={debt.aprAnnual} />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-xs text-muted-foreground">
+                    {payingCents === minimumCents ? (
+                      <Term id="minimum-payment">Minimum</Term>
+                    ) : (
+                      'Paying'
+                    )}
+                  </dt>
+                  <dd>
+                    <Money amountCents={payingCents} />
+                  </dd>
+                </div>
+                <div className="col-span-2">
+                  <dt className="text-xs text-muted-foreground">
+                    <Term id="payoff-projection">Paid off in</Term>
+                  </dt>
+                  {/* Same weight, same colour, whatever it says. */}
+                  <dd className="tabular-nums">{formatPayoff(payoff)}</dd>
+                </div>
+              </dl>
+            </ItemContent>
+          </Item>
         ))}
-      </ul>
+      </ItemGroup>
 
       {/* Table — the wide breakpoint. */}
-      <div className="hidden overflow-x-auto md:block">
+      <div className="hidden md:block">
         <Table>
           <TableHeader>
             <TableRow>
@@ -160,6 +170,9 @@ export function DebtsPanel({
           </TableBody>
         </Table>
       </div>
+      <ItemDescription className="sr-only">
+        The same debts are listed as cards on narrow screens and as a table on wide ones.
+      </ItemDescription>
     </div>
   );
 }
