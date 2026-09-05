@@ -1,0 +1,16 @@
+# Commits do not land on main. Work on a branch; main moves by merged PR.
+#
+# Detached HEAD is exempt: a rebase, a cherry-pick or a bisect all commit
+# there legitimately, and blocking them would break rewriting history on a
+# branch you are perfectly entitled to rewrite.
+branch=$(git symbolic-ref --short -q HEAD) || exit 0
+
+if [ "$branch" = "main" ]; then
+  echo "husky: refusing to commit on main."
+  echo
+  echo "  Move this work to a branch:"
+  echo "    git switch -c <type>/<short-description>"
+  echo
+  echo "  Then commit again. To override once: git commit --no-verify"
+  exit 1
+fi

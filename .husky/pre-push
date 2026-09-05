@@ -1,0 +1,21 @@
+# Everything `pnpm check` covers, before it reaches the remote: eslint,
+# tsc across all four packages, the node test suite and the jsdom UI suite.
+#
+# Not the Playwright e2e suite — it needs a production build and a browser
+# download, which is minutes rather than seconds. Run it yourself before a
+# PR that touches the UI: pnpm -F @finme/ui e2e
+
+# stdin is one line per ref being pushed: <local ref> <local sha> <remote ref> <remote sha>
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "husky: refusing to push directly to main."
+    echo
+    echo "  main is protected on GitHub too — this would be rejected there."
+    echo "  Push your branch and open a PR instead:"
+    echo "    git push -u origin HEAD && gh pr create"
+    exit 1
+  fi
+done
+
+echo "husky: running pnpm check (lint, typecheck, tests)..."
+pnpm check
