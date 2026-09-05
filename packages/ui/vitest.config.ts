@@ -14,5 +14,7 @@ export default defineConfig({
     // Registers Testing Library's auto-cleanup, so renders do not stack up.
     globals: true,
     include: ['test/**/*.test.{ts,tsx}'],
+    // e2e/ belongs to Playwright, which has its own runner and expect.
+    exclude: ['e2e/**', 'node_modules/**'],
   },
 });

@@ -979,3 +979,64 @@ raising λ from 0.22 to 0.34 to hit §5.3's ~10 events a year. **That change sho
 not be made**: it would push decision density to ~300 and break C4 further. The
 specified λ=0.22 is the better value once C4 is taken into account, and §5.3's
 "~300 events" is the number that should move.
+
+## 2026-09-05 — The device pass found a regression nothing else could
+**Context:** first run of the Playwright pass at 390×844 and 360×740.
+**Decision:** three real defects fixed, one apparent defect confirmed as a
+measurement error in the test rather than the code.
+**Consequences:**
+1. **The advance control had silently shrunk to 40px.** The shadcn rewrite
+   (commit 003755f) blanked its `className`, so `size="lg"`'s `h-10` won — the
+   most-pressed control in the game dropped from 56px to under the 44px minimum.
+   The build passed, the type check passed, and all 466 unit tests stayed green.
+   Only measuring a rendered button caught it.
+2. **The vendored `Sheet` close button was 32×32.** It ships as `size="icon-sm"`;
+   every sheet in a phone-first app inherited an undersized target. Overridden to
+   `size-11` in `sheet.tsx` — vendored components are ours to own.
+3. **`<Term>` was reported at 21px tall and is actually fine.** Its 44px target
+   comes from an absolutely positioned `::after`, which `boundingBox()` does not
+   see. Verified empirically before changing anything: a tap 18px above a
+   21px-tall term does open its popover, and the computed `::after` height is
+   44px. The **test** was wrong, so the helper now measures the union of the
+   element box and any absolutely positioned pseudo-element.
+
+A fourth "failure" was also the test's fault: the default week already spends all
+10 time points, so `+` is correctly disabled and `tap()` waited forever on an
+unactionable element. That is §7.2's tightness showing through the interface, and
+the test now exercises the steppers from a valid state.
+
+## 2026-09-05 — The 60fps assertion measures dropped frames, not frame time
+**Context:** the first pan check timed `setScale` synchronously and reported a
+median of **0.0ms**, which is not a real number — uPlot batches its redraw, so
+the cost lands in the following frame.
+**Decision:** frames are measured across real `requestAnimationFrame` callbacks,
+and the assertion is a dropped-frame threshold rather than a frame-time budget.
+**Consequences:** frame-to-frame time is bounded below by vsync, so a chart that
+keeps up measures ~16.7ms however fast it truly is. Asserting `< 16.7` would sit
+exactly on that floor and flake. A redraw that overruns shows up as ~33ms — two
+intervals — so the threshold is 25ms, which cannot be reached without missing a
+frame, plus a floor of 1ms so a chart that silently renders nothing still fails.
+
+Measured at 4× CPU throttling: a 1,560-point series draws in **6-15ms** against
+the 100ms budget, and pans at a **16.6-16.7ms median with a 17-19ms worst frame**
+— vsync-bound, no dropped frames. Stable across repeated runs.
+
+## 2026-09-05 — Two device-pass gaps left open
+**Context:** what the pass does not cover, stated rather than implied.
+**Decision:** recorded; neither is closed.
+**Consequences:**
+1. **WebKit is not tested.** Both phone projects run Chromium, because the CPU
+   throttling needs CDP and one engine keeps the pass fast enough to run
+   routinely. WebKit is exactly where safe-area insets behave differently and
+   where the storage eviction §14.2 warns about actually happens. Closing this is
+   `playwright install webkit` plus a third project.
+2. **The Debts layout swap is untested.** Nothing in the tick opens a credit
+   line, so a fresh run carries no debt and the panel shows its empty state. The
+   desktop test asserts the empty state and then skips with that reason, so it
+   starts working the moment borrowing becomes a player action — the same gap
+   that leaves C2 invalid.
+
+The performance check measures uPlot drawing the app's series with the app's
+options, injected from disk, rather than `<NetWorthChart>` mounted end to end.
+The production bundle inlines uPlot, so there is no module to import in a preview
+server, and adding a test hook to production code would be worse.

@@ -27,6 +27,8 @@ test-results/
 playwright-report/
 playwright/.cache/
 blob-report/
+packages/ui/test-results/
+packages/ui/playwright-report/
 
 # NOTE: engine golden fixtures under packages/engine/test/golden/ are
 # committed deliberately. They are the determinism contract. Do not ignore them.

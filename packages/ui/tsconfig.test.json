@@ -10,5 +10,5 @@
     "allowArbitraryExtensions": true,
     "paths": { "@/*": ["./src/*"] }
   },
-  "include": ["test", "vitest.config.ts"]
+  "include": ["test", "e2e", "vitest.config.ts", "playwright.config.ts"]
 }
