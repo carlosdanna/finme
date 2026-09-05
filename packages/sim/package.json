@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "c1": "node --experimental-strip-types src/tests/c1.ts",
     "wages": "node --experimental-strip-types src/probes/wages.ts",
-    "housing": "node --experimental-strip-types src/probes/housing.ts"
+    "housing": "node --experimental-strip-types src/probes/housing.ts",
+    "c-suite": "node --experimental-strip-types src/tests/cSuite.ts"
   },
   "dependencies": {
     "@finme/content": "workspace:*",

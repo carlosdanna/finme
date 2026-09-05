@@ -931,3 +931,51 @@ regenerated after diffing.
    30-year outcomes, which is what makes the version bump necessary rather than
    merely tidy.
 
+## 2026-09-05 — C2-C6: three fail, and the cause is content volume, not the engine
+**Context:** first full run of GDD Appendix C's remaining balance tests.
+**Decision:** no parameter changed. The failures were diagnosed by re-running
+each test against the shipped pool **and** against a pool diluted with neutral
+filler events to GDD §5.3's own MVP target of 45.
+**Consequences:** the shipped pool is **8 events against ~247 slots in a 30-year
+run**, so every event fires 14-29 times. That single fact drives most of the
+failures:
+
+| pool | median net worth | max firings | rent added/mo |
+|---|---|---|---|
+| 8 (shipped) | −$936,008 | 29 | $10,968 |
+| 20 | +$221,882 | 20 | $5,993 |
+| **45 (MVP target)** | **+$822,626** | 13 | $1,781 |
+| 120 (full) | +$1,003,003 | 7 | $736 |
+
+- **C3 PASSES** as shipped. All 120 scripted worst-case states recover within 5
+  weeks under rest-and-free-social; the passive strategy recovers 0% of the time.
+- **C6 FAILS as shipped and PASSES at 45.** Every start reaches a positive median,
+  the head-start gap narrows relative to the starting difference but persists.
+  Its failure was **entirely** content volume.
+- **C5 FAILS at every pool size tested** — 13 firings at 45, 7 at 120, against a
+  limit of 4. Pool size alone does not fix it. The minimal changes are the full
+  120-event pool **plus** `oncePerRun` on one-time life events (none of the
+  current 8 sets it) **plus** longer cooldowns on the repeatable ones. GDD §5.3
+  says exactly this — "cooldowns plus once-per-run flags" — and the content does
+  not use either lever yet.
+- **C4 FAILS**: 338 decision points as shipped, 256 at pool 45, against a target
+  of 150-250. See the entry below — this one is a spec conflict, not a bug.
+- **C2 is not yet a valid test.** It reports PASS, but only trivially: nothing in
+  the tick opens a credit line, so the "max out and discharge" strategy cannot
+  actually max anything out. The §13 model is implemented and unit-tested, but
+  C2 cannot exercise it end-to-end until borrowing is a player action.
+
+## 2026-09-05 — GDD §5.3's event frequency contradicts Appendix C4's decision density
+**Context:** C4 asks for **150-250 meaningful decision points** over 30 years.
+GDD §5.3 asks for "roughly 10 per in-game year, **~300 over a 30-year run**".
+**Decision:** recorded rather than resolved — this one needs a design call.
+**Consequences:** every event presents 2-3 choices, so an event *is* a decision
+point. 300 events cannot fit inside a 250-point ceiling. Measured, decision
+density is essentially the slot count: 253 slots at the specified λ=0.22 gives
+256 points at a 45-event pool, already over C4's ceiling.
+
+This also settles the open `SLOT_LAMBDA` question from 2026-09-04. I proposed
+raising λ from 0.22 to 0.34 to hit §5.3's ~10 events a year. **That change should
+not be made**: it would push decision density to ~300 and break C4 further. The
+specified λ=0.22 is the better value once C4 is taken into account, and §5.3's
+"~300 events" is the number that should move.
