@@ -10,6 +10,8 @@
  * holds the three in-play generators.
  */
 import type { Car, Home } from './assets.ts';
+import type { DireState } from './bankruptcy.ts';
+import type { DecisionRecord } from './persistence.ts';
 import type { CreditState } from './credit.ts';
 import type { Debt } from './debt/types.ts';
 import type { EventDef, EventHistory, EventSchedule, ScheduledEffect } from './events/index.ts';
@@ -154,6 +156,13 @@ export interface RunState {
   /** Interest paid across the current year, for the review's debt trajectory. */
   readonly interestPaidThisYearCents: number;
   readonly employerMatchedThisYearCents: number;
+
+  /** Set once a discharge happens, and never quietly forgiven (§13). */
+  readonly dire: DireState | null;
+  /** Consecutive months with a missed minimum payment, for the §13 trigger. */
+  readonly consecutiveMissedPaymentMonths: number;
+  /** Appended, never rewritten. A save is the seed plus this (§14). */
+  readonly decisionLog: readonly DecisionRecord[];
 
   readonly logbook: LogbookState;
   readonly logbookEntries: readonly LogbookEntry[];

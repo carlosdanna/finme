@@ -913,3 +913,21 @@ not claim the gesture first.
 without this a phone gets a chart it can only look at. **Not yet verified on a
 real device or under CPU throttling** — that is prompt 18's device pass, and the
 "1,560 points pan at 60fps" requirement is unproven until then.
+
+## 2026-09-05 — Ruleset 0.2.0 → 0.3.0: recurring expenses merge, unpaid bills are payable
+**Context:** two engine defects found by running C2-C6 for the first time.
+**Decision:** both fixed; `RULESET_VERSION` bumped and the golden fixture
+regenerated after diffing.
+**Consequences:**
+1. **Recurring expenses now merge by category.** `applyOutcome` appended blindly,
+   so a rent-increase event firing every year produced **28 separate permanent
+   `rent` lines totalling $11,114/month**. One category, one line. At 200 weeks
+   the fixture change is representational only — four lines became one with an
+   identical total — so nothing downstream moved in that window.
+2. **Accrued unpaid bills can now be paid down.** They accrued the §6.3 penalty
+   and then only ever grew; a single unaffordable month became a permanent
+   compounding liability. They now take the penalty and are then cleared from
+   whatever cash is available at the next month boundary. This genuinely changes
+   30-year outcomes, which is what makes the version bump necessary rather than
+   merely tidy.
+

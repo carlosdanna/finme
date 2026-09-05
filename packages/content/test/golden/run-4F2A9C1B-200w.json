@@ -1,6 +1,6 @@
 {
   "seed": "4F2A9C1B",
-  "rulesetVersion": "0.2.0",
+  "rulesetVersion": "0.3.0",
   "weekIndex": 200,
   "startAge": 22,
   "runLengthYears": 30,
@@ -86,19 +86,7 @@
   "recurringExpenses": [
     {
       "category": "rent",
-      "cents": 19500
-    },
-    {
-      "category": "rent",
-      "cents": 20436
-    },
-    {
-      "category": "rent",
-      "cents": 21184
-    },
-    {
-      "category": "rent",
-      "cents": 22128
+      "cents": 83248
     }
   ],
   "eventHistory": {
@@ -402,6 +390,124 @@
   ],
   "interestPaidThisYearCents": 0,
   "employerMatchedThisYearCents": 0,
+  "dire": null,
+  "consecutiveMissedPaymentMonths": 0,
+  "decisionLog": [
+    {
+      "w": 7,
+      "t": "event",
+      "e": "HOU_RENT_INCREASE",
+      "c": "absorb"
+    },
+    {
+      "w": 10,
+      "t": "event",
+      "e": "WIN_TAX_REFUND",
+      "c": "save"
+    },
+    {
+      "w": 16,
+      "t": "event",
+      "e": "SOC_FRIEND_WEDDING",
+      "c": "go_all_in"
+    },
+    {
+      "w": 21,
+      "t": "event",
+      "e": "SCM_COWORKER_CRYPTO",
+      "c": "in_big"
+    },
+    {
+      "w": 28,
+      "t": "event",
+      "e": "HLT_UNEXPECTED_DENTAL",
+      "c": "pay"
+    },
+    {
+      "w": 33,
+      "t": "event",
+      "e": "MKT_INFLATION_SPIKE",
+      "c": "absorb"
+    },
+    {
+      "w": 63,
+      "t": "event",
+      "e": "WIN_TAX_REFUND",
+      "c": "save"
+    },
+    {
+      "w": 70,
+      "t": "event",
+      "e": "HOU_RENT_INCREASE",
+      "c": "absorb"
+    },
+    {
+      "w": 94,
+      "t": "event",
+      "e": "SOC_FRIEND_WEDDING",
+      "c": "go_all_in"
+    },
+    {
+      "w": 104,
+      "t": "event",
+      "e": "SCM_COWORKER_CRYPTO",
+      "c": "in_big"
+    },
+    {
+      "w": 114,
+      "t": "event",
+      "e": "HLT_UNEXPECTED_DENTAL",
+      "c": "pay"
+    },
+    {
+      "w": 124,
+      "t": "event",
+      "e": "WIN_TAX_REFUND",
+      "c": "save"
+    },
+    {
+      "w": 127,
+      "t": "event",
+      "e": "HOU_RENT_INCREASE",
+      "c": "absorb"
+    },
+    {
+      "w": 140,
+      "t": "event",
+      "e": "MKT_INFLATION_SPIKE",
+      "c": "absorb"
+    },
+    {
+      "w": 173,
+      "t": "event",
+      "e": "SOC_FRIEND_WEDDING",
+      "c": "go_all_in"
+    },
+    {
+      "w": 178,
+      "t": "event",
+      "e": "WIN_TAX_REFUND",
+      "c": "save"
+    },
+    {
+      "w": 181,
+      "t": "event",
+      "e": "HOU_RENT_INCREASE",
+      "c": "absorb"
+    },
+    {
+      "w": 188,
+      "t": "event",
+      "e": "SCM_COWORKER_CRYPTO",
+      "c": "in_big"
+    },
+    {
+      "w": 198,
+      "t": "event",
+      "e": "HLT_UNEXPECTED_DENTAL",
+      "c": "pay"
+    }
+  ],
   "logbook": {
     "weeksSinceEntry": 2,
     "quietGap": 6

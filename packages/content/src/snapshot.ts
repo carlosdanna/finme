@@ -109,6 +109,10 @@ export function serializeState(state: RunState): Record<string, unknown> {
     interestPaidThisYearCents: state.interestPaidThisYearCents,
     employerMatchedThisYearCents: state.employerMatchedThisYearCents,
 
+    dire: state.dire,
+    consecutiveMissedPaymentMonths: state.consecutiveMissedPaymentMonths,
+    decisionLog: state.decisionLog,
+
     logbook: {
       weeksSinceEntry: state.logbook.weeksSinceEntry,
       quietGap: state.logbook.quietGap,

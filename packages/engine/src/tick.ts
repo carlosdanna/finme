@@ -32,10 +32,12 @@ import {
 } from './income.ts';
 import { type PendingEntry, emitEntries } from './logbook/index.ts';
 import { ASSET_IDS, type AssetId, dividendPaymentCents, isDividendWeek } from './market.ts';
+import { bankruptcyTriggered } from './bankruptcy.ts';
 import { clamp } from './math.ts';
 import { balanceSheet, portfolioValueCents } from './netWorth.ts';
 import {
   type AnnualSnapshot,
+  type RecurringExpense,
   type RunState,
   type RunStreams,
   type RunWorld,
@@ -46,7 +48,7 @@ import {
   BASE_MONTHLY_EXPENSES_CENTS,
   DISCRETIONARY_BASELINE_CENTS,
 } from './state.ts';
-import { settleAnnualTax, weeklyWithholdingCents } from './tax.ts';
+import { settleAnnualTax, unpaidBillPenaltyCents, weeklyWithholdingCents } from './tax.ts';
 import { WEEKS_PER_YEAR, isMonthBoundary, isYearBoundary, yearIndex } from './time.ts';
 import {
   type Allocation,
@@ -69,6 +71,7 @@ export type InterruptReason =
   | 'mood-floor'
   | 'milestone'
   | 'life-stage'
+  | 'bankruptcy'
   | 'run-complete';
 
 /** [T] Floors below which the game stops and hands control back. */
@@ -270,10 +273,23 @@ export function tick(
     const monthly = monthlyOutgoings(state, world, cpi);
     const shortfall = monthly - state.cashCents;
 
+    let cashAfterBills = Math.max(0, state.cashCents - monthly);
+    let unpaid = state.accruedUnpaidBillsCents + Math.max(0, shortfall);
+
+    // Unpaid bills accrue a penalty and are then paid down when there is cash
+    // to do it. Without the paydown they could only ever grow, which turned a
+    // single bad month into a permanent and compounding liability.
+    if (unpaid > 0) {
+      unpaid += unpaidBillPenaltyCents(unpaid) * (WEEKS_PER_YEAR / 12);
+      const paid = Math.min(cashAfterBills, unpaid);
+      cashAfterBills -= paid;
+      unpaid -= paid;
+    }
+
     state = {
       ...state,
-      cashCents: Math.max(0, state.cashCents - monthly),
-      accruedUnpaidBillsCents: state.accruedUnpaidBillsCents + Math.max(0, shortfall),
+      cashCents: Math.round(cashAfterBills),
+      accruedUnpaidBillsCents: Math.round(unpaid),
     };
     if (shortfall > 0) {
       interrupts.push({ reason: 'unpayable-bill', weekIndex: week, detail: `${shortfall} cents short` });
@@ -302,9 +318,24 @@ export function tick(
       ),
     };
 
-    // 6e. Bankruptcy trigger — the full §13 model lands in prompt 17.
-    if (state.accruedUnpaidBillsCents > annualGrossCents(state) && annualGrossCents(state) > 0) {
+    // 6e. Bankruptcy trigger (§13). All three conditions, or nothing.
+    state = {
+      ...state,
+      consecutiveMissedPaymentMonths: serviced.missedAny
+        ? state.consecutiveMissedPaymentMonths + 1
+        : 0,
+    };
+    if (
+      bankruptcyTriggered({
+        unsecuredDebtCents: unsecuredDebtCents(state.debts) + state.accruedUnpaidBillsCents,
+        annualGrossCents: annualGrossCents(state),
+        cashCents: state.cashCents,
+        monthlyExpensesCents: monthly,
+        consecutiveMissedPaymentMonths: state.consecutiveMissedPaymentMonths,
+      })
+    ) {
       state = { ...state, flags: addFlag(state.flags, 'bankruptcy_eligible') };
+      interrupts.push({ reason: 'bankruptcy', weekIndex: week });
     }
   }
 
@@ -327,6 +358,13 @@ export function tick(
       const choice = available.find((c) => c.id === pick) ?? available[0];
 
       if (choice !== undefined) {
+        state = {
+          ...state,
+          decisionLog: [
+            ...state.decisionLog,
+            { w: week, t: 'event', e: selected.id, c: choice.id },
+          ],
+        };
         const outcome = resolveChoice(choice, formulaContextFrom(state, world), week, streams.eventOutcome);
         state = applyOutcome(state, outcome, priceAt, week);
         state = { ...state, eventHistory: recordFiring(state.eventHistory, selected.id, week) };
@@ -584,16 +622,39 @@ function applyOutcome(
     performance: clamp(state.performance + outcome.performanceDelta, 0, 100),
     holdings,
     flags,
-    recurringExpenses: [
-      ...state.recurringExpenses,
-      ...outcome.expenses.filter((e) => e.recurring).map((e) => ({ category: e.category, cents: e.cents })),
-    ],
+    recurringExpenses: mergeRecurring(state.recurringExpenses, outcome.expenses),
     deferredEffects: [...state.deferredEffects, ...outcome.deferred],
     credit: outcome.creditEvents.reduce<CreditState>(
       (credit, kind) => (kind === 'missed' ? recordMissedPayment(credit) : kind === 'onTime' ? recordOnTimePayment(credit) : credit),
       state.credit,
     ),
   };
+}
+
+/**
+ * Fold new recurring expenses into the existing list **by category**.
+ *
+ * Appending blindly let the list grow without bound: a rent-increase event that
+ * fires every year across a 30-year run produced 28 separate permanent `rent`
+ * lines totalling $11,000 a month. One category, one line.
+ */
+function mergeRecurring(
+  existing: readonly RecurringExpense[],
+  incoming: EffectOutcome['expenses'],
+): readonly RecurringExpense[] {
+  const recurring = incoming.filter((expense) => expense.recurring);
+  if (recurring.length === 0) return existing;
+
+  const byCategory = new Map(existing.map((expense) => [expense.category, expense.cents]));
+  for (const expense of recurring) {
+    byCategory.set(expense.category, (byCategory.get(expense.category) ?? 0) + expense.cents);
+  }
+
+  // Sorted by category so serialization is stable.
+  return [...byCategory]
+    .filter(([, cents]) => cents !== 0)
+    .map(([category, cents]) => ({ category, cents }))
+    .sort((a, b) => a.category.localeCompare(b.category));
 }
 
 function templateVarsFor(state: RunState, world: RunWorld, netWorth: number): Record<string, string> {

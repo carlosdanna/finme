@@ -320,6 +320,10 @@ export * from './run.ts';
 // Epilogue projection (TDD §12).
 export * from './epilogue.ts';
 
+// Bankruptcy (TDD §13) and persistence (TDD §14).
+export * from './bankruptcy.ts';
+export * from './persistence.ts';
+
 // Numeric helpers.
 export { clamp, median } from './math.ts';
 

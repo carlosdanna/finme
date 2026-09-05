@@ -141,6 +141,10 @@ export function createRun(config: RunConfig): Run {
     interestPaidThisYearCents: 0,
     employerMatchedThisYearCents: 0,
 
+    dire: null,
+    consecutiveMissedPaymentMonths: 0,
+    decisionLog: [],
+
     logbook: openLogbook(streams.flavor),
     logbookEntries: [],
   };
