@@ -14,7 +14,8 @@
     "typecheck": "pnpm -r typecheck",
     "lint": "eslint .",
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm test:ui",
-    "test:ui": "pnpm -F @finme/ui test"
+    "test:ui": "pnpm -F @finme/ui test",
+    "prepare": "husky"
   },
   "devEngines": {
     "packageManager": {
@@ -31,6 +32,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.4",
     "globals": "^17.11.0",
+    "husky": "^9.1.7",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.0.0"
