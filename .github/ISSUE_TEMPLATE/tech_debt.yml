@@ -1,0 +1,64 @@
+name: Technical debt
+description: Something knowingly left incomplete, invented, or unvalidated.
+labels: ['tech-debt']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Debt here is usually deliberate and recorded. The point of an issue is to
+        keep it visible and to state what would close it.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What was left undone
+      description: The gap itself, stated plainly.
+    validations:
+      required: true
+
+  - type: input
+    id: decision
+    attributes:
+      label: Recorded in DECISIONS.md
+      description: The dated entry, if there is one.
+      placeholder: 2026-09-04 — Job opening arrival rates are invented [T] constants
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it was left
+      description: The reason at the time. Usually "the spec does not say" or "a later prompt builds it".
+    validations:
+      required: true
+
+  - type: textarea
+    id: cost
+    attributes:
+      label: What it costs today
+      description: What is untested, unvalidated, or wrong because of it. Be specific — numbers if you have them.
+      placeholder: |
+        C4 measures 256 decision points against a 150-250 target, and the job
+        arrival rates are one of the inputs nobody has validated.
+    validations:
+      required: true
+
+  - type: textarea
+    id: close
+    attributes:
+      label: What would close it
+      description: The smallest change that pays it off, and what else that change moves.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options:
+        - Invented constant — the spec gives no value
+        - Unvalidated — a value exists but no test exercises it
+        - Stubbed — the shape is there, the behaviour is not
+        - Untested — works, but nothing guards it
+        - Content volume — engineering is done, writing is not
+    validations:
+      required: true

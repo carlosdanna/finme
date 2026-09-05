@@ -1,0 +1,72 @@
+name: Bug
+description: Something behaves differently from what the GDD or TDD specifies.
+labels: ['bug']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Simulation bugs are usually reproducible from a seed. If yours is, that
+        seed is the single most useful thing in this report.
+
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: Observed behaviour, and what the spec says should happen instead.
+      placeholder: |
+        Rent reaches $11,114/month by year 30 — roughly the whole gross income.
+        TDD §3.9 has rent tracking CPI, so it should land near $2,000.
+    validations:
+      required: true
+
+  - type: input
+    id: seed
+    attributes:
+      label: Seed
+      description: The run seed, with its ruleset version, e.g. `4F2A9C1B/v0.3.0`.
+      placeholder: 4F2A9C1B/v0.3.0
+
+  - type: input
+    id: week
+    attributes:
+      label: Week
+      description: The `weekIndex` where it first shows. Everything else derives from this.
+      placeholder: '412'
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: The shortest path. A failing test or a harness invocation beats prose.
+      placeholder: |
+        pnpm -F @finme/sim c1
+        or: packages/engine/test/market.test.ts, add …
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - engine — market / inflation
+        - engine — income / tax
+        - engine — debt / credit
+        - engine — vitals / jobs
+        - engine — events / logbook
+        - engine — tick pipeline
+        - engine — persistence / bankruptcy
+        - content — events, jobs, logbook, glossary
+        - sim — balance harness
+        - ui
+        - build / tooling
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before filing
+      options:
+        - label: I checked `docs/DECISIONS.md` — this is not an already-recorded deliberate choice.
+        - label: If a golden fixture changed, I confirmed the behaviour change was intended rather than updating the fixture.

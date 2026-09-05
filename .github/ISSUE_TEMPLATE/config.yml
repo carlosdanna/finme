@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Design intent (GDD)
+    url: https://github.com/carlosdanna/finme/blob/main/docs/GDD.md
+    about: What the game is trying to teach, and the tone rules that follow from it.
+  - name: Formulas and constants (TDD)
+    url: https://github.com/carlosdanna/finme/blob/main/docs/TDD.md
+    about: How every system computes. Read the relevant section before filing.
+  - name: Decision log
+    url: https://github.com/carlosdanna/finme/blob/main/docs/DECISIONS.md
+    about: Why things are the way they are. Check here before proposing a change.

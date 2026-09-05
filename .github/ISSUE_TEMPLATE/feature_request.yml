@@ -1,0 +1,48 @@
+name: Feature
+description: New capability the design calls for but the code does not have yet.
+labels: ['feature']
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What it is
+      description: The capability, in a sentence or two.
+    validations:
+      required: true
+
+  - type: input
+    id: spec
+    attributes:
+      label: Where the design specifies it
+      description: The GDD or TDD section. If nothing specifies it, say so — that makes this a design decision first.
+      placeholder: GDD §4.3 / TDD §13
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: What it unblocks
+      description: What cannot be done, tested or taught until this exists.
+      placeholder: |
+        C2 cannot exercise max-out-and-discharge, because nothing can take on debt.
+    validations:
+      required: true
+
+  - type: textarea
+    id: done
+    attributes:
+      label: Done looks like
+      description: The runnable check that proves it. Every change should end with one.
+      placeholder: |
+        `pnpm -F @finme/sim c-suite` reports C2 with a real distribution behind it.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: impact
+    attributes:
+      label: Ruleset impact
+      options:
+        - label: This changes simulation behaviour, so it needs a `RULESET_VERSION` bump and a `DECISIONS.md` entry in the same commit.
+        - label: This changes a golden fixture.

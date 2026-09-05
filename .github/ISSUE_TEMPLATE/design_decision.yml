@@ -1,0 +1,74 @@
+name: Design decision
+description: The specs conflict, or say nothing, and someone has to choose.
+labels: ['design-decision', 'needs-decision']
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For questions the code cannot answer on its own. Bring the measurement if
+        you have one — most of these are settled faster by a number than by an
+        argument.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: The question
+      description: One sentence. What has to be decided?
+    validations:
+      required: true
+
+  - type: textarea
+    id: conflict
+    attributes:
+      label: What the documents say
+      description: Quote both sides, with sections. If the specs are silent rather than contradictory, say that.
+      placeholder: |
+        GDD §5.3: "roughly 10 per in-game year, ~300 over a 30-year run"
+        Appendix C4: "150-250 meaningful decision points"
+        Every event is a decision point, so these cannot both hold.
+    validations:
+      required: true
+
+  - type: textarea
+    id: measured
+    attributes:
+      label: What the code currently does
+      description: Measured, not assumed. Include the harness command that produced it.
+      placeholder: |
+        `pnpm -F @finme/sim c-suite`: 256 decision points at a 45-event pool.
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options, with collateral effects
+      description: |
+        Each option and what else it moves. A change that fixes one balance test
+        and breaks another is not a fix.
+      placeholder: |
+        A. Lower SLOT_LAMBDA — fewer events. Breaks §5.3's stated frequency.
+        B. Raise C4's ceiling to 300. Nothing else moves.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: blast
+    attributes:
+      label: If a constant changes
+      options:
+        - '[F] — contractual: needs a ruleset bump, invalidates every shared seed'
+        - '[T] — tunable: needs a DECISIONS entry and a re-run of the balance tests'
+        - 'No constant changes — this amends a document'
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: rerun
+    attributes:
+      label: Tests to re-run once decided
+      options:
+        - label: C1 — speculation must not be optimal (re-run after any market or tax change)
+        - label: C2-C6 — the rest of the balance suite
+        - label: Golden fixtures — market draw order and the 200-week run
+        - label: The Playwright device pass
