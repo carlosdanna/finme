@@ -66,8 +66,10 @@ function SheetContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-4 right-4"
-                size="icon-sm"
+                /* size-11 (44px), not icon-sm's 32px: this is a phone-first
+                   app and every touch target has to clear the minimum. */
+                className="absolute top-3 right-3 size-11"
+                size="icon"
               />
             }
           >

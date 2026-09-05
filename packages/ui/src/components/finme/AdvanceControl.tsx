@@ -39,7 +39,9 @@ export function AdvanceControl({
         size="lg"
         onClick={onAdvance}
         disabled={disabled}
-        
+        // 56px: the most-pressed control in the game, comfortably over the
+        // 44px minimum. `size="lg"` alone is h-10, which is under it.
+        className="h-14 rounded-full px-6 text-base shadow-lg"
       >
         Advance
       </Button>
