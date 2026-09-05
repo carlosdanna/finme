@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.test.tsbuildinfo",
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    /* Tests may reach Node — the app code they exercise may not, which is why
+       this is a separate project rather than a wider `types` on the app. */
+    "types": ["node", "vitest/globals"],
+    "jsx": "react-jsx",
+    "allowArbitraryExtensions": true,
+    "paths": { "@/*": ["./src/*"] }
+  },
+  "include": ["test", "vitest.config.ts"]
+}
