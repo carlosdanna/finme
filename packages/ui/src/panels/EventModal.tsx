@@ -1,7 +1,6 @@
 import type { EventDef } from '@finme/engine';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Button } from '@/components/ui/button';
-import { ButtonGroup } from '@/components/ui/button-group';
 import { Typography } from '@/components/finme/Typography';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -26,7 +25,20 @@ function Choices({
   const available = event.choices.filter((choice) => choiceIds.includes(choice.id));
 
   return (
-    <ButtonGroup orientation="vertical" className="w-full gap-2.5">
+    /*
+      A plain list, not a `ButtonGroup`.
+
+      `ButtonGroup` builds a *joined* control: vertical mode strips the bottom
+      radius from every child, the top radius from every child after the first,
+      forces `rounded-b-4xl!` onto the last, and drops interior top borders. The
+      result here was three square-cornered slabs held apart by the gap, the
+      first rounded 18px on top and the last 26px on the bottom.
+
+      It is also the wrong shape for this. Joining the choices into one control
+      gives them a first and a last, and GDD §1 is explicit that no choice may be
+      ranked by position, label or styling. A list of equals is the point.
+    */
+    <div role="group" data-slot="event-choices" className="flex w-full flex-col gap-2.5">
       {available.map((choice) => (
         <Button
           key={choice.id}
@@ -36,12 +48,12 @@ function Choices({
           onClick={() => onChoose(choice.id)}
           // `rounded-2xl`, not the variant's default pill: a 26px radius on a
           // full-width 56px row reads as a lozenge rather than a button.
-          className="h-auto min-h-14 w-full justify-start rounded-2xl bg-muted px-4 py-3 text-left text-sm whitespace-normal"
+          className="h-auto min-h-14 w-full justify-start rounded-2xl bg-muted px-4 py-3 text-left whitespace-normal"
         >
           {choice.label}
         </Button>
       ))}
-    </ButtonGroup>
+    </div>
   );
 }
 
@@ -104,7 +116,10 @@ export function EventModal({
 
   return (
     <Dialog open={open}>
-      <DialogContent className="max-w-lg">
+      {/* Not dismissible, on this branch too. `showCloseButton` was passed on the
+          sheet and missed here, so the same event that could not be escaped on a
+          phone could be escaped on a desktop. */}
+      <DialogContent showCloseButton={false} className="max-w-lg">
         <DialogHeader>
           <DialogTitle>{event.title}</DialogTitle>
         </DialogHeader>

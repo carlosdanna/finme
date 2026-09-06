@@ -258,21 +258,37 @@ test('the event modal is a full-width sheet on a phone, and choices are unranked
   // Sheet, not centred dialog: it spans the width below md:.
   expect(box.width).toBeGreaterThan(viewport.width * 0.9);
 
-  // Scope to the choice group: a Sheet also renders its own close button, and
-  // that is chrome rather than a choice.
-  const choices = dialog.locator('[data-slot="button-group"] button');
+  // Scope to the choice list, which carries its own slot so this does not ride
+  // on whichever component happens to lay the choices out.
+  const choices = dialog.locator('[data-slot="event-choices"] button');
   const count = await choices.count();
   expect(count).toBeGreaterThanOrEqual(2);
 
   // Every choice is styled identically — no primary, no emphasis (GDD §1).
-  const classes = new Set<string>();
+  //
+  // Compare COMPUTED style, not the class attribute. The choices used to sit in
+  // a `ButtonGroup`, which strips radii and interior borders from its children
+  // through parent descendant selectors: every button carried an identical
+  // `class` while rendering with different corners and one missing border. An
+  // attribute comparison called that uniform.
+  const looks = new Set<string>();
   for (let i = 0; i < count; i++) {
     const box = await choices.nth(i).boundingBox();
     if (box === null) continue;
     expect(box.height).toBeGreaterThanOrEqual(MIN_TOUCH_TARGET);
-    classes.add((await choices.nth(i).getAttribute('class')) ?? '');
+    looks.add(
+      await choices.nth(i).evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return [
+          cs.borderTopLeftRadius, cs.borderTopRightRadius,
+          cs.borderBottomRightRadius, cs.borderBottomLeftRadius,
+          cs.borderTopWidth, cs.borderRightWidth, cs.borderBottomWidth, cs.borderLeftWidth,
+          cs.backgroundColor, cs.color, cs.fontWeight, cs.fontSize,
+        ].join('|');
+      }),
+    );
   }
-  expect(classes.size, 'choices should share one visual treatment').toBe(1);
+  expect(looks.size, 'choices should share one visual treatment').toBe(1);
 });
 
 test('nothing on screen depends on hover', async ({ page }) => {
