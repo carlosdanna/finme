@@ -4,6 +4,7 @@ import {
   type EventDef,
   type EventState,
   applyEffects,
+  cardVariant,
   eligibleEvents,
   evaluateFormula,
   eventWeight,
@@ -365,3 +366,37 @@ describe('event cards quote what they charge', () => {
 function structuredCloneish<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
+
+/**
+ * A repeated event must not read identically every time.
+ *
+ * The Logbook has had a 3-variant floor since it shipped; the event card, which
+ * the player reads *during* the decision rather than after it, had none. A
+ * common event fires six or seven times in a 30-year run.
+ */
+describe('event card variants', () => {
+  it('gives a different card on a later firing of the same event', () => {
+    const repeatable = EVENTS.filter((event) => (Array.isArray(event.body) ? event.body : []).length > 1);
+    expect(repeatable.length).toBeGreaterThan(0);
+
+    for (const event of repeatable) {
+      const seen = new Set<string>();
+      // Consecutive weeks stand in for consecutive firings; cooldowns mean real
+      // firings are much further apart, which only spreads them further.
+      for (let week = 0; week < (event.body as string[]).length; week++) {
+        seen.add(cardVariant(event, week).body);
+      }
+      expect(seen.size, `${event.id} shows the same body every time`).toBe(
+        (event.body as string[]).length,
+      );
+    }
+  });
+
+  it('pairs a title with its own body, and is stable for a given week', () => {
+    const event = eventById('EMG_CAR_BREAKDOWN')!;
+    expect(cardVariant(event, 41)).toEqual(cardVariant(event, 41));
+    // One title against a pool of bodies: the title is reused, not indexed off
+    // the end.
+    expect(cardVariant(event, 41).title).toBe(event.title);
+  });
+});

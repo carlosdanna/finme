@@ -83,7 +83,8 @@ describe('resolving an event from the modal', () => {
       const pending = useGameStore.getState().pendingEvent!;
       const vars = { ...pending.vars, friendName: 'X', advisorName: 'Y' };
 
-      for (const field of [pending.event.title, pending.event.body]) {
+      // The variant actually chosen for this firing, not the whole pool.
+      for (const field of [pending.title, pending.body]) {
         expect(interpolate(field, vars), `${pending.event.id}: ${field}`).not.toMatch(/\{\{/);
       }
       cards++;

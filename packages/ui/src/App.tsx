@@ -196,9 +196,9 @@ export default function App() {
       <EventModal
         event={pendingEvent?.event ?? null}
         choiceIds={pendingEvent?.choiceIds ?? []}
-        title={pendingEvent === null ? '' : interpolate(pendingEvent.event.title, cardVars)}
+        title={pendingEvent === null ? '' : interpolate(pendingEvent.title, cardVars)}
         body={
-          pendingEvent === null ? '' : interpolate(pendingEvent.event.body, cardVars)
+          pendingEvent === null ? '' : interpolate(pendingEvent.body, cardVars)
         }
         onChoose={resolveEvent}
       />

@@ -5,27 +5,64 @@
       "category": "emergency",
       "baseWeight": 100,
       "cooldownWeeks": 60,
-      "gates": [{ "type": "ownsCar" }],
+      "gates": [
+        {
+          "type": "ownsCar"
+        }
+      ],
       "multipliers": [
-        { "when": { "type": "stat", "stat": "carAgeYears", "op": ">", "value": 6 }, "factor": 2.0 },
-        { "when": { "type": "stat", "stat": "emergencyFundMonths", "op": "<", "value": 1 }, "factor": 1.4 }
+        {
+          "when": {
+            "type": "stat",
+            "stat": "carAgeYears",
+            "op": ">",
+            "value": 6
+          },
+          "factor": 2.0
+        },
+        {
+          "when": {
+            "type": "stat",
+            "stat": "emergencyFundMonths",
+            "op": "<",
+            "value": 1
+          },
+          "factor": 1.4
+        }
       ],
       "title": "The noise got worse",
-      "body": "It started three weeks ago and you've been pretending not to hear it. This morning the car made the noise and then stopped making any noise at all. The shop says {{repairCost}}.",
+      "body": [
+        "It started three weeks ago and you've been pretending not to hear it. This morning the car made the noise and then stopped making any noise at all. The shop says {{repairCost}}.",
+        "The garage calls at eleven. The man is kind about it, which is somehow worse, and the number he says is {{repairCost}}.",
+        "It wouldn't start, then it would, then it wouldn't, in a car park, in the rain. The diagnosis is {{repairCost}} and a long look at the alternator."
+      ],
       "displayVars": {
-        "repairCost": { "as": "money", "value": "clamp(0.48*monthlyIncome*(0.5+1.5*roll), cpi*40000, cpi*180000)" }
+        "repairCost": {
+          "as": "money",
+          "value": "clamp(0.48*monthlyIncome*(0.5+1.5*roll), cpi*40000, cpi*180000)"
+        }
       },
       "choices": [
         {
           "id": "repair",
           "label": "Pay for the repair",
-          "effects": [{ "k": "cash", "cents": "-clamp(0.48*monthlyIncome*(0.5+1.5*roll), cpi*40000, cpi*180000)" }],
+          "effects": [
+            {
+              "k": "cash",
+              "cents": "-clamp(0.48*monthlyIncome*(0.5+1.5*roll), cpi*40000, cpi*180000)"
+            }
+          ],
           "logbookKey": "car_repair_paid"
         },
         {
           "id": "bnpl",
           "label": "Put it on the card",
-          "requires": [{ "type": "hasDebtType", "value": "CREDIT_CARD" }],
+          "requires": [
+            {
+              "type": "hasDebtType",
+              "value": "CREDIT_CARD"
+            }
+          ],
           "effects": [
             {
               "k": "debt",
@@ -39,15 +76,32 @@
           "id": "scrap",
           "label": "Let it go",
           "effects": [
-            { "k": "flag", "remove": "owns_car" },
-            { "k": "cash", "cents": "carScrapValue" },
-            { "k": "mood", "delta": -8 }
+            {
+              "k": "flag",
+              "remove": "owns_car"
+            },
+            {
+              "k": "cash",
+              "cents": "carScrapValue"
+            },
+            {
+              "k": "mood",
+              "delta": -8
+            }
           ],
           "deferred": [
             {
               "afterWeeks": 1,
-              "condition": { "type": "flag", "value": "job_requires_vehicle" },
-              "effects": [{ "k": "flag", "add": "job_at_risk_no_vehicle" }]
+              "condition": {
+                "type": "flag",
+                "value": "job_requires_vehicle"
+              },
+              "effects": [
+                {
+                  "k": "flag",
+                  "add": "job_at_risk_no_vehicle"
+                }
+              ]
             }
           ],
           "logbookKey": "car_scrapped"
@@ -59,23 +113,57 @@
       "category": "scam",
       "baseWeight": 100,
       "cooldownWeeks": 78,
-      "gates": [{ "type": "employed" }],
+      "gates": [
+        {
+          "type": "employed"
+        }
+      ],
       "multipliers": [
-        { "when": { "type": "stat", "stat": "cryptoPriceChange52w", "op": ">", "value": 0.5 }, "factor": 2.5 },
-        { "when": { "type": "stat", "stat": "mood", "op": "<", "value": 40 }, "factor": 1.3 }
+        {
+          "when": {
+            "type": "stat",
+            "stat": "cryptoPriceChange52w",
+            "op": ">",
+            "value": 0.5
+          },
+          "factor": 2.5
+        },
+        {
+          "when": {
+            "type": "stat",
+            "stat": "mood",
+            "op": "<",
+            "value": 40
+          },
+          "factor": 1.3
+        }
       ],
       "title": "Dev is very confident about this",
-      "body": "He's shown you the chart twice. He is up, he says, {{coworkerClaim}} percent. He is not lying, exactly — he just isn't mentioning the part before the part he's showing you.",
+      "body": [
+        "He's shown you the chart twice. He is up, he says, {{coworkerClaim}} percent. He is not lying, exactly — he just isn't mentioning the part before the part he's showing you.",
+        "Dev has a spreadsheet now. He turns the laptop round at lunch and the line goes up and to the right, {{coworkerClaim}} percent, and everyone at the table looks at it for slightly too long.",
+        "He catches you by the kettle. He's up {{coworkerClaim}} percent and he wants you to know he mentioned it in March, which he did, in a way."
+      ],
       "displayVars": {
-        "coworkerClaim": { "as": "number", "value": "round(80 + 900*roll)" }
+        "coworkerClaim": {
+          "as": "number",
+          "value": "round(80 + 900*roll)"
+        }
       },
       "choices": [
         {
           "id": "in_big",
           "label": "Put in a month's pay",
           "effects": [
-            { "k": "asset", "assetId": "CRYP", "sharesDelta": "monthlyIncome / price('CRYP')" },
-            { "k": "cash", "cents": "-monthlyIncome" }
+            {
+              "k": "asset",
+              "assetId": "CRYP",
+              "sharesDelta": "monthlyIncome / price('CRYP')"
+            },
+            {
+              "k": "cash",
+              "cents": "-monthlyIncome"
+            }
           ],
           "logbookKey": "crypto_in_big"
         },
@@ -83,15 +171,27 @@
           "id": "in_small",
           "label": "Put in a little",
           "effects": [
-            { "k": "asset", "assetId": "CRYP", "sharesDelta": "(0.15*monthlyIncome)/price('CRYP')" },
-            { "k": "cash", "cents": "-0.15*monthlyIncome" }
+            {
+              "k": "asset",
+              "assetId": "CRYP",
+              "sharesDelta": "(0.15*monthlyIncome)/price('CRYP')"
+            },
+            {
+              "k": "cash",
+              "cents": "-0.15*monthlyIncome"
+            }
           ],
           "logbookKey": "crypto_in_small"
         },
         {
           "id": "pass",
           "label": "Say you'll think about it",
-          "effects": [{ "k": "mood", "delta": -2 }],
+          "effects": [
+            {
+              "k": "mood",
+              "delta": -2
+            }
+          ],
           "logbookKey": "crypto_passed"
         }
       ]
@@ -102,16 +202,40 @@
       "baseWeight": 100,
       "cooldownWeeks": 52,
       "gates": [
-        { "type": "employed" },
-        { "type": "stat", "stat": "weeksInCurrentJob", "op": ">", "value": 52 },
-        { "type": "stat", "stat": "lastRaisePct", "op": "<", "value": "inflationThisYear" }
+        {
+          "type": "employed"
+        },
+        {
+          "type": "stat",
+          "stat": "weeksInCurrentJob",
+          "op": ">",
+          "value": 52
+        },
+        {
+          "type": "stat",
+          "stat": "lastRaisePct",
+          "op": "<",
+          "value": "inflationThisYear"
+        }
       ],
       "multipliers": [],
       "title": "Annual review",
-      "body": "Your manager says the number out loud like it's good news: {{raisePct}} percent. Prices went up {{inflationPct}} percent this year.",
+      "body": [
+        "Your manager says the number out loud like it's good news: {{raisePct}} percent. Prices went up {{inflationPct}} percent this year.",
+        "Fifteen minutes, most of it about the team. Then the number: {{raisePct}} percent. The shop on the corner put its prices up {{inflationPct}} percent in April.",
+        "The letter is on headed paper. {{raisePct}} percent, effective next month, in a font chosen to look generous. Prices moved {{inflationPct}} percent."
+      ],
       "displayVars": {
-        "raisePct": { "as": "number", "value": "lastRaisePct*100", "precision": 1 },
-        "inflationPct": { "as": "number", "value": "inflationThisYear*100", "precision": 1 }
+        "raisePct": {
+          "as": "number",
+          "value": "lastRaisePct*100",
+          "precision": 1
+        },
+        "inflationPct": {
+          "as": "number",
+          "value": "inflationThisYear*100",
+          "precision": 1
+        }
       },
       "choices": [
         {
@@ -130,14 +254,25 @@
             "branches": [
               {
                 "p": "0.25 + 0.3*performanceNorm",
-                "effects": [{ "k": "flag", "add": "raise_negotiated" }],
+                "effects": [
+                  {
+                    "k": "flag",
+                    "add": "raise_negotiated"
+                  }
+                ],
                 "logbookKey": "raise_negotiated_win"
               },
               {
                 "p": "rest",
                 "effects": [
-                  { "k": "performance", "delta": -3 },
-                  { "k": "mood", "delta": -6 }
+                  {
+                    "k": "performance",
+                    "delta": -3
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -6
+                  }
                 ],
                 "logbookKey": "raise_negotiated_loss"
               }
@@ -152,34 +287,66 @@
       "category": "windfall",
       "baseWeight": 100,
       "cooldownWeeks": 52,
-      "gates": [{ "type": "employed" }],
+      "gates": [
+        {
+          "type": "employed"
+        }
+      ],
       "multipliers": [],
       "title": "The refund landed",
-      "body": "It's more than you expected. {{refundAmount}}, sitting in the account, already spent four times over in your head.",
+      "body": [
+        "It's more than you expected. {{refundAmount}}, sitting in the account, already spent four times over in your head.",
+        "A message from the tax office, which is usually not good news, and this time is. {{refundAmount}}, cleared, no explanation offered.",
+        "You'd forgotten you'd filed. {{refundAmount}} arrives on a Tuesday and the account briefly looks like someone else's."
+      ],
       "displayVars": {
-        "refundAmount": { "as": "money", "value": "clamp(0.37*monthlyIncome*(0.2+2.3*roll), cpi*20000, cpi*120000)" }
+        "refundAmount": {
+          "as": "money",
+          "value": "clamp(0.37*monthlyIncome*(0.2+2.3*roll), cpi*20000, cpi*120000)"
+        }
       },
       "choices": [
         {
           "id": "save",
           "label": "Move it to savings",
-          "effects": [{ "k": "flag", "add": "refund_saved" }],
+          "effects": [
+            {
+              "k": "flag",
+              "add": "refund_saved"
+            }
+          ],
           "logbookKey": "refund_saved"
         },
         {
           "id": "spend",
           "label": "Spend it on something you've wanted",
           "effects": [
-            { "k": "cash", "cents": "-clamp(0.37*monthlyIncome*(0.2+2.3*roll), cpi*20000, cpi*120000)" },
-            { "k": "mood", "delta": 9 }
+            {
+              "k": "cash",
+              "cents": "-clamp(0.37*monthlyIncome*(0.2+2.3*roll), cpi*20000, cpi*120000)"
+            },
+            {
+              "k": "mood",
+              "delta": 9
+            }
           ],
           "logbookKey": "refund_spent"
         },
         {
           "id": "debt",
           "label": "Put it against the balance",
-          "requires": [{ "type": "hasDebtType", "value": "CREDIT_CARD" }],
-          "effects": [{ "k": "flag", "add": "refund_to_debt" }],
+          "requires": [
+            {
+              "type": "hasDebtType",
+              "value": "CREDIT_CARD"
+            }
+          ],
+          "effects": [
+            {
+              "k": "flag",
+              "add": "refund_to_debt"
+            }
+          ],
           "logbookKey": "refund_to_debt"
         }
       ]
@@ -192,23 +359,43 @@
       "gates": [],
       "multipliers": [],
       "title": "Everything costs more",
-      "body": "Nothing announced itself. The same basket is {{inflationPct}} percent more than it was, and your pay is the number it was in January.",
+      "body": [
+        "Nothing announced itself. The same basket is {{inflationPct}} percent more than it was, and your pay is the number it was in January.",
+        "The receipt is longer than it used to be for the same bag. {{inflationPct}} percent, spread thin across everything, nothing on the shelf admitting to it."
+      ],
       "displayVars": {
-        "inflationPct": { "as": "number", "value": "inflationThisYear*100", "precision": 1 }
+        "inflationPct": {
+          "as": "number",
+          "value": "inflationThisYear*100",
+          "precision": 1
+        }
       },
       "choices": [
         {
           "id": "absorb",
           "label": "Absorb it",
-          "effects": [{ "k": "mood", "delta": -4 }],
+          "effects": [
+            {
+              "k": "mood",
+              "delta": -4
+            }
+          ],
           "logbookKey": "inflation_absorbed"
         },
         {
           "id": "cut_back",
           "label": "Cut back somewhere",
           "effects": [
-            { "k": "expense", "category": "discretionary", "cents": "-cpi*8000", "recurring": true },
-            { "k": "mood", "delta": -7 }
+            {
+              "k": "expense",
+              "category": "discretionary",
+              "cents": "-cpi*8000",
+              "recurring": true
+            },
+            {
+              "k": "mood",
+              "delta": -7
+            }
           ],
           "logbookKey": "inflation_cut_back"
         }
@@ -219,20 +406,39 @@
       "category": "social",
       "baseWeight": 100,
       "cooldownWeeks": 78,
-      "gates": [{ "type": "age", "op": ">", "value": 21 }],
+      "gates": [
+        {
+          "type": "age",
+          "op": ">",
+          "value": 21
+        }
+      ],
       "multipliers": [],
       "title": "Save the date",
-      "body": "The invitation is beautiful and the venue is four hours away. Between the gift, the travel and the outfit, it's {{weddingCost}}.",
+      "body": [
+        "The invitation is beautiful and the venue is four hours away. Between the gift, the travel and the outfit, it's {{weddingCost}}.",
+        "There is a website with a colour scheme and a hotel block. Adding it up — gift, train, the shoes — comes to {{weddingCost}}.",
+        "You said yes in November, when it was abstract. It is now March, it is {{weddingCost}}, and they have asked you to do a reading."
+      ],
       "displayVars": {
-        "weddingCost": { "as": "money", "value": "clamp(0.308*monthlyIncome*(0.4+1.8*roll), cpi*25000, cpi*150000)" }
+        "weddingCost": {
+          "as": "money",
+          "value": "clamp(0.308*monthlyIncome*(0.4+1.8*roll), cpi*25000, cpi*150000)"
+        }
       },
       "choices": [
         {
           "id": "go_all_in",
           "label": "Go, and go properly",
           "effects": [
-            { "k": "cash", "cents": "-clamp(0.308*monthlyIncome*(0.4+1.8*roll), cpi*25000, cpi*150000)" },
-            { "k": "mood", "delta": 11 }
+            {
+              "k": "cash",
+              "cents": "-clamp(0.308*monthlyIncome*(0.4+1.8*roll), cpi*25000, cpi*150000)"
+            },
+            {
+              "k": "mood",
+              "delta": 11
+            }
           ],
           "logbookKey": "wedding_attended"
         },
@@ -240,15 +446,26 @@
           "id": "go_cheap",
           "label": "Go, but keep it cheap",
           "effects": [
-            { "k": "cash", "cents": "-clamp(0.15*monthlyIncome, cpi*8000, cpi*60000)" },
-            { "k": "mood", "delta": 5 }
+            {
+              "k": "cash",
+              "cents": "-clamp(0.15*monthlyIncome, cpi*8000, cpi*60000)"
+            },
+            {
+              "k": "mood",
+              "delta": 5
+            }
           ],
           "logbookKey": "wedding_attended_cheap"
         },
         {
           "id": "decline",
           "label": "Send your apologies",
-          "effects": [{ "k": "mood", "delta": -9 }],
+          "effects": [
+            {
+              "k": "mood",
+              "delta": -9
+            }
+          ],
           "logbookKey": "wedding_declined"
         }
       ]
@@ -258,19 +475,36 @@
       "category": "housing",
       "baseWeight": 100,
       "cooldownWeeks": 52,
-      "gates": [{ "type": "ownsHome", "value": false }],
+      "gates": [
+        {
+          "type": "ownsHome",
+          "value": false
+        }
+      ],
       "multipliers": [],
       "title": "The renewal letter",
-      "body": "Same apartment, same everything, {{rentIncrease}} more a month starting in sixty days.",
+      "body": [
+        "Same apartment, same everything, {{rentIncrease}} more a month starting in sixty days.",
+        "It's under the door when you get back. The word 'market' appears twice. {{rentIncrease}} more a month from the first.",
+        "The agency emails at 4:58 on a Friday. {{rentIncrease}} on top, sixty days' notice, and a line thanking you for being a valued resident."
+      ],
       "displayVars": {
-        "rentIncrease": { "as": "money", "value": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)" }
+        "rentIncrease": {
+          "as": "money",
+          "value": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)"
+        }
       },
       "choices": [
         {
           "id": "absorb",
           "label": "Sign it",
           "effects": [
-            { "k": "expense", "category": "rent", "cents": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)", "recurring": true }
+            {
+              "k": "expense",
+              "category": "rent",
+              "cents": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)",
+              "recurring": true
+            }
           ],
           "logbookKey": "rent_increase_absorbed"
         },
@@ -278,9 +512,18 @@
           "id": "move",
           "label": "Find somewhere cheaper",
           "effects": [
-            { "k": "cash", "cents": "-clamp(1.0*monthlyIncome, cpi*80000, cpi*300000)" },
-            { "k": "mood", "delta": -6 },
-            { "k": "energy", "delta": -20 }
+            {
+              "k": "cash",
+              "cents": "-clamp(1.0*monthlyIncome, cpi*80000, cpi*300000)"
+            },
+            {
+              "k": "mood",
+              "delta": -6
+            },
+            {
+              "k": "energy",
+              "delta": -20
+            }
           ],
           "logbookKey": "rent_increase_moved"
         },
@@ -291,11 +534,20 @@
           "outcomeRoll": {
             "stream": "eventOutcome",
             "branches": [
-              { "p": 0.3, "effects": [], "logbookKey": "rent_negotiated_win" },
+              {
+                "p": 0.3,
+                "effects": [],
+                "logbookKey": "rent_negotiated_win"
+              },
               {
                 "p": "rest",
                 "effects": [
-                  { "k": "expense", "category": "rent", "cents": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)", "recurring": true }
+                  {
+                    "k": "expense",
+                    "category": "rent",
+                    "cents": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)",
+                    "recurring": true
+                  }
                 ],
                 "logbookKey": "rent_negotiated_loss"
               }
@@ -312,18 +564,37 @@
       "cooldownWeeks": 78,
       "gates": [],
       "multipliers": [
-        { "when": { "type": "stat", "stat": "emergencyFundMonths", "op": "<", "value": 1 }, "factor": 1.3 }
+        {
+          "when": {
+            "type": "stat",
+            "stat": "emergencyFundMonths",
+            "op": "<",
+            "value": 1
+          },
+          "factor": 1.3
+        }
       ],
       "title": "Not covered",
-      "body": "The appointment was routine. The x-ray was not. The receptionist reads the number off the screen in the same voice she used to confirm your address: {{dentalCost}}.",
+      "body": [
+        "The appointment was routine. The x-ray was not. The receptionist reads the number off the screen in the same voice she used to confirm your address: {{dentalCost}}.",
+        "Two appointments, they say, and the second is the expensive one. {{dentalCost}}, and the plan covers a percentage of something other than the total."
+      ],
       "displayVars": {
-        "dentalCost": { "as": "money", "value": "clamp(0.265*monthlyIncome*(0.4+2.6*roll), cpi*30000, cpi*140000)" }
+        "dentalCost": {
+          "as": "money",
+          "value": "clamp(0.265*monthlyIncome*(0.4+2.6*roll), cpi*30000, cpi*140000)"
+        }
       },
       "choices": [
         {
           "id": "pay",
           "label": "Pay it today",
-          "effects": [{ "k": "cash", "cents": "-clamp(0.265*monthlyIncome*(0.4+2.6*roll), cpi*30000, cpi*140000)" }],
+          "effects": [
+            {
+              "k": "cash",
+              "cents": "-clamp(0.265*monthlyIncome*(0.4+2.6*roll), cpi*30000, cpi*140000)"
+            }
+          ],
           "logbookKey": "dental_paid"
         },
         {
@@ -341,13 +612,24 @@
         {
           "id": "postpone",
           "label": "Book it for later",
-          "effects": [{ "k": "mood", "delta": -3 }],
+          "effects": [
+            {
+              "k": "mood",
+              "delta": -3
+            }
+          ],
           "deferred": [
             {
               "afterWeeks": 26,
               "effects": [
-                { "k": "cash", "cents": "-clamp(0.471*monthlyIncome*(0.4+2.6*roll), cpi*60000, cpi*260000)" },
-                { "k": "mood", "delta": -6 }
+                {
+                  "k": "cash",
+                  "cents": "-clamp(0.471*monthlyIncome*(0.4+2.6*roll), cpi*60000, cpi*260000)"
+                },
+                {
+                  "k": "mood",
+                  "delta": -6
+                }
               ],
               "logbookKey": "dental_postponed_worse"
             }

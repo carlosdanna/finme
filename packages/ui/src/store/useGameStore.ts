@@ -16,6 +16,7 @@ import {
   type RunState,
   type TickInput,
   advance,
+  cardVariant,
   defaultGranularity,
   parseSave,
   planLoad,
@@ -51,6 +52,9 @@ export interface PendingEvent {
   readonly roll: number;
   /** `{{placeholder}}` values for the card, already formatted. */
   readonly vars: Readonly<Record<string, string>>;
+  /** The card variant for this firing — still holding its `{{placeholders}}`. */
+  readonly title: string;
+  readonly body: string;
 }
 
 interface GameStore {
@@ -135,6 +139,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
             // Evaluated against the *event's own* week — the one about to be
             // ticked — and the roll it will be charged with.
             vars: eventDisplayVars(event, stateAtWeekStart, run.world, roll),
+            // The week the event fires in, so the same event reads differently
+            // on its second and third visit.
+            ...cardVariant(event, stateAtWeekStart.weekIndex + 1),
           };
 
     set({ run: result.run, interrupts: result.interrupts, pendingEvent });
