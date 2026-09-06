@@ -11,6 +11,7 @@ import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon, Remove01Icon } from '@hugeicons/core-free-icons';
 import { Meter } from '@/components/finme/Meter';
 import { Typography } from '@/components/finme/Typography';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
@@ -66,20 +67,26 @@ function Stepper({
   onClick: () => void;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      // `size="icon"` is the 36px circle; the focus ring, the disabled state and
+      // the press translate all come from `Button` rather than being restated.
+      size="icon"
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
       className={cn(
-        'relative flex size-9 shrink-0 items-center justify-center rounded-full border bg-muted transition-opacity',
+        'relative rounded-full bg-muted',
         'after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[""]',
-        'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-        'disabled:pointer-events-none disabled:opacity-40',
       )}
     >
-      <HugeiconsIcon icon={glyph === 'plus' ? Add01Icon : Remove01Icon} size={16} strokeWidth={2.2} />
-    </button>
+      <HugeiconsIcon
+        icon={glyph === 'plus' ? Add01Icon : Remove01Icon}
+        className="size-4"
+        strokeWidth={2.2}
+      />
+    </Button>
   );
 }
 
@@ -140,23 +147,26 @@ export function AllocationPanel({
           {WORK_MODES.map(({ mode, label }) => {
             const selected = allocation.work === mode;
             return (
-              <button
+              <Button
                 key={mode}
                 type="button"
+                // The raised pill is just the default variant; the rail's
+                // unselected segments are `ghost`, so neither restates a colour.
+                variant={selected ? 'default' : 'ghost'}
                 onClick={() => setWork(mode)}
                 aria-pressed={selected}
                 className={cn(
-                  'flex h-11 flex-1 items-center justify-center gap-1 rounded-full text-sm font-medium transition-colors',
-                  selected ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground',
+                  'h-11 flex-1 gap-1 rounded-full',
+                  selected ? 'shadow-sm' : 'text-muted-foreground hover:bg-card',
                 )}
               >
                 {label}
                 {WORK_TIME_POINTS[mode] > 0 && (
-                  <Typography variant="caption" className="opacity-75">
+                  <Typography variant="caption" color="inherit" className="opacity-75">
                     {WORK_TIME_POINTS[mode]}p
                   </Typography>
                 )}
-              </button>
+              </Button>
             );
           })}
         </div>

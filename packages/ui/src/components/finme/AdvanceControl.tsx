@@ -30,17 +30,20 @@ export function AdvanceControl({
   return (
     <div className="flex-none border-t bg-card">
       <div className="mx-auto flex h-16 max-w-2xl items-center justify-between gap-3 px-4">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={onCycleGranularity}
-          className="flex h-11 min-w-0 items-center gap-1.5 rounded-full border bg-muted px-4"
+          className="h-11 min-w-0 shrink gap-1.5 rounded-full bg-muted px-4"
           aria-label={`Advance granularity: ${GRANULARITY_LABEL[granularity]}. Tap to change.`}
         >
           <Typography variant="caption" color="muted" className="truncate font-medium">
             {GRANULARITY_LABEL[granularity]}
           </Typography>
-          <HugeiconsIcon icon={ArrowDown01Icon} size={14} strokeWidth={2} className="shrink-0" />
-        </button>
+          {/* `Button` sizes an unclassed `svg` to 16px, so the chevron states
+              its own size rather than inheriting that default. */}
+          <HugeiconsIcon icon={ArrowDown01Icon} className="size-3.5" strokeWidth={2} />
+        </Button>
         <Button
           type="button"
           onClick={onAdvance}

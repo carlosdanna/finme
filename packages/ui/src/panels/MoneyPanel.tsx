@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import type { IconSvgElement } from '@hugeicons/react';
 import {
@@ -11,9 +12,9 @@ import {
 } from '@hugeicons/core-free-icons';
 import { Money } from '@/components/finme/Money';
 import { Typography } from '@/components/finme/Typography';
+import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import type { Panel } from '@/store/useGameStore';
-import { cn } from '@/lib/utils';
 
 /**
  * The Money tab — a directory of the secondary panels.
@@ -34,19 +35,23 @@ interface Entry {
   readonly detail: React.ReactNode;
 }
 
-function Row({ entry, onOpen, last }: { entry: Entry; onOpen: () => void; last: boolean }) {
+/**
+ * The divider is a separate rule element, not a border on the row.
+ *
+ * `Button` carries `border border-transparent` on every side, which wins over
+ * both a `border-b` on the row and `divide-y` on the card — those set a width
+ * and leave the colour transparent, so the line renders invisibly.
+ */
+function Row({ entry, onOpen }: { entry: Entry; onOpen: () => void }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={onOpen}
-      className={cn(
-        'flex min-h-18 w-full items-center gap-3 px-4 py-3 text-left transition-colors',
-        'focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
-        !last && 'border-b',
-      )}
+      className="h-auto min-h-18 w-full justify-start gap-3 rounded-none px-4 py-3 text-left whitespace-normal"
     >
       <span className="flex size-9 shrink-0 items-center justify-center rounded-[0.625rem] bg-muted text-muted-foreground">
-        <HugeiconsIcon icon={entry.icon} size={20} strokeWidth={2} />
+        <HugeiconsIcon icon={entry.icon} className="size-5" strokeWidth={2} />
       </span>
       <span className="flex flex-1 flex-col gap-0.5">
         <Typography variant="h4" as="span">
@@ -58,11 +63,10 @@ function Row({ entry, onOpen, last }: { entry: Entry; onOpen: () => void; last: 
       </span>
       <HugeiconsIcon
         icon={ArrowRight01Icon}
-        size={18}
         strokeWidth={2}
-        className="shrink-0 text-muted-foreground"
+        className="size-[18px] shrink-0 text-muted-foreground"
       />
-    </button>
+    </Button>
   );
 }
 
@@ -145,14 +149,14 @@ export function MoneyPanel({
           <Typography variant="caption" color="muted" as="h2" className="px-1">
             {group.title}
           </Typography>
-          <Card className="py-0">
+          {/* `gap-0`: the card's own flex gap would hold the rows apart and leave
+              each divider floating between them rather than joining them. */}
+          <Card className="gap-0 py-0">
             {group.entries.map((entry, index) => (
-              <Row
-                key={entry.id}
-                entry={entry}
-                last={index === group.entries.length - 1}
-                onOpen={() => onOpen(entry.id)}
-              />
+              <Fragment key={entry.id}>
+                {index > 0 && <div role="presentation" className="h-px bg-border" />}
+                <Row entry={entry} onOpen={() => onOpen(entry.id)} />
+              </Fragment>
             ))}
           </Card>
         </div>

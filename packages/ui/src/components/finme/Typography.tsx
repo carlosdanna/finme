@@ -36,6 +36,11 @@ const typographyVariants = cva('', {
     size: SIZES,
     color: {
       default: 'text-foreground',
+      // For text inside an already-coloured surface — the point suffix on a
+      // selected segment, a label inside a filled button. Without it, `default`
+      // paints `text-foreground` over the surface's own foreground and the text
+      // goes dark on a dark fill. Not a colour: the absence of one.
+      inherit: 'text-inherit',
       muted: 'text-muted-foreground',
       warning: 'text-warning',
       success: 'text-success',
