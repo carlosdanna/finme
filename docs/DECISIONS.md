@@ -1223,3 +1223,42 @@ ruleset version bump. Issue #1 is left open.
 4. Emergency carries 18% of the weight budget on 5 events — 6.1 points below its
    §9.5 share before multipliers. Expansion priority is emergency, then social
    and career, which is a different order from Appendix A's own note.
+
+## 2026-09-06 — Event variance model, and a correction to yesterday's C5 floor
+**Context:** the catalogue needed per-event variance (magnitude and prose) and
+more events per category. Sizing the expansion exposed an error in the entry
+above.
+**Decision:** expanded `docs/EVENT-CATALOGUE.md` to a **76-event pool** with a
+magnitude spread and a variance mechanism per event, and tuned the rarity tiers
+so raw weight share tracks §9.5 within 1.1 points in every category. Ten events
+are new, not from Appendix A: six social, four emergency. No engine code changed
+and no shipped event's `baseWeight` moved, so no ruleset version bump. Issue #1
+stays open.
+**Consequences:**
+1. **Correction.** The entry above put the C5 floor at "~68 events at 255 fires,
+   ~52 at C4's ceiling". That assumed events within a category fire equally,
+   which the C/U/R tier system contradicts. The binding constraint is the common
+   tier: a C event fires `255 × 100 ÷ totalWeight` times, so passing C5's limit
+   of 4 needs `totalWeight ≥ 6,375` — **~124 events at 255 fires, ~98 at 200**.
+   The real floor is roughly double what was recorded. 45 fails, 76 fails, and
+   the full ~120 target only just clears it.
+2. That makes a **per-tier repetition limit** a live option for issue #1, and a
+   smaller change than lowering `SLOT_LAMBDA` or compressing the tiers. A common
+   event firing 6 times in thirty years may simply be correct; C5's global limit
+   of 4 is what makes it a failure. Recorded, not decided.
+3. **Magnitude variance needs an engine change.** Formula functions are all
+   deterministic, so every firing of an event costs the same fraction of income.
+   The catalogue specifies spreads as `anchor × [lo–hi]`, which needs a `roll`
+   variable fed by a **new `eventMagnitude` in-play RNG stream**. It must be a
+   new stream — adding a draw to `eventOutcome` shifts every downstream value and
+   breaks existing seeds.
+4. **Event cards have no prose variants.** `title` and `body` are single strings,
+   so a repeated event reads identically every time, while the Logbook already
+   enforces 3 variants per key. Widening both fields to arrays drawn from
+   `flavor` is a content-only change, since `flavor` cannot move a number.
+   Budget: C→3 variants, U→2, R→1 = 153 card variants for this pool.
+5. **GDD Appendix B undercounts Logbook copy by 3×.** It sizes Tier 3 as
+   "no variants", but `MIN_VARIANTS_PER_KEY = 3` is enforced at load. The real
+   figure for 76 events is ~570 Logbook lines, ~735 with Tiers 1–2, ~888 with
+   card variants — against Appendix B's "~450 for 120 events". Appendix B should
+   be restated.
