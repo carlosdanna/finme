@@ -1,3 +1,11 @@
+import { HugeiconsIcon } from '@hugeicons/react';
+import {
+  Analytics01Icon,
+  Book02Icon,
+  FavouriteIcon,
+  Wallet01Icon,
+} from '@hugeicons/core-free-icons';
+import { Typography } from '@/components/finme/Typography';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { Tab } from '@/store/useGameStore';
 
@@ -8,32 +16,43 @@ import type { Tab } from '@/store/useGameStore';
  * keyboard model and `aria-selected` with it. Not a sidebar: six-to-eight panels
  * do not fit in a phone sidebar, and the bottom edge is where a thumb reaches.
  *
- * Fixed to the bottom with `env(safe-area-inset-bottom)` so it clears the home
- * indicator, and each target is 56px tall — comfortably over the 44px minimum.
+ * The last row in the shell's column, with `env(safe-area-inset-bottom)` so it
+ * clears the home indicator. Each target is 60px tall — over the 44px minimum.
+ *
+ * **Opaque, and not fixed.** This was `fixed ... z-40` over a translucent
+ * `bg-background/95 backdrop-blur`, which let scrolled content ghost through the
+ * labels and required the page to reserve space for a bar that had left the flow.
+ * A destination bar is chrome: it sits at the end of the column and nothing
+ * passes behind it.
  */
-const TABS: readonly { readonly id: Tab; readonly label: string }[] = [
-  { id: 'dashboard', label: 'Dashboard' },
-  { id: 'money', label: 'Money' },
-  { id: 'life', label: 'Life' },
-  { id: 'logbook', label: 'Logbook' },
+const TABS: readonly { readonly id: Tab; readonly label: string; readonly icon: typeof Analytics01Icon }[] = [
+  { id: 'dashboard', label: 'Dashboard', icon: Analytics01Icon },
+  { id: 'money', label: 'Money', icon: Wallet01Icon },
+  { id: 'life', label: 'Life', icon: FavouriteIcon },
+  { id: 'logbook', label: 'Logbook', icon: Book02Icon },
 ];
 
 export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur"
+      className="flex-none border-t bg-card"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       aria-label="Primary"
     >
       <Tabs value={active} onValueChange={(value) => onChange(value as Tab)}>
-        <TabsList className="mx-auto h-14 w-full max-w-2xl justify-between rounded-none border-0 bg-transparent p-0">
+        <TabsList className="mx-auto h-15 w-full max-w-2xl justify-between rounded-none border-0 bg-transparent p-0">
           {TABS.map((tab) => (
             <TabsTrigger
               key={tab.id}
               value={tab.id}
-              className="h-14 flex-1 rounded-none text-sm data-[selected]:bg-transparent"
+              // `data-active`, not `data-selected` — the Base UI attribute. The
+              // old selector never matched, which went unnoticed only because
+              // the trigger's default `data-active:bg-background` was the same
+              // white as the bar. On a tinted canvas it paints a grey box.
+              className="h-15 flex-1 flex-col gap-0.5 rounded-none font-normal text-muted-foreground data-active:bg-transparent data-active:font-medium data-active:text-primary"
             >
-              {tab.label}
+              <HugeiconsIcon icon={tab.icon} className="size-[22px]" strokeWidth={2} />
+              <Typography variant="caption">{tab.label}</Typography>
             </TabsTrigger>
           ))}
         </TabsList>
@@ -41,6 +60,3 @@ export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab)
     </nav>
   );
 }
-
-/** Height of the bar plus its safe-area inset, for content padding. */
-export const TAB_BAR_CLEARANCE = 'calc(3.5rem + env(safe-area-inset-bottom))';

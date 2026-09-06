@@ -22,27 +22,41 @@ async function interactiveElements(page: Page): Promise<Locator[]> {
 /**
  * The effective hit area, which is not always the element's own box.
  *
- * An inline control can carry a 44px target through an absolutely positioned
- * `::after` overlay without disturbing the surrounding line box — which is
- * exactly what `<Term>` does, so that a glossary word inside a sentence is
- * thumb-reachable without the sentence growing legs. Measuring only the element
- * box reports those as failures when the browser reaches them correctly; a tap
- * 18px above a 21px-tall `<Term>` does open its popover.
+ * A control can carry a 44px target through an absolutely positioned `::after`
+ * overlay without disturbing its own box — which is what `<Term>` does, so that a
+ * glossary word inside a sentence is thumb-reachable without the sentence growing
+ * legs, and what the allocation steppers do, so that a 36px circle still answers
+ * to a 44px thumb. Measuring only the element box reports both as failures when
+ * the browser reaches them correctly; a tap 18px above a 21px-tall `<Term>` does
+ * open its popover, and `elementFromPoint` returns the stepper out to ±22px from
+ * its centre.
+ *
+ * **Both axes.** This measured the overlay's height only, which was enough while
+ * `<Term>` was the sole user — it is wide and short, so only height was ever in
+ * question. A stepper is undersized in both directions.
  */
 async function hitArea(element: Locator): Promise<{ width: number; height: number } | null> {
   const box = await element.boundingBox();
   if (box === null) return null;
 
   const overlay = await element.evaluate((el) => {
-    const measure = (pseudo: string): number => {
+    const measure = (pseudo: string): { width: number; height: number } => {
       const style = getComputedStyle(el, pseudo);
-      if (style.content === 'none' || style.position !== 'absolute') return 0;
-      return parseFloat(style.height) || 0;
+      if (style.content === 'none' || style.position !== 'absolute') return { width: 0, height: 0 };
+      return { width: parseFloat(style.width) || 0, height: parseFloat(style.height) || 0 };
     };
-    return Math.max(measure('::after'), measure('::before'));
+    const after = measure('::after');
+    const before = measure('::before');
+    return {
+      width: Math.max(after.width, before.width),
+      height: Math.max(after.height, before.height),
+    };
   });
 
-  return { width: box.width, height: Math.max(box.height, overlay) };
+  return {
+    width: Math.max(box.width, overlay.width),
+    height: Math.max(box.height, overlay.height),
+  };
 }
 
 async function expectTouchTargets(page: Page, context: string): Promise<void> {
@@ -165,15 +179,44 @@ test('no fixed bottom element sits under the safe-area inset', async ({ page }) 
 
 test('content is not hidden behind the tab bar at the end of a long scroll', async ({ page }) => {
   await page.getByRole('tab', { name: 'Logbook' }).tap();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
 
-  const nav = page.getByRole('navigation', { name: 'Primary' });
-  const navBox = (await nav.boundingBox())!;
+  // `main` is the scroller, not the window — the shell is a fixed-height column,
+  // so the page itself never scrolls.
   const main = page.locator('main');
-  const paddingBottom = await main.evaluate((el) => parseFloat(getComputedStyle(el).paddingBottom));
+  expect(await page.evaluate(() => document.scrollingElement!.scrollHeight)).toBeLessThanOrEqual(
+    page.viewportSize()!.height + 1,
+  );
 
-  // Main reserves at least the bar's height, so the last entry clears it.
-  expect(paddingBottom).toBeGreaterThanOrEqual(navBox.height);
+  await main.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+  await page.waitForTimeout(100);
+
+  // Assert the outcome rather than the mechanism: whatever ends up last, its
+  // bottom edge is above the bar. Reserved padding used to stand in for this,
+  // and a padding value cannot tell you whether anything is actually visible.
+  const navBox = (await page.getByRole('navigation', { name: 'Primary' }).boundingBox())!;
+  const mainBox = (await main.boundingBox())!;
+  expect(Math.round(mainBox.y + mainBox.height)).toBeLessThanOrEqual(Math.round(navBox.y) + 1);
+
+  const atEnd = await main.evaluate(
+    (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1,
+  );
+  expect(atEnd).toBe(true);
+});
+
+test('a long secondary panel scrolls to its end inside the sheet', async ({ page }) => {
+  await page.getByRole('tab', { name: 'Money' }).tap();
+  await page.getByRole('button', { name: /Annual review/ }).tap();
+
+  const body = page.locator('[data-slot="sheet-content"] > div').last();
+  await expect(body).toBeVisible();
+
+  // The nested `max-h` on a `ScrollArea` inside a `max-h` sheet used to strand
+  // the last section with no way to reach it.
+  const reachedEnd = await body.evaluate((el) => {
+    el.scrollTo(0, el.scrollHeight);
+    return el.scrollHeight <= el.clientHeight || el.scrollTop > 0;
+  });
+  expect(reachedEnd).toBe(true);
 });
 
 test('the advance control sits in the thumb zone', async ({ page }) => {
