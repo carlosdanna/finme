@@ -16,8 +16,12 @@ import type { Tab } from '@/store/useGameStore';
  * keyboard model and `aria-selected` with it. Not a sidebar: six-to-eight panels
  * do not fit in a phone sidebar, and the bottom edge is where a thumb reaches.
  *
- * The last row in the shell's column, with `env(safe-area-inset-bottom)` so it
- * clears the home indicator. Each target is 60px tall — over the 44px minimum.
+ * The last row in the shell's column. Each target is 56px tall — over the 44px
+ * minimum — sitting inside 4px of head room and 8px of foot room.
+ *
+ * That foot room is *added to* `env(safe-area-inset-bottom)` rather than left to
+ * it. The inset is 0 on any device without a home indicator, and on those the
+ * labels sat flush against the bottom edge of the screen.
  *
  * **Opaque, and not fixed.** This was `fixed ... z-40` over a translucent
  * `bg-background/95 backdrop-blur`, which let scrolled content ghost through the
@@ -35,12 +39,16 @@ const TABS: readonly { readonly id: Tab; readonly label: string; readonly icon: 
 export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab) => void }) {
   return (
     <nav
-      className="flex-none border-t bg-card"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="flex-none border-t bg-card pt-1"
+      style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
       aria-label="Primary"
     >
       <Tabs value={active} onValueChange={(value) => onChange(value as Tab)}>
-        <TabsList className="mx-auto h-15 w-full max-w-2xl justify-between rounded-none border-0 bg-transparent p-0">
+        {/* The height override has to carry the same variant scope as the one it
+            replaces: `tabsListVariants` sets `group-data-horizontal/tabs:h-9`, and
+            a bare `h-14` is a different scope, so both survive the merge and the
+            list stays 36px while the triggers overflow it. */}
+        <TabsList className="mx-auto w-full max-w-2xl justify-between rounded-none border-0 bg-transparent p-0 group-data-horizontal/tabs:h-14">
           {TABS.map((tab) => (
             <TabsTrigger
               key={tab.id}
@@ -49,7 +57,7 @@ export function TabBar({ active, onChange }: { active: Tab; onChange: (tab: Tab)
               // old selector never matched, which went unnoticed only because
               // the trigger's default `data-active:bg-background` was the same
               // white as the bar. On a tinted canvas it paints a grey box.
-              className="h-15 flex-1 flex-col gap-0.5 rounded-none font-normal text-muted-foreground data-active:bg-transparent data-active:font-medium data-active:text-primary"
+              className="h-14 flex-1 flex-col gap-0.5 rounded-none font-normal text-muted-foreground data-active:bg-transparent data-active:font-medium data-active:text-primary"
             >
               <HugeiconsIcon icon={tab.icon} className="size-[22px]" strokeWidth={2} />
               <Typography variant="caption">{tab.label}</Typography>
