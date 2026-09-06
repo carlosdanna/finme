@@ -22,6 +22,9 @@ pnpm check     # lint, typecheck, 471 tests — should be green before you start
 competing lockfile breaks pnpm's strict `node_modules`, which is one of the three
 things enforcing engine purity.
 
+`pnpm install` also installs the git hooks — see [Branches and
+hooks](#branches-and-hooks). You do not need to run anything else for them.
+
 For the device pass:
 
 ```bash
@@ -216,7 +219,39 @@ feat(engine)!: rescale crash recovery factor to 0.68
 - Subject line ≤72 chars, imperative, lowercase, no trailing period.
 - A body only when the *why* is not obvious from the diff.
 - Split unrelated concerns into separate commits.
-- **Don't commit to `main` without saying so.**
+- Unrelated concerns go in separate commits.
+
+---
+
+## Branches and hooks
+
+**`main` moves by merged pull request, and nothing else.** This is enforced in
+two places, and you will meet both:
+
+| | What it does | Escape hatch |
+|---|---|---|
+| `.husky/pre-commit` | refuses a commit while you are on `main` | `git commit --no-verify` |
+| `.husky/pre-push` | refuses a push to `main`, then runs `pnpm check` | `git push --no-verify` |
+| GitHub ruleset on `main` | rejects any push that is not a merged PR; also blocks force-push and deletion | none — nobody can bypass it, including the owner |
+
+The hooks are local courtesy: they fail in about 18 seconds instead of after a
+round trip, and `--no-verify` gets past them. **The ruleset is the real rule**,
+and it has no bypass actor by design — a direct push to `main` is rejected by the
+server no matter who you are.
+
+Detached HEAD is exempt from the pre-commit guard, so rebasing, cherry-picking
+and bisecting all still work.
+
+Branch names are `<type>/<short-description>` using the commit types:
+`feat/annual-review-chart`, `fix/credit-grace-period`, `docs/package-readmes`.
+
+`pre-push` runs `pnpm check` — lint, typecheck, the node suite and the jsdom UI
+suite. It deliberately does **not** run Playwright, which needs a production
+build and a browser download. Run that yourself before a PR that touches the UI:
+
+```bash
+pnpm -F @finme/ui e2e
+```
 
 ---
 
@@ -230,7 +265,25 @@ State what you did **not** do. Partial work with a clear boundary is more useful
 than work that looks complete and is not — most of the open issues exist because
 a gap was written down instead of glossed over.
 
-`pnpm check` must be green.
+`pnpm check` must be green. `pre-push` will not let you get that far otherwise.
+
+[`.github/pull_request_template.md`](.github/pull_request_template.md) fills in
+automatically. Its **Simulation impact** section is the part that matters: if the
+change touches the engine, the content or a constant, it has to answer whether
+existing seeds now produce something different. Answering "yes" is fine. Leaving
+it blank is not.
+
+Two commands in `.claude/commands/`:
+
+- **`/pr`** — runs `pnpm check`, pushes the branch, fills the template in from
+  the actual diff, and opens the PR. It stops rather than opening one if you are
+  on `main`, if anything is uncommitted, or if a `[F]` constant changed without
+  its `RULESET_VERSION` bump and `DECISIONS.md` entry.
+- **`/review-pr [number]`** — reviews a PR and reaches a decision: approve,
+  approve with notes, or request changes, with the reason stated first. It omits
+  the gotchas and recommendations headings when it has none rather than padding
+  the review. `--post` adds it to the PR as a comment; it never submits a formal
+  GitHub approval on its own.
 
 ---
 

@@ -33,6 +33,11 @@ pnpm -F @finme/ui e2e   # 36 Playwright tests at 390x844 and 360x740
 
 `pnpm -F @finme/ui exec playwright install chromium` first, if you have not.
 
+**`main` moves by merged pull request.** `pnpm install` sets up git hooks that
+refuse a commit on `main` and run `pnpm check` before every push, and a GitHub
+ruleset rejects direct pushes to `main` server-side. Work on a branch; use `/pr`
+to open the pull request. See [CONTRIBUTING](CONTRIBUTING.md#branches-and-hooks).
+
 ---
 
 ## What makes this project unusual
@@ -121,6 +126,7 @@ references `indexedDB` or `localStorage`.
 | [`docs/DECISIONS.md`](docs/DECISIONS.md) | 72 dated entries — why things are the way they are |
 | [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) | How the project was built, prompt by prompt |
 | [`CLAUDE.md`](CLAUDE.md) | The rules, in the form an agent reads them |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Setup, the branch policy, and how to change a constant |
 
 `DECISIONS.md` is the one to read before proposing a change. Most surprising
 things in this codebase are surprising on purpose, and it says why.
