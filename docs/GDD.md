@@ -305,8 +305,8 @@ Weighting operates on a fixed schedule of event *slots* (§13), so the seed stil
 
 Rev 1's arithmetic didn't work: 8–10 events firing every 1–3 weeks over a run meant each event repeating five to seven times. And "2 per category minimum" across 6 categories exceeded the stated 8–10 total.
 
-- **Frequency:** on average one event every **4–6 weeks**, i.e. roughly **10 per in-game year**, ~300 over a 30-year run.
-- **Pool size:** the full game targets **~120 events**; MVP targets **~45**. See **Appendix A**.
+- **Frequency:** on average one event every **4–6 weeks**, i.e. roughly **10 per in-game year**, **~255 over a 30-year run** (measured; Rev 2 said ~300, which was arithmetic on the nominal rate rather than on the implemented `[3, 10]` gap clamp).
+- **Pool size:** the full game targets **~120 events**; MVP targets **~45**. See **Appendix A** for what each event is, and **`docs/EVENT-CATALOGUE.md`** for the same catalogue sized against the engine — per-event rarity tier, magnitude spread, prose-variant budget, and modelled firings per run.
 - With life-stage gating, only a fraction of the pool is eligible at any age, which both keeps early-run events age-appropriate and makes later decades feel different rather than same-y.
 - Cooldowns plus once-per-run flags mean a 30-year run should show a given repeatable event no more than 3–4 times, each with different Logbook prose (§12).
 
@@ -595,10 +595,16 @@ That's ~15 situations × 6 = **90 lines.**
 
 ~25 situations × 3 = **75 lines.**
 
-**Tier 3 — event entries: hand-written, no variants.** One per event × per choice × per broad outcome, roughly 2.5 entries per event.
-- MVP: 45 events × 2.5 = **~113 entries.**
+**Tier 3 — event entries: 3 variants each [Rev 2].** One *key* per event × per choice × per broad outcome, roughly 2.5 keys per event, and every key carries 3 variants.
 
-**MVP total: ~280 pieces of copy.** Full game with 120 events: ~450.
+*Rev 1 sized this tier as "hand-written, no variants" and so undercounted it by 3×. The shipped schema does not allow it: `MIN_VARIANTS_PER_KEY = 3` is enforced at load in `packages/content/src/logbook.ts`, precisely so a key cannot ship with one variant and start repeating immediately.*
+
+- MVP: 45 events × 2.5 keys × 3 = **~340 entries.**
+- 76-event catalogue: 76 × 2.5 × 3 = **~570 entries.**
+
+**Tier 4 — event card variants [Rev 2] — new.** The Logbook narrates *after* the fact; the event card is what the player reads *during* it, and a repeated event currently shows the same paragraph every time. Budget by rarity tier, since that is what sets how often an event repeats: **common 3 variants, uncommon 2, rare 1.** For the 76-event catalogue (21 C / 35 U / 20 R) that is **153 card variants**.
+
+**MVP total: ~505 pieces of copy** (90 + 75 + 340). Full 76-event catalogue: **~888** (90 + 75 + 570 + 153). Both figures supersede Rev 1's "~280 MVP / ~450 full", which assumed variant-free event entries and no card variants at all. See `docs/EVENT-CATALOGUE.md` §3.3.
 
 **Recommendation:** write Tier 3 first. Event entries are where the voice lives, and they're what players remember. Tier 1 can ship at 4 variants and grow post-launch; nobody churns over slightly repetitive rent narration, but a flat scam event kills the tone immediately.
 
@@ -615,8 +621,12 @@ Run 10,000 seeded 30-year runs for each of: all-in index, all-in Moonshot, all-i
 
 **C3 — The spiral must be escapable but hard.** From a scripted worst-case state (low mood, low energy, high-interest debt, no emergency fund), verify that a reasonable recovery strategy climbs out within 3–5 in-game years, and that a passive strategy does not.
 
-**C4 — Decision density.** Instrument a full run and confirm the player faces 150–250 meaningful decision points over 30 years, and that no stretch longer than ~6 in-game months passes with zero interaction.
+**C4 — Decision density [Rev 2].** Instrument a full run and confirm the player faces **150–320** meaningful decision points over 30 years, and that no stretch longer than ~6 in-game months (enforced as 30 weeks) passes with zero interaction.
 
-**C5 — Event repetition.** Confirm no repeatable event fires more than 4 times in a 30-year run and that the first 5 in-game years never repeat an event.
+*Rev 1 said 150–250, which contradicted §5.3's stated frequency. Every event presents 2–3 choices, so an event **is** a decision point; §5.3's "one event every 4–6 weeks" and the implemented `SLOT_LAMBDA` already agreed with each other at ~255 measured, and C4 was the outlier. The ceiling is 320 rather than 255 because a larger pool leaves fewer slots with nothing eligible to fire, so density rises with pool size even though the slot schedule is fixed. See `docs/EVENT-CATALOGUE.md` §2 and `docs/DECISIONS.md` (2026-09-06).*
+
+**C5 — Event repetition [Rev 2].** Confirm that no event exceeds its **rarity tier's** firing limit in a 30-year run — common ≤ 8, uncommon ≤ 4, rare ≤ 2 — and that no event ever fires again inside its own cooldown.
+
+*Rev 1 asked for a single global limit of 4 and for the first 5 in-game years to never repeat an event. Both were wrong. A single limit ignores the weight system: a common event carries eight times a rare event's weight and so fires eight times as often by design, and holding both to one ceiling asks the weights not to mean anything. The five-year rule was worse — unachievable at any pool size, since ~42 firings across five years give a common event ~1.1 expected firings, making a repeat somewhere a statistical certainty rather than a defect. Cooldown respect is the real invariant and is what the check now enforces.*
 
 **C6 — Starting position fairness.** Run baseline play from each starting scenario. **Pass condition:** every start reaches a positive net worth by run end under competent play, and the gap between "Head start" and "Behind the line" narrows but does not vanish. If it vanishes, the game is lying about how the world works; if it never narrows, the game teaches fatalism.

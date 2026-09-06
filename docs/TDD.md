@@ -608,7 +608,9 @@ while (w < totalWeeks) {
   if (w < totalWeeks) slots.push(w)
 }
 ```
-≈11.5 slots/year, ~345 over a 30-year run. Also pre-drawn: one uniform per slot from `eventSelection`, stored as `slotTickets[]`.
+**≈8.5 slots/year, ~253 over a 30-year run** (measured). Also pre-drawn: one uniform per slot from `eventSelection`, stored as `slotTickets[]`.
+
+*Rev 2: this line previously read "≈11.5 slots/year, ~345". That was the nominal rate `3 + 1/λ = 7.5` weeks read as a mean, ignoring the hard `[3, 10]` clamp on the line above it. The clamp truncates the exponential tail, pushing the mean gap up to ≈6.2 weeks. Every gap is bounded by 10 weeks by construction, which is also why C4's quiet-stretch half passes comfortably at any reasonable pool size. The measured figure is what `pnpm -F @finme/sim c-suite` reports; see `docs/EVENT-CATALOGUE.md` §2.*
 
 ### 9.2 Selection at a slot
 
