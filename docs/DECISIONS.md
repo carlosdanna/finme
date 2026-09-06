@@ -1196,3 +1196,30 @@ gains a test that scrolls a real panel to its end; the tab-bar clearance test no
 asserts that the scroller's bottom edge clears the bar rather than that `main`
 carries a padding value, since the padding it checked for no longer exists — and a
 padding value never showed whether anything was actually visible.
+
+## 2026-09-06 — Event catalogue split out of the GDD appendix
+**Context:** issue #1 asks how many events a 30-year run should fire, weighing
+GDD §5.3's ~300 against Appendix C4's 150–250 ceiling. Neither document assigns
+the events an engine `category` or a rarity tier, so the trade-off could not be
+priced. GDD Appendix A is prose and its headings do not match
+`EVENT_CATEGORIES`.
+**Decision:** added `docs/EVENT-CATALOGUE.md` as the sized, per-category list —
+45 MVP events with `id`, tier, gate and modelled fires per run. Appendix A stays
+authoritative for what each event *is*; the catalogue is authoritative for how
+often it fires. No constant changed and no event content was written, so no
+ruleset version bump. Issue #1 is left open.
+**Consequences:**
+1. Three Appendix A entries were recategorised to match the engine enum: A#15
+   *Rent increase* → `housing` (already shipped that way as `HOU_RENT_INCREASE`),
+   A#12 *Medical bill* and A#20 *Unexpected dental* → `health`.
+2. Appendix A claims 45 ★ MVP events but marks only 42. Three unmarked entries
+   were promoted to reach the stated count: A#7 `WIN_SOLD_OLD_THING`, A#47
+   `SOC_SUBSCRIPTION_CREEP`, A#50 `SOC_FAMILY_ASKS_HELP`.
+3. **A third constraint on issue #1.** §5.3's "no more than 3–4 times" and C5's
+   hard limit of 4 make pool size a function of decision density: ~68 events at
+   255 fires, ~52 even at C4's 200-fire ceiling. A 45-event pool fails C5 under
+   every option the issue lists, and Option C (redefine "decision point") cannot
+   fix repetition at all, because C5 counts firings rather than decisions.
+4. Emergency carries 18% of the weight budget on 5 events — 6.1 points below its
+   §9.5 share before multipliers. Expansion priority is emergency, then social
+   and career, which is a different order from Appendix A's own note.

@@ -468,6 +468,8 @@ Format: **Name** — trigger gates — brief. Choices sketched where the design 
 
 MVP set marked **★** (45 events). Unmarked entries are the target ~120-event full pool, listed here so the data schema is designed against the full shape.
 
+For the same catalogue sized against the engine — each MVP event's `category`, rarity tier, and modelled firings per 30-year run — see `docs/EVENT-CATALOGUE.md`.
+
 ### Windfalls
 
 1. ★ **Tax refund larger than expected** (C, any) — a few hundred to a few thousand. Save / spend / invest / pay down debt.
