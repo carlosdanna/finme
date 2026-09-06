@@ -16,7 +16,7 @@
         {
           "id": "repair",
           "label": "Pay for the repair",
-          "effects": [{ "k": "cash", "cents": "-clamp(0.6*monthlyIncome, cpi*40000, cpi*180000)" }],
+          "effects": [{ "k": "cash", "cents": "-clamp(0.48*monthlyIncome*(0.5+1.5*roll), cpi*40000, cpi*180000)" }],
           "logbookKey": "car_repair_paid"
         },
         {
@@ -27,7 +27,7 @@
             {
               "k": "debt",
               "instrument": "CREDIT_CARD",
-              "principalCents": "clamp(0.6*monthlyIncome, cpi*40000, cpi*180000)"
+              "principalCents": "clamp(0.48*monthlyIncome*(0.5+1.5*roll), cpi*40000, cpi*180000)"
             }
           ],
           "logbookKey": "car_repair_carded"
@@ -157,7 +157,7 @@
           "id": "spend",
           "label": "Spend it on something you've wanted",
           "effects": [
-            { "k": "cash", "cents": "-clamp(0.5*monthlyIncome, cpi*20000, cpi*120000)" },
+            { "k": "cash", "cents": "-clamp(0.37*monthlyIncome*(0.2+2.3*roll), cpi*20000, cpi*120000)" },
             { "k": "mood", "delta": 9 }
           ],
           "logbookKey": "refund_spent"
@@ -212,7 +212,7 @@
           "id": "go_all_in",
           "label": "Go, and go properly",
           "effects": [
-            { "k": "cash", "cents": "-clamp(0.4*monthlyIncome, cpi*25000, cpi*150000)" },
+            { "k": "cash", "cents": "-clamp(0.308*monthlyIncome*(0.4+1.8*roll), cpi*25000, cpi*150000)" },
             { "k": "mood", "delta": 11 }
           ],
           "logbookKey": "wedding_attended"
@@ -248,7 +248,7 @@
           "id": "absorb",
           "label": "Sign it",
           "effects": [
-            { "k": "expense", "category": "rent", "cents": "clamp(0.06*monthlyIncome, cpi*5000, cpi*40000)", "recurring": true }
+            { "k": "expense", "category": "rent", "cents": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)", "recurring": true }
           ],
           "logbookKey": "rent_increase_absorbed"
         },
@@ -273,7 +273,7 @@
               {
                 "p": "rest",
                 "effects": [
-                  { "k": "expense", "category": "rent", "cents": "clamp(0.06*monthlyIncome, cpi*5000, cpi*40000)", "recurring": true }
+                  { "k": "expense", "category": "rent", "cents": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)", "recurring": true }
                 ],
                 "logbookKey": "rent_negotiated_loss"
               }
@@ -298,7 +298,7 @@
         {
           "id": "pay",
           "label": "Pay it today",
-          "effects": [{ "k": "cash", "cents": "-clamp(0.45*monthlyIncome, cpi*30000, cpi*140000)" }],
+          "effects": [{ "k": "cash", "cents": "-clamp(0.265*monthlyIncome*(0.4+2.6*roll), cpi*30000, cpi*140000)" }],
           "logbookKey": "dental_paid"
         },
         {
@@ -308,7 +308,7 @@
             {
               "k": "debt",
               "instrument": "PERSONAL_LOAN",
-              "principalCents": "clamp(0.45*monthlyIncome, cpi*30000, cpi*140000)"
+              "principalCents": "clamp(0.265*monthlyIncome*(0.4+2.6*roll), cpi*30000, cpi*140000)"
             }
           ],
           "logbookKey": "dental_financed"
@@ -321,7 +321,7 @@
             {
               "afterWeeks": 26,
               "effects": [
-                { "k": "cash", "cents": "-clamp(0.8*monthlyIncome, cpi*60000, cpi*260000)" },
+                { "k": "cash", "cents": "-clamp(0.471*monthlyIncome*(0.4+2.6*roll), cpi*60000, cpi*260000)" },
                 { "k": "mood", "delta": -6 }
               ],
               "logbookKey": "dental_postponed_worse"

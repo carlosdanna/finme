@@ -107,6 +107,21 @@ Spreads are expressed as multipliers on an anchor rather than as absolute ranges
 so they keep composing with `cpi` and `monthlyIncome` across a 30-year run — the
 same reason TDD §9.3 bans fixed cent amounts.
 
+**Spreads must be mean-preserving.** A spread `[lo–hi]` has mean `(lo+hi)/2`,
+which for every range in §4 is greater than 1 — `[0.5–2.0]` averages 1.25. Written
+naively as `anchor × (lo + (hi−lo)·roll)` it raises the *typical* cost by that
+factor, so adding variance would quietly make the game harsher. Divide the anchor
+by the spread's mean:
+
+```
+   0.6 × monthlyIncome                        with spread [0.5–2.0]
+=> 0.48 × monthlyIncome × (0.5 + 1.5·roll)    mean 0.6, unchanged
+```
+
+The clamp bounds stay where they were; they truncate the tails, which is what
+they are for. Balance changes are a separate decision from variance and belong in
+their own DECISIONS entry.
+
 ### 3.2 Outcome variance — *works today*
 
 `outcomeRoll` on the `eventOutcome` stream already gives discrete branching, and

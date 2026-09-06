@@ -79,6 +79,7 @@ export function createRun(config: RunConfig): Run {
     eventOutcome: stream(config.seed, 'eventOutcome'),
     jobApplication: stream(config.seed, 'jobApplication'),
     flavor: stream(config.seed, 'flavor'),
+    eventMagnitude: stream(config.seed, 'eventMagnitude'),
   };
 
   const startingJob = config.jobs.find((job) => job.id === config.startingJobId);

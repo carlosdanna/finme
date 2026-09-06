@@ -26,6 +26,9 @@ const formulaContext = {
     monthlyIncome: 400_000,
     carScrapValue: 192_000,
     performanceNorm: 0.6,
+    // The per-firing magnitude draw (TDD §9.3). Held at the middle of its range
+    // here; the spread itself is exercised by the engine tests.
+    roll: 0.5,
   },
   price: (assetId: string) => ({ SAFE: 12_345, CRYP: 640, MOON: 8_000 })[assetId] ?? Number.NaN,
 };

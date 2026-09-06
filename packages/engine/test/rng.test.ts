@@ -82,9 +82,18 @@ describe('stream derivation (TDD §2.2)', () => {
       'eventSlots',
       'eventSelection',
     ]);
-    expect([...IN_PLAY_STREAMS]).toEqual(['eventOutcome', 'jobApplication', 'flavor']);
-    expect(STREAM_NAMES).toHaveLength(8);
-    expect(new Set(STREAM_NAMES).size).toBe(8);
+    expect([...IN_PLAY_STREAMS]).toEqual([
+      'eventOutcome',
+      'jobApplication',
+      'flavor',
+      // Added 2026-09-06 for per-firing event magnitudes. Appending a name is
+      // safe in a way that reordering or renaming is not: each stream is
+      // derived from `fnv1a(seed::name)`, so the existing five keep generating
+      // exactly what they generated before.
+      'eventMagnitude',
+    ]);
+    expect(STREAM_NAMES).toHaveLength(9);
+    expect(new Set(STREAM_NAMES).size).toBe(9);
   });
 
   it('produces identical sequences for the same seed and stream name', () => {

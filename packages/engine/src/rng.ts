@@ -26,7 +26,12 @@ export const PRE_DRAWN_STREAMS = [
 ] as const;
 
 /** [F] Streams consumed during play, as the player's choices reach them. */
-export const IN_PLAY_STREAMS = ['eventOutcome', 'jobApplication', 'flavor'] as const;
+export const IN_PLAY_STREAMS = [
+  'eventOutcome',
+  'jobApplication',
+  'flavor',
+  'eventMagnitude',
+] as const;
 
 /** [F] The fixed stream set from TDD §2.2. Adding one is a ruleset change. */
 export const STREAM_NAMES = [...PRE_DRAWN_STREAMS, ...IN_PLAY_STREAMS] as const;

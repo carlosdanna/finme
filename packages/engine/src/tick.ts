@@ -181,8 +181,17 @@ export function lifeStageFor(age: number): string {
   return 'retirement';
 }
 
-/** The formula context an event's magnitudes are evaluated against (§9.3). */
-export function formulaContextFrom(state: RunState, world: RunWorld) {
+/**
+ * The formula context an event's magnitudes are evaluated against (§9.3).
+ *
+ * `roll` is a uniform in [0, 1) drawn once per fired event, so a magnitude can
+ * say `0.6*monthlyIncome*(0.5+1.5*roll)` and cost a different amount each time
+ * the event lands. It defaults to 0.5 — the middle of the spread — for the
+ * contexts that have no event behind them, such as a deferred effect resolving
+ * weeks later. Deferred effects deliberately do **not** re-roll: their
+ * magnitude belongs to the choice that scheduled them.
+ */
+export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5) {
   const week = state.weekIndex;
   return {
     vars: {
@@ -193,6 +202,7 @@ export function formulaContextFrom(state: RunState, world: RunWorld) {
       cashCents: state.cashCents,
       mood: state.mood,
       energy: state.energy,
+      roll,
     },
     price: (assetId: string) =>
       world.market.series[assetId as AssetId]?.priceCents[week] ?? Number.NaN,
@@ -396,6 +406,12 @@ export function tick(
 
       const choice = available.find((c) => c.id === pick) ?? available[0];
 
+      // [F] Exactly one draw per fired event — never per choice and never per
+      // effect. The count must not depend on which choice the player took, or
+      // two players sharing a seed would fall out of step with each other the
+      // first time they answered a card differently.
+      const roll = streams.eventMagnitude();
+
       if (choice !== undefined) {
         state = {
           ...state,
@@ -404,7 +420,7 @@ export function tick(
             { w: week, t: 'event', e: selected.id, c: choice.id },
           ],
         };
-        const outcome = resolveChoice(choice, formulaContextFrom(state, world), week, streams.eventOutcome);
+        const outcome = resolveChoice(choice, formulaContextFrom(state, world, roll), week, streams.eventOutcome);
         state = applyOutcome(state, outcome, priceAt, week);
         state = { ...state, eventHistory: recordFiring(state.eventHistory, selected.id, week) };
         for (const key of outcome.logbookKeys) {
