@@ -25,6 +25,7 @@ import {
 import { createScenarioRun, DEFAULT_ALLOCATION } from '@finme/content';
 import type { Allocation, EventDef } from '@finme/engine';
 import { create } from 'zustand';
+import { eventDisplayVars } from '@/lib/eventVars';
 
 /** The four primary destinations in the bottom tab bar. */
 export type Tab = 'dashboard' | 'money' | 'life' | 'logbook';
@@ -43,6 +44,13 @@ export type Panel =
 export interface PendingEvent {
   readonly event: EventDef;
   readonly choiceIds: readonly string[];
+  /**
+   * The event's magnitude roll, drawn when the card was presented and fed back
+   * into the resolving tick so the player is charged the number they read.
+   */
+  readonly roll: number;
+  /** `{{placeholder}}` values for the card, already formatted. */
+  readonly vars: Readonly<Record<string, string>>;
 }
 
 interface GameStore {
@@ -92,21 +100,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { run, granularity, allocation } = get();
     if (run === null) return;
 
-    let captured: PendingEvent | null = null;
-    const result = advance(run, granularity, () => ({
-      allocation,
-      // Decline to choose. The engine abandons the week untouched and hands it
-      // back; the modal asks, and `resolveEvent` ticks that same week once with
-      // the real answer. Returning a default here instead would commit a week
-      // the player never agreed to and then tick a second one on top of it.
-      chooseEvent: (eventId, choiceIds) => {
-        const event = run.world.eventDefs.find((definition) => definition.id === eventId);
-        if (event !== undefined) captured = { event, choiceIds };
-        return null;
-      },
-    }));
+    let capturedEvent: EventDef | null = null;
+    let capturedChoiceIds: readonly string[] = [];
+    let stateAtWeekStart: RunState = run.state;
 
-    set({ run: result.run, interrupts: result.interrupts, pendingEvent: captured });
+    const result = advance(run, granularity, (state) => {
+      stateAtWeekStart = state;
+      return {
+        allocation,
+        // Decline to choose. The engine abandons the week untouched and hands
+        // it back; the modal asks, and `resolveEvent` ticks that same week once
+        // with the real answer. Returning a default here instead would commit a
+        // week the player never agreed to and then tick a second one on top.
+        chooseEvent: (eventId, choiceIds) => {
+          const event = run.world.eventDefs.find((definition) => definition.id === eventId);
+          if (event !== undefined) {
+            capturedEvent = event;
+            capturedChoiceIds = choiceIds;
+          }
+          return null;
+        },
+      };
+    });
+
+    const event: EventDef | null = capturedEvent;
+    const roll = result.eventRoll;
+    const pendingEvent: PendingEvent | null =
+      event === null || roll === null
+        ? null
+        : {
+            event,
+            choiceIds: capturedChoiceIds,
+            roll,
+            // Evaluated against the *event's own* week — the one about to be
+            // ticked — and the roll it will be charged with.
+            vars: eventDisplayVars(event, stateAtWeekStart, run.world, roll),
+          };
+
+    set({ run: result.run, interrupts: result.interrupts, pendingEvent });
   },
 
   loadSave: (raw: string) => {
@@ -123,8 +154,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (run === null) return;
     // Tick the event's own week — the one `advanceTime` left uncommitted — with
     // the player's actual choice. This is the first and only time that week
-    // runs, so its interrupts are the ones to surface.
-    const input: TickInput = { allocation, chooseEvent: () => choiceId };
+    // runs, so its interrupts are the ones to surface. The roll comes back from
+    // the presenting tick, so the choice is charged what the card quoted.
+    const pending = get().pendingEvent;
+    const input: TickInput = {
+      allocation,
+      chooseEvent: () => choiceId,
+      eventRoll: pending?.roll,
+    };
     const result = tick(run.world, run.streams, run.state, input);
     set({
       run: { ...run, state: result.state },

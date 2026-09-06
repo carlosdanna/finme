@@ -129,6 +129,18 @@ export interface Choice {
   readonly logbookKey: string;
 }
 
+/**
+ * A `{{placeholder}}` value for an event card: what to compute, and how it is
+ * meant to read. Evaluated against the same context and the same `roll` as the
+ * event's effects, so the card cannot quote a price the choice will not charge.
+ */
+export interface DisplayVar {
+  readonly as: 'money' | 'number';
+  readonly value: Magnitude;
+  /** Decimal places for `number`. Ignored for `money`. */
+  readonly precision?: number;
+}
+
 export interface EventDef {
   readonly id: string;
   readonly category: EventCategory;
@@ -142,6 +154,8 @@ export interface EventDef {
   readonly title: string;
   /** Supports {{var}} interpolation. */
   readonly body: string;
+  /** Values for the placeholders in `title` and `body`. */
+  readonly displayVars?: Readonly<Record<string, DisplayVar>>;
   readonly choices: readonly Choice[];
 }
 

@@ -75,6 +75,15 @@ export default function App() {
   if (run === null) return null;
   const { state, world } = run;
 
+  // The event card's placeholders: the event's own computed values, plus the
+  // two names the run drew at init. Event keys are declared in content and
+  // linted at load, so a card can never reach here with an unresolved one.
+  const cardVars = {
+    ...(pendingEvent?.vars ?? {}),
+    friendName: world.names.friendName,
+    advisorName: world.names.advisorName,
+  };
+
   const portfolioCents = portfolioValueCents(
     Object.fromEntries(ASSET_IDS.map((id) => [id, state.holdings[id].shares])),
     world.market,
@@ -187,13 +196,9 @@ export default function App() {
       <EventModal
         event={pendingEvent?.event ?? null}
         choiceIds={pendingEvent?.choiceIds ?? []}
+        title={pendingEvent === null ? '' : interpolate(pendingEvent.event.title, cardVars)}
         body={
-          pendingEvent === null
-            ? ''
-            : interpolate(pendingEvent.event.body, {
-                friendName: world.names.friendName,
-                advisorName: world.names.advisorName,
-              })
+          pendingEvent === null ? '' : interpolate(pendingEvent.event.body, cardVars)
         }
         onChoose={resolveEvent}
       />

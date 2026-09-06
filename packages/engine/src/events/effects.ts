@@ -208,9 +208,25 @@ export function resolveChoice(
   return out;
 }
 
-/** Interpolate `{{var}}` placeholders in an event body. */
+/** Every `{{var}}` an event body references, in source order. */
+export function placeholdersIn(template: string): string[] {
+  return [...template.matchAll(PLACEHOLDER)].map((match) => match[1]);
+}
+
+const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+
+/**
+ * Interpolate `{{var}}` placeholders in an event body.
+ *
+ * An unresolved key is left as written. That is deliberate for the *renderer* —
+ * a card with one missing number is better than a card that throws — but it is
+ * also how eight events shipped showing the player a literal `{{repairCost}}`.
+ * The load-time lint in `@finme/content` is what stops that: it fails the build
+ * when a body references a key the event does not declare, so a missing value
+ * cannot reach a renderer in the first place.
+ */
 export function interpolate(template: string, values: Readonly<Record<string, string>>): string {
-  return template.replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (match, key: string) =>
+  return template.replace(PLACEHOLDER, (match, key: string) =>
     Object.prototype.hasOwnProperty.call(values, key) ? values[key] : match,
   );
 }

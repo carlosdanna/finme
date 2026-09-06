@@ -101,6 +101,16 @@ export interface TickInput {
   readonly chooseEvent?: (eventId: string, choiceIds: readonly string[]) => string | null;
   /** Discretionary spending this week, for the mood term. */
   readonly discretionarySpendCents?: number;
+  /**
+   * The magnitude roll for this week's event, from a previous `tick` that
+   * returned `awaitingEventChoice`.
+   *
+   * Supplying it means **no new draw is taken**, which is the whole point: the
+   * card the player read quoted a price computed from that roll, so the choice
+   * they made must be charged the same one. Without this the resolving tick
+   * would draw again and charge a different number than the card showed.
+   */
+  readonly eventRoll?: number;
 }
 
 export interface TickResult {
@@ -111,14 +121,17 @@ export interface TickResult {
    * The event whose choice the caller declined to make, or `null`.
    *
    * When set, `state` is **the state `tick` was given** — the week did not
-   * happen. No draw is consumed reaching this point: the event step precedes
-   * both the `eventOutcome` draw (which only a choice with an `outcomeRoll`
-   * takes) and the Logbook's `flavor` draw, so abandoning the week here leaves
-   * every stream exactly where it was. This is what keeps a live session
-   * identical to a §14 replay of its own decision log; committing a speculative
-   * week and re-ticking would advance the streams twice and diverge on reload.
+   * happen. The only stream touched is `eventMagnitude`, which takes its single
+   * per-event draw here and hands it back as `eventRoll`; `eventOutcome` (which
+   * only a choice with an `outcomeRoll` takes) and the Logbook's `flavor` draw
+   * both come later and are untouched. Feed `eventRoll` back into the resolving
+   * tick and the total is exactly one draw per fired event either way — the
+   * same count a §14 replay produces, which is what keeps a live session and
+   * its own reload in step.
    */
   readonly awaitingEventChoice: string | null;
+  /** The roll drawn for the awaited event. Pass it back as `TickInput.eventRoll`. */
+  readonly eventRoll: number | null;
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -203,6 +216,11 @@ export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5)
       mood: state.mood,
       energy: state.energy,
       roll,
+      // Rates, as fractions. A card that wants "2.4 percent" writes
+      // `inflationThisYear*100`; nothing here formats.
+      inflationThisYear:
+        world.market.inflation.annualRate[Math.min(yearIndex(week), state.runLengthYears - 1)],
+      lastRaisePct: state.lastRaisePct,
     },
     price: (assetId: string) =>
       world.market.series[assetId as AssetId]?.priceCents[week] ?? Number.NaN,
@@ -236,6 +254,7 @@ export function tick(
       interrupts: [{ reason: 'run-complete', weekIndex: previous.weekIndex }],
       firedEventId: null,
       awaitingEventChoice: null,
+      eventRoll: null,
     };
   }
 
@@ -385,32 +404,29 @@ export function tick(
       const available = selected.choices.filter(
         (choice) => (choice.requires ?? []).every((gate) => passesGate(gate, eventStateFrom(state, world))),
       );
+      // [F] Exactly one draw per fired event — never per choice and never per
+      // effect, and never a second time for a week the caller is re-ticking
+      // after showing the card. The count must not depend on which choice the
+      // player took, or two players sharing a seed would fall out of step the
+      // first time they answered a card differently.
+      const roll = input.eventRoll ?? streams.eventMagnitude();
+
       const pick = input.chooseEvent?.(selected.id, available.map((c) => c.id));
 
       // The caller declined to choose: the player is looking at the card. Give
-      // back the state we were handed and let them re-tick it once they answer.
-      //
-      // [F] Nothing above this line consumes an in-play stream — the
-      // `eventOutcome` draw happens in `resolveChoice` below, and the Logbook's
-      // `flavor` draw in step 11 — so abandoning the week here leaves every
-      // stream exactly where it was. That is what makes a live session
-      // reproduce as a §14 replay of its own decision log.
+      // back the state we were handed, along with the roll, so the week can be
+      // re-ticked and charged exactly the number the card quoted.
       if (pick === null) {
         return {
           state: previous,
           interrupts: [{ reason: 'event', weekIndex: week, detail: selected.id }],
           firedEventId: selected.id,
           awaitingEventChoice: selected.id,
+          eventRoll: roll,
         };
       }
 
       const choice = available.find((c) => c.id === pick) ?? available[0];
-
-      // [F] Exactly one draw per fired event — never per choice and never per
-      // effect. The count must not depend on which choice the player took, or
-      // two players sharing a seed would fall out of step with each other the
-      // first time they answered a card differently.
-      const roll = streams.eventMagnitude();
 
       if (choice !== undefined) {
         state = {
@@ -547,7 +563,7 @@ export function tick(
   // ---- 15. Evaluate interrupt conditions
   interrupts.push(...evaluateInterrupts(state, previous));
 
-  return { state, interrupts, firedEventId, awaitingEventChoice: null };
+  return { state, interrupts, firedEventId, awaitingEventChoice: null, eventRoll: null };
 }
 
 // --- step helpers -----------------------------------------------------------

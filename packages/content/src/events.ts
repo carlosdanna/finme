@@ -6,12 +6,38 @@
  * id collides. **Event ids are stable forever** — a rename silently changes what
  * every existing seed produces.
  */
-import { EVENT_CATEGORIES, type EventDef, FORMULA_FUNCTIONS, evaluateFormula } from '@finme/engine';
+import {
+  EVENT_CATEGORIES,
+  type EventDef,
+  FORMULA_FUNCTIONS,
+  evaluateFormula,
+  placeholdersIn,
+} from '@finme/engine';
 import { z } from 'zod';
 import data from '../events/mvp.json' with { type: 'json' };
 
+/**
+ * Placeholders supplied by the run rather than by the event: the friend and
+ * advisor names drawn once at init (TDD §12).
+ */
+export const RUN_SCOPED_VARS: readonly string[] = ['friendName', 'advisorName'];
+
 /** A magnitude is a literal number or a formula string (TDD §9.3). */
 const magnitudeSchema = z.union([z.number(), z.string().min(1)]);
+
+/**
+ * One `{{placeholder}}` value: what to compute, and how to render it.
+ *
+ * `money` goes through the UI's `<Money>` formatting. `number` is a bare
+ * figure for prose that supplies its own unit — the bodies here read
+ * "{{raisePct}} percent", so a `<Pct>` would print the symbol twice.
+ */
+const displayVarSchema = z.object({
+  as: z.enum(['money', 'number']),
+  value: magnitudeSchema,
+  /** Decimal places for `number`. Ignored for `money`. */
+  precision: z.number().int().min(0).max(2).optional(),
+});
 
 const comparisonOpSchema = z.enum(['<', '<=', '>', '>=', '==', '!=']);
 
@@ -118,6 +144,15 @@ export const eventSchema = z
     multipliers: z.array(z.object({ when: gateSchema, factor: z.number().positive() })),
     title: z.string().min(1),
     body: z.string().min(1),
+    /**
+     * Values for the `{{placeholders}}` in `title` and `body`.
+     *
+     * Each is a magnitude in the same language as an effect's, evaluated
+     * against the same context and the same `roll`. Writing the number twice —
+     * once for the card and once for the effect — is how a card ends up
+     * quoting a price the choice does not charge.
+     */
+    displayVars: z.record(z.string().min(1), displayVarSchema).optional(),
     choices: z.array(choiceSchema).min(2),
   })
   .superRefine((event, ctx) => {
@@ -127,6 +162,32 @@ export const eventSchema = z
         ctx.addIssue({ code: 'custom', message: `duplicate choice id '${choice.id}' in ${event.id}` });
       }
       choiceIds.add(choice.id);
+    }
+
+    // Every placeholder must have a value. `interpolate` leaves an unknown key
+    // as literal text, so without this lint a typo ships as `{{repairCost}}`
+    // printed on the card — which is exactly how the first eight events went
+    // out. `friendName` and `advisorName` come from the run, not the event.
+    const declared = new Set([...Object.keys(event.displayVars ?? {}), ...RUN_SCOPED_VARS]);
+    for (const field of ['title', 'body'] as const) {
+      for (const key of placeholdersIn(event[field])) {
+        if (!declared.has(key)) {
+          ctx.addIssue({
+            code: 'custom',
+            message: `${event.id}: ${field} references {{${key}}}, which nothing provides — add it to displayVars`,
+          });
+        }
+      }
+    }
+
+    for (const key of Object.keys(event.displayVars ?? {})) {
+      const used = placeholdersIn(event.title).includes(key) || placeholdersIn(event.body).includes(key);
+      if (!used) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `${event.id}: displayVars.${key} is never referenced by title or body`,
+        });
+      }
     }
   });
 

@@ -6,7 +6,7 @@
  * player needs to see the card first. Getting that split wrong is invisible in
  * the engine tests, because the engine is never wrong — it is asked twice.
  */
-import { WEEKS_PER_YEAR } from '@finme/engine';
+import { WEEKS_PER_YEAR, formulaContextFrom, interpolate, resolveMagnitude } from '@finme/engine';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useGameStore } from '../src/store/useGameStore.ts';
 
@@ -71,6 +71,62 @@ describe('resolving an event from the modal', () => {
     );
     expect(log).toHaveLength(1);
     expect(state.eventHistory[pending.event.id] ?? []).toHaveLength(1);
+  });
+
+  it('renders every placeholder — no card shows the player raw {{mustache}}', () => {
+    // How this shipped: `interpolate` leaves an unknown key as literal text,
+    // and the app supplied only friendName/advisorName, so all eight events
+    // printed things like "The shop says {{repairCost}}."
+    let cards = 0;
+    for (let step = 0; step < 400 && cards < 12; step++) {
+      if (!advanceToEvent(1)) continue;
+      const pending = useGameStore.getState().pendingEvent!;
+      const vars = { ...pending.vars, friendName: 'X', advisorName: 'Y' };
+
+      for (const field of [pending.event.title, pending.event.body]) {
+        expect(interpolate(field, vars), `${pending.event.id}: ${field}`).not.toMatch(/\{\{/);
+      }
+      cards++;
+      useGameStore.getState().resolveEvent(pending.choiceIds[0]);
+    }
+    expect(cards).toBeGreaterThan(0);
+  });
+
+  it('quotes on the card exactly what the choice charges', () => {
+    // The failure this guards: `displayVars` and the effect are two separate
+    // formula strings, so a card can promise one number and the choice take
+    // another. They are only equal because they are written the same and are
+    // evaluated against the same state and the same `roll` — which is why the
+    // roll is drawn when the card appears and fed back into the resolving tick,
+    // rather than drawn fresh at resolution.
+    let checked = 0;
+    for (let step = 0; step < 400 && checked < 6; step++) {
+      if (!advanceToEvent(1)) continue;
+      const pending = useGameStore.getState().pendingEvent!;
+      const { state, world } = useGameStore.getState().run!;
+      const context = formulaContextFrom(state, world, pending.roll);
+
+      for (const [key, spec] of Object.entries(pending.event.displayVars ?? {})) {
+        if (spec.as !== 'money') continue;
+        // Every cash effect across the event's choices that quotes this price.
+        const quoted = resolveMagnitude(spec.value, context);
+        // Cash and recurring expenses both count: HOU_RENT_INCREASE quotes a
+        // monthly rent rise, which lands as an `expense`, not a `cash` effect.
+        const charged = pending.event.choices
+          .flatMap((choice) => [
+            ...choice.effects,
+            ...(choice.outcomeRoll?.branches ?? []).flatMap((branch) => branch.effects),
+          ])
+          .filter((effect) => effect.k === 'cash' || effect.k === 'expense')
+          .map((effect) => Math.abs(resolveMagnitude(effect.cents, context)));
+
+        if (charged.length === 0) continue;
+        expect(charged, `${pending.event.id}.${key}`).toContain(Math.abs(quoted));
+        checked++;
+      }
+      useGameStore.getState().resolveEvent(pending.choiceIds[0]);
+    }
+    expect(checked).toBeGreaterThan(0);
   });
 
   it('clears the pending event once resolved', () => {

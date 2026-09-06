@@ -8,6 +8,7 @@ export {
 } from './schema.ts';
 export type {
   EventDef,
+  DisplayVar,
   EventCategory,
   EventHistory,
   Gate,
@@ -58,5 +59,6 @@ export {
   branchProbabilities,
   resolveChoice,
   interpolate,
+  placeholdersIn,
 } from './effects.ts';
 export type { EffectOutcome, ScheduledEffect } from './effects.ts';

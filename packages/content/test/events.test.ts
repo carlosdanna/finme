@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EVENT_CATEGORIES,
+  type EventDef,
   type EventState,
   applyEffects,
   eligibleEvents,
@@ -304,6 +305,59 @@ describe('golden: fixed seed, fixed state, exact selection and delta', () => {
 
     const old = { EMG_CAR_BREAKDOWN: [200] };
     expect(eligibleEvents(EVENTS, owner, old).map((e) => e.id)).toContain('EMG_CAR_BREAKDOWN');
+  });
+});
+
+/**
+ * A card must not promise a price nothing charges.
+ *
+ * `displayVars` and effects are two separate formula strings, so they can drift
+ * apart silently — the card says $400, the choice takes $700, and no test that
+ * only runs the simulation would notice unless that particular event happened
+ * to fire. This is checked statically instead, so it covers every event in the
+ * pool rather than the handful a given seed reaches.
+ */
+describe('event cards quote what they charge', () => {
+  /**
+   * Magnitudes an event actually applies, as written and unsigned.
+   *
+   * A cost is written negated (`-clamp(...)`) while the card quotes the price
+   * itself, and "put it on the card" charges the same price as a `debt`
+   * principal rather than as cash — both are the same number to the player.
+   */
+  function chargedMagnitudes(event: EventDef): string[] {
+    return event.choices
+      .flatMap((choice) => [
+        ...choice.effects,
+        ...(choice.outcomeRoll?.branches ?? []).flatMap((branch) => branch.effects),
+        ...(choice.deferred ?? []).flatMap((deferred) => deferred.effects),
+      ])
+      .flatMap((effect) => {
+        if (effect.k === 'cash' || effect.k === 'expense') return [String(effect.cents)];
+        if (effect.k === 'debt') return [String(effect.principalCents)];
+        return [];
+      })
+      .map((source) => source.replace(/^-/, ''));
+  }
+
+  it('every money placeholder matches an effect the event can apply', () => {
+    const checked: string[] = [];
+
+    for (const event of EVENTS) {
+      for (const [key, spec] of Object.entries(event.displayVars ?? {})) {
+        if (spec.as !== 'money') continue;
+        const charged = chargedMagnitudes(event);
+        // Formula strings are compared verbatim: the point is that the card and
+        // the effect are the *same* expression, not merely equal on one seed.
+        expect(charged, `${event.id}.${key} quotes a price no choice charges`).toContain(
+          String(spec.value).replace(/^-/, ''),
+        );
+        checked.push(`${event.id}.${key}`);
+      }
+    }
+
+    // Every shipped money card is covered, so this cannot pass by finding none.
+    expect(checked.length).toBeGreaterThanOrEqual(5);
   });
 });
 

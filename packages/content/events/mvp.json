@@ -12,6 +12,9 @@
       ],
       "title": "The noise got worse",
       "body": "It started three weeks ago and you've been pretending not to hear it. This morning the car made the noise and then stopped making any noise at all. The shop says {{repairCost}}.",
+      "displayVars": {
+        "repairCost": { "as": "money", "value": "clamp(0.48*monthlyIncome*(0.5+1.5*roll), cpi*40000, cpi*180000)" }
+      },
       "choices": [
         {
           "id": "repair",
@@ -63,6 +66,9 @@
       ],
       "title": "Dev is very confident about this",
       "body": "He's shown you the chart twice. He is up, he says, {{coworkerClaim}} percent. He is not lying, exactly — he just isn't mentioning the part before the part he's showing you.",
+      "displayVars": {
+        "coworkerClaim": { "as": "number", "value": "round(80 + 900*roll)" }
+      },
       "choices": [
         {
           "id": "in_big",
@@ -103,6 +109,10 @@
       "multipliers": [],
       "title": "Annual review",
       "body": "Your manager says the number out loud like it's good news: {{raisePct}} percent. Prices went up {{inflationPct}} percent this year.",
+      "displayVars": {
+        "raisePct": { "as": "number", "value": "lastRaisePct*100", "precision": 1 },
+        "inflationPct": { "as": "number", "value": "inflationThisYear*100", "precision": 1 }
+      },
       "choices": [
         {
           "id": "accept",
@@ -146,6 +156,9 @@
       "multipliers": [],
       "title": "The refund landed",
       "body": "It's more than you expected. {{refundAmount}}, sitting in the account, already spent four times over in your head.",
+      "displayVars": {
+        "refundAmount": { "as": "money", "value": "clamp(0.37*monthlyIncome*(0.2+2.3*roll), cpi*20000, cpi*120000)" }
+      },
       "choices": [
         {
           "id": "save",
@@ -180,6 +193,9 @@
       "multipliers": [],
       "title": "Everything costs more",
       "body": "Nothing announced itself. The same basket is {{inflationPct}} percent more than it was, and your pay is the number it was in January.",
+      "displayVars": {
+        "inflationPct": { "as": "number", "value": "inflationThisYear*100", "precision": 1 }
+      },
       "choices": [
         {
           "id": "absorb",
@@ -207,6 +223,9 @@
       "multipliers": [],
       "title": "Save the date",
       "body": "The invitation is beautiful and the venue is four hours away. Between the gift, the travel and the outfit, it's {{weddingCost}}.",
+      "displayVars": {
+        "weddingCost": { "as": "money", "value": "clamp(0.308*monthlyIncome*(0.4+1.8*roll), cpi*25000, cpi*150000)" }
+      },
       "choices": [
         {
           "id": "go_all_in",
@@ -243,6 +262,9 @@
       "multipliers": [],
       "title": "The renewal letter",
       "body": "Same apartment, same everything, {{rentIncrease}} more a month starting in sixty days.",
+      "displayVars": {
+        "rentIncrease": { "as": "money", "value": "clamp(0.045*monthlyIncome*(0.33+2.0*roll), cpi*5000, cpi*40000)" }
+      },
       "choices": [
         {
           "id": "absorb",
@@ -294,6 +316,9 @@
       ],
       "title": "Not covered",
       "body": "The appointment was routine. The x-ray was not. The receptionist reads the number off the screen in the same voice she used to confirm your address: {{dentalCost}}.",
+      "displayVars": {
+        "dentalCost": { "as": "money", "value": "clamp(0.265*monthlyIncome*(0.4+2.6*roll), cpi*30000, cpi*140000)" }
+      },
       "choices": [
         {
           "id": "pay",

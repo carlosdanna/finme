@@ -177,6 +177,12 @@ export interface AdvanceResult {
   readonly run: Run;
   readonly interrupts: readonly Interrupt[];
   readonly weeksAdvanced: number;
+  /**
+   * Set when the run stopped on an event the caller declined to answer. `run`
+   * sits at the start of that week; pass this back as `TickInput.eventRoll`
+   * when re-ticking it, so the event costs what its card said it would.
+   */
+  readonly eventRoll: number | null;
 }
 
 /**
@@ -199,25 +205,25 @@ export function advance(
   for (let step = 0; step < budget; step++) {
     const result: TickResult = tick(current.world, current.streams, current.state, inputFor(current.state));
     if (result.interrupts.some((i) => i.reason === 'run-complete')) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced };
+      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: null };
     }
 
     // The caller wants to answer an event before the week is committed. `tick`
     // gave back the state it was handed and consumed no draw, so stopping here
     // leaves the run exactly as it was at the start of that week.
     if (result.awaitingEventChoice !== null) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced };
+      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: result.eventRoll };
     }
 
     current = { ...current, state: result.state };
     weeksAdvanced++;
 
     if (result.interrupts.length > 0) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced };
+      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: null };
     }
   }
 
-  return { run: current, interrupts: [], weeksAdvanced };
+  return { run: current, interrupts: [], weeksAdvanced, eventRoll: null };
 }
 
 /** Run `weeks` ticks regardless of interrupts. Used by the harness and fixtures. */
