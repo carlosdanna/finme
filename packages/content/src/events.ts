@@ -18,21 +18,16 @@ import {
 import { z } from 'zod';
 import data from '../events/mvp.json' with { type: 'json' };
 
-/**
- * Placeholders supplied by the run rather than by the event: the friend and
- * advisor names drawn once at init (TDD §12).
- */
+/** Placeholders the run supplies rather than the event (TDD §12). */
 export const RUN_SCOPED_VARS: readonly string[] = ['friendName', 'advisorName'];
 
 /** A magnitude is a literal number or a formula string (TDD §9.3). */
 const magnitudeSchema = z.union([z.number(), z.string().min(1)]);
 
 /**
- * One `{{placeholder}}` value: what to compute, and how to render it.
- *
- * `money` goes through the UI's `<Money>` formatting. `number` is a bare
- * figure for prose that supplies its own unit — the bodies here read
- * "{{raisePct}} percent", so a `<Pct>` would print the symbol twice.
+ * One `{{placeholder}}` value: what to compute, and how to render it. `number`
+ * is bare, for prose that supplies its own unit — the bodies read "{{raisePct}}
+ * percent", so a `<Pct>` would print the symbol twice.
  */
 const displayVarSchema = z.object({
   as: z.enum(['money', 'number']),
@@ -48,10 +43,8 @@ const asPool = (value: string | readonly string[]): readonly string[] =>
   Array.isArray(value) ? value : [value as string];
 
 /**
- * [T] Minimum card variants by rarity tier (`docs/EVENT-CATALOGUE.md` §3.3).
- *
- * Budgeted by how often the tier repeats: a common event is read six or seven
- * times in a run, a rare one usually once. The Logbook has had a floor of 3 per
+ * [T] Minimum card variants by rarity tier (`docs/EVENT-CATALOGUE.md` §3.3),
+ * budgeted by how often the tier repeats. The Logbook has had a floor of 3 per
  * key since it shipped, for the same reason — see `MIN_VARIANTS_PER_KEY`.
  */
 export const MIN_CARD_VARIANTS: Readonly<Record<'common' | 'uncommon' | 'rare', number>> = {
@@ -166,12 +159,8 @@ export const eventSchema = z
     title: cardTextSchema,
     body: cardTextSchema,
     /**
-     * Values for the `{{placeholders}}` in `title` and `body`.
-     *
-     * Each is a magnitude in the same language as an effect's, evaluated
-     * against the same context and the same `roll`. Writing the number twice —
-     * once for the card and once for the effect — is how a card ends up
-     * quoting a price the choice does not charge.
+     * Values for the `{{placeholders}}` in `title` and `body`. Magnitudes in
+     * the same language as an effect's, against the same context and `roll`.
      */
     displayVars: z.record(z.string().min(1), displayVarSchema).optional(),
     choices: z.array(choiceSchema).min(2),
@@ -185,10 +174,8 @@ export const eventSchema = z
       choiceIds.add(choice.id);
     }
 
-    // Every placeholder must have a value. `interpolate` leaves an unknown key
-    // as literal text, so without this lint a typo ships as `{{repairCost}}`
-    // printed on the card — which is exactly how the first eight events went
-    // out. `friendName` and `advisorName` come from the run, not the event.
+    // `interpolate` passes an unknown key through as literal text, so without
+    // this a typo ships as `{{repairCost}}` on the card.
     const declared = new Set([...Object.keys(event.displayVars ?? {}), ...RUN_SCOPED_VARS]);
     const titles = asPool(event.title);
     const bodies = asPool(event.body);
@@ -216,8 +203,7 @@ export const eventSchema = z
       }
     }
 
-    // A variant is a whole card. Pairing index i of one pool with index i of
-    // the other only means anything if the pools line up.
+    // A variant is a whole card, so the pools must line up.
     if (titles.length > 1 && bodies.length > 1 && titles.length !== bodies.length) {
       ctx.addIssue({
         code: 'custom',
@@ -308,9 +294,8 @@ export function collectFormulas(
       }
     }
 
-    // Card values are formulas too. Leaving them out meant a typo'd variable
-    // passed every check and then threw a FormulaError out of the tick, at the
-    // moment the player was shown the card.
+    // Card values are formulas too; omitting them let a typo'd variable pass
+    // every check and then throw out of the tick.
     for (const spec of Object.values(event.displayVars ?? {})) {
       push(event.id, spec.value);
     }

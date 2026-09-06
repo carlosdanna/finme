@@ -186,13 +186,11 @@ export interface RunStreams {
   readonly eventOutcome: Rng;
   readonly jobApplication: Rng;
   /**
-   * One draw per *fired event*, feeding the `roll` formula variable so an
-   * event's magnitude varies between firings (TDD §9.3).
+   * One draw per fired event, feeding the `roll` formula variable (TDD §9.3).
    *
-   * [F] Its own stream, not a second use of `eventOutcome`. Adding a draw to an
-   * existing stream shifts every later value on it and silently rewrites what
-   * each existing seed produces; a new name derives an independent generator
-   * and disturbs nothing.
+   * [F] Its own stream, not a second use of `eventOutcome`: adding a draw to an
+   * existing stream shifts every later value on it and rewrites what each
+   * existing seed produces.
    */
   readonly eventMagnitude: Rng;
   /**

@@ -38,14 +38,10 @@ export interface ScheduledEffect {
   readonly effects: readonly Effect[];
   readonly logbookKey?: string;
   /**
-   * The magnitude roll of the event that scheduled this.
-   *
-   * A deferred effect does not re-roll — its size belongs to the choice that
-   * scheduled it, not to the week it lands in. `HLT_UNEXPECTED_DENTAL`'s
-   * "postpone" schedules a cost derived from the same `roll` as the price the
-   * card quoted, so a bad x-ray stays a bad x-ray six months later. Without
-   * this the deferred formula falls back to `roll = 0.5` and every player pays
-   * the same constant however severe their card was.
+   * The magnitude roll of the event that scheduled this. A deferred effect does
+   * not re-roll: its size belongs to the choice that scheduled it, so a bad
+   * x-ray is still a bad x-ray six months later. Without it the formula falls
+   * back to 0.5 and every player pays the same constant.
    */
   readonly roll?: number;
 }
@@ -211,8 +207,7 @@ export function resolveChoice(
           condition: deferred.condition,
           effects: deferred.effects,
           logbookKey: deferred.logbookKey,
-          // Carried, not re-rolled — see `ScheduledEffect.roll`.
-          roll: context.vars.roll,
+          roll: context.vars.roll, // carried, not re-rolled
         })),
       ],
     };
@@ -231,12 +226,9 @@ const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
 /**
  * Interpolate `{{var}}` placeholders in an event body.
  *
- * An unresolved key is left as written. That is deliberate for the *renderer* —
- * a card with one missing number is better than a card that throws — but it is
- * also how eight events shipped showing the player a literal `{{repairCost}}`.
- * The load-time lint in `@finme/content` is what stops that: it fails the build
- * when a body references a key the event does not declare, so a missing value
- * cannot reach a renderer in the first place.
+ * An unresolved key is left as written — better than throwing mid-render, but
+ * also how eight events shipped printing a literal `{{repairCost}}`. The
+ * load-time lint in `@finme/content` is what keeps one from getting this far.
  */
 export function interpolate(template: string, values: Readonly<Record<string, string>>): string {
   return template.replace(PLACEHOLDER, (match, key: string) =>

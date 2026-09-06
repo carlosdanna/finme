@@ -51,14 +51,10 @@ function fillerEvent(n: number, baseWeight: number): EventDef {
 }
 
 /**
- * [T] The rarity mix fillers are drawn in, from `docs/EVENT-CATALOGUE.md` §4:
- * 21 common, 35 uncommon, 20 rare across a 76-event pool.
+ * [T] The rarity mix fillers are drawn in (`docs/EVENT-CATALOGUE.md` §4).
  *
- * Fillers used to be uniformly common, which made the diluted pool a bad model
- * of a real one — C5 then measured a pool with no rare events and only the two
- * uncommon ones the shipped content happens to contain, and reported their
- * over-representation as a content failure. Matching the catalogue's mix is what
- * makes the diagnostic diagnostic.
+ * Uniformly-common fillers made the diluted pool a bad model of a real one: C5
+ * then measured a pool with no rare events at all.
  */
 const FILLER_TIER_MIX: readonly number[] = (() => {
   const counts: readonly (readonly [number, number])[] = [
@@ -66,10 +62,7 @@ const FILLER_TIER_MIX: readonly number[] = (() => {
     [BASE_WEIGHT_UNCOMMON, 35],
     [BASE_WEIGHT_RARE, 20],
   ];
-  // Interleave proportionally rather than concatenating blocks, so that *any*
-  // prefix is a representative mix. A blocked list would give a 37-filler pool
-  // 21 common, 16 uncommon and no rare events at all, and C5 would then report
-  // "rare: no events in pool" while claiming to model a real one.
+  // Interleaved, not blocked, so any prefix is a representative mix.
   return counts
     .flatMap(([weight, n]) =>
       Array.from({ length: n }, (_, k) => ({ weight, spread: (k + 0.5) / n })),
@@ -229,28 +222,19 @@ export function runC3(seedCount = 120): CResult {
 // --- C4 — decision density --------------------------------------------------
 
 /**
- * [T] Decision points per 30-year run.
+ * [T] Decision points per 30-year run (issue #1, 2026-09-06).
  *
- * Rev 2 (2026-09-06, issue #1). The old band was 150-250, which contradicted GDD
- * §5.3's stated frequency of one event every 4-6 weeks. Those are the same
- * number seen from two directions — every event presents 2-3 choices, so an
- * event *is* a decision point — and §5.3 plus the implemented `SLOT_LAMBDA`
- * already agreed with each other at ~255. C4 was the outlier, so C4 moved.
- *
- * The ceiling is 320 rather than 255 to leave headroom for a larger pool: a
- * bigger pool makes fewer slots pass silently for want of an eligible event, so
- * density rises with pool size even though the slot schedule never changes.
+ * An event *is* a decision point, so §5.3's frequency and this are the same
+ * number; they agreed at ~255 and C4's old 150-250 was the outlier. The ceiling
+ * is 320 rather than 255 because a larger pool leaves fewer slots with nothing
+ * eligible, so density rises with pool size on a fixed schedule.
  */
 export const DENSITY_MIN = 150;
 export const DENSITY_MAX = 320;
 
 /**
- * [T] Longest acceptable stretch with no player interaction.
- *
- * GDD Appendix C4 says "~6 in-game months". Six 4-4-5 months is 26 weeks, but
- * this assertion has always been 30 and the printed label always said 26. 30 is
- * the one that was actually being enforced, so it is the one kept, and "~6
- * months" is loose enough to cover it.
+ * [T] Longest acceptable stretch with no player interaction. C4 says "~6 in-game
+ * months"; the assertion has always been 30 while the label said 26. Kept at 30.
  */
 export const QUIET_STRETCH_MAX_WEEKS = 30;
 
@@ -299,27 +283,13 @@ export function runC4(seedCount = 60, pool?: readonly EventDef[]): CResult {
 type Tier = 'common' | 'uncommon' | 'rare';
 
 /**
- * [T] How often one event may fire in a 30-year run, **per rarity tier**,
- * measured at the **p90** of the (run, event) distribution.
+ * [T] Firings of one event per 30-year run, per rarity tier, at the **p90** of
+ * the (run, event) distribution (issue #1, 2026-09-06).
  *
- * Rev 2 (2026-09-06, issue #1) changed two things about this check.
- *
- * **Per tier, not global.** The old limit of 4 applied to every event, which the
- * weight system makes incoherent: a common event carries eight times a rare
- * event's weight and so fires eight times as often by design. Holding both to
- * one ceiling asks the weights not to mean anything.
- *
- * **p90, not the worst case.** The old check asserted on the maximum across
- * every run, which is not a specification at all — the max of a distribution
- * grows with the number of samples, so raising `seedCount` made the test
- * stricter without any change to the game. p90 says "nine times in ten an event
- * of this tier fires no more than N times in a run", which is stable under seed
- * count and is what the design statement in §5.3 is actually about.
- *
- * The numbers scale §5.3's "no more than 3–4 times" by tier weight: a common
- * event is 100/45 as likely as an uncommon one and 100/12 as likely as a rare
- * one. A car that breaks down six times in thirty years is not a content
- * failure; it is a car.
+ * Per tier because a common event carries 8x a rare event's weight and fires 8x
+ * as often by design. At p90 rather than the maximum because a maximum grows
+ * with sample count, so the old check got stricter when `seedCount` rose.
+ * Numbers scale §5.3's "no more than 3-4 times" by tier weight.
  */
 export const REPEAT_LIMIT_P90: Readonly<Record<Tier, number>> = {
   common: 8,
@@ -354,11 +324,9 @@ export function runC5(seedCount = 200, pool?: readonly EventDef[]): CResult {
       worst[tier] = Math.max(worst[tier], weeks.length);
       repeatCounts.push(weeks.length);
 
-      // The invariant this check used to reach for. It replaces "no event
-      // repeats inside the first 5 years", which no pool could ever satisfy:
-      // with ~42 firings in five years a common event fires ~1.1 times on
-      // average, so a repeat somewhere across 200 runs is a certainty rather
-      // than a defect. Cooldown respect is the real, testable guarantee.
+      // Replaces "no event repeats inside the first 5 years", which no pool
+      // could satisfy: a common event has ~1.1 expected firings in five years,
+      // so a repeat somewhere across 200 runs is a certainty, not a defect.
       for (let i = 1; i < weeks.length; i++) {
         if (weeks[i] - weeks[i - 1] < event.cooldownWeeks) cooldownBreaches++;
       }
@@ -479,13 +447,9 @@ export function runCSuiteAtMvpPool(): CResult[] {
 }
 
 /**
- * C5 against GDD §5.3's **full-game** pool target.
- *
- * C5's per-tier limits describe the shipped game, not an interim milestone, so
- * they are only reachable once the pool is the size §5.3 asks for. Without this
- * diagnostic the limits look aspirational; with it, the suite shows that they
- * are met by pool size alone and that every failure above is unwritten content
- * rather than a broken parameter. See `docs/EVENT-CATALOGUE.md` §5.2.
+ * C5 against §5.3's full-game pool target. Its limits describe the shipped game,
+ * so this is what shows they are met by pool size alone — and that the failures
+ * above are unwritten content rather than a broken parameter.
  */
 export function runC5AtFullPool(): CResult {
   const result = runC5(60, dilutedPool(FULL_POOL_SIZE));

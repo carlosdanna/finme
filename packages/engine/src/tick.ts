@@ -91,24 +91,16 @@ export interface TickInput {
   readonly allocation?: Allocation;
   /**
    * Which choice to take if an event fires. Defaults to the first available.
-   *
-   * Returning `null` means **"the player has not answered yet"**: the week is
-   * abandoned, `tick` returns the state it was given, and the caller re-ticks
-   * the same state once a choice exists. That is what lets an interactive
-   * front-end show the card before the week is committed — see
-   * `TickResult.awaitingEventChoice`.
+   * Returning `null` means "not answered yet" — the week is abandoned and the
+   * caller re-ticks the same state once a choice exists.
    */
   readonly chooseEvent?: (eventId: string, choiceIds: readonly string[]) => string | null;
   /** Discretionary spending this week, for the mood term. */
   readonly discretionarySpendCents?: number;
   /**
-   * The magnitude roll for this week's event, from a previous `tick` that
-   * returned `awaitingEventChoice`.
-   *
-   * Supplying it means **no new draw is taken**, which is the whole point: the
-   * card the player read quoted a price computed from that roll, so the choice
-   * they made must be charged the same one. Without this the resolving tick
-   * would draw again and charge a different number than the card showed.
+   * The magnitude roll from a previous `tick` that returned
+   * `awaitingEventChoice`. Supplying it takes no new draw, so the choice is
+   * charged the price the card quoted.
    */
   readonly eventRoll?: number;
 }
@@ -118,16 +110,12 @@ export interface TickResult {
   readonly interrupts: readonly Interrupt[];
   readonly firedEventId: string | null;
   /**
-   * The event whose choice the caller declined to make, or `null`.
+   * The event whose choice the caller declined to make, or `null`. `state` is
+   * then the state `tick` was given — the week did not happen.
    *
-   * When set, `state` is **the state `tick` was given** — the week did not
-   * happen. The only stream touched is `eventMagnitude`, which takes its single
-   * per-event draw here and hands it back as `eventRoll`; `eventOutcome` (which
-   * only a choice with an `outcomeRoll` takes) and the Logbook's `flavor` draw
-   * both come later and are untouched. Feed `eventRoll` back into the resolving
-   * tick and the total is exactly one draw per fired event either way — the
-   * same count a §14 replay produces, which is what keeps a live session and
-   * its own reload in step.
+   * [F] Only `eventMagnitude` is touched, taking its single per-event draw and
+   * returning it as `eventRoll`. Fed back into the resolving tick, the total is
+   * one draw per fired event either way — the count a §14 replay produces.
    */
   readonly awaitingEventChoice: string | null;
   /** The roll drawn for the awaited event. Pass it back as `TickInput.eventRoll`. */
@@ -197,13 +185,10 @@ export function lifeStageFor(age: number): string {
 /**
  * The formula context an event's magnitudes are evaluated against (§9.3).
  *
- * `roll` is a uniform in [0, 1) drawn once per fired event, so a magnitude can
- * say `0.6*monthlyIncome*(0.5+1.5*roll)` and cost a different amount each time
- * the event lands. It defaults to 0.5 — the middle of the spread — only for
- * contexts with no event behind them at all. A deferred effect is not one of
- * those: it carries the roll of the choice that scheduled it (see
- * `ScheduledEffect.roll`), because its size belongs to that decision rather
- * than to the week it happens to land in.
+ * `roll` is a uniform in [0, 1) drawn once per fired event, so a magnitude like
+ * `0.6*monthlyIncome*(0.5+1.5*roll)` costs a different amount each firing. It
+ * falls back to 0.5 only for contexts with no event behind them — a deferred
+ * effect carries its scheduling roll instead (see `ScheduledEffect.roll`).
  */
 export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5) {
   const week = state.weekIndex;
@@ -217,8 +202,7 @@ export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5)
       mood: state.mood,
       energy: state.energy,
       roll,
-      // Rates, as fractions. A card that wants "2.4 percent" writes
-      // `inflationThisYear*100`; nothing here formats.
+      // Fractions, not percentages — a card writes `inflationThisYear*100`.
       inflationThisYear:
         world.market.inflation.annualRate[Math.min(yearIndex(week), state.runLengthYears - 1)],
       lastRaisePct: state.lastRaisePct,
@@ -231,15 +215,10 @@ export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5)
 /**
  * The context the *next* `tick` will evaluate this week's event in.
  *
- * Step 1 of the pipeline increments `weekIndex` before anything reads it, so a
- * caller holding the pre-tick state — an interactive front-end showing a card
- * for a week it has not committed — is one week behind. Evaluating a card's
- * `displayVars` against the un-incremented state quotes prices from the wrong
- * week: harmless most of the time, and wrong by a whole year's inflation
- * whenever the event lands on a year boundary.
- *
- * The `+ 1` lives here rather than in the caller because it is a fact about the
- * pipeline, not about the UI.
+ * Step 1 increments `weekIndex` before anything reads it, so a caller holding
+ * the pre-tick state is one week behind — quoting a card from it is wrong by a
+ * whole year's inflation whenever the event lands on a year boundary. The `+ 1`
+ * lives here because it is a fact about the pipeline, not about the UI.
  */
 export function pendingEventContext(state: RunState, world: RunWorld, roll: number) {
   return formulaContextFrom({ ...state, weekIndex: state.weekIndex + 1 }, world, roll);
@@ -427,18 +406,12 @@ export function tick(
       const available = selected.choices.filter(
         (choice) => (choice.requires ?? []).every((gate) => passesGate(gate, eventStateFrom(state, world))),
       );
-      // [F] Exactly one draw per fired event — never per choice and never per
-      // effect, and never a second time for a week the caller is re-ticking
-      // after showing the card. The count must not depend on which choice the
-      // player took, or two players sharing a seed would fall out of step the
-      // first time they answered a card differently.
+      // [F] One draw per fired event. A count that varied with the choice
+      // taken would put two players sharing a seed out of step.
       const roll = input.eventRoll ?? streams.eventMagnitude();
 
       const pick = input.chooseEvent?.(selected.id, available.map((c) => c.id));
 
-      // The caller declined to choose: the player is looking at the card. Give
-      // back the state we were handed, along with the roll, so the week can be
-      // re-ticked and charged exactly the number the card quoted.
       if (pick === null) {
         return {
           state: previous,

@@ -1,14 +1,8 @@
 /**
  * `{{placeholder}}` values for an event card.
  *
- * **No simulation logic.** Every number comes from the engine's own formula
- * evaluator, against the engine's own context and the event's own `roll`. This
- * file decides how a number *reads*, not what it is — which is the only reason
- * it may live in the UI package at all.
- *
- * The card and the effects therefore quote the same formula string evaluated
- * the same way. Writing the number twice is how a card ends up promising a
- * price the choice does not charge.
+ * **No simulation logic.** Every number comes from the engine's own evaluator,
+ * context and `roll`; this file decides how a number *reads*, not what it is.
  */
 import {
   type EventDef,
@@ -31,7 +25,7 @@ export function eventDisplayVars(
   world: RunWorld,
   roll: number,
 ): Record<string, string> {
-  // `state` is the week *before* the event's own. The engine owns that offset.
+  // `state` is the week before the event's own; the engine owns that offset.
   const context = pendingEventContext(state, world, roll);
   const out: Record<string, string> = {};
 

@@ -28,11 +28,10 @@ const formulaContext = {
     monthlyIncome: 400_000,
     carScrapValue: 192_000,
     performanceNorm: 0.6,
-    // The per-firing magnitude draw (TDD §9.3). Held at the middle of its range
-    // here; the spread itself is exercised by the engine tests.
+    // The per-firing magnitude draw (TDD §9.3), held at mid-range.
     roll: 0.5,
-    // Rates a card may quote. Must mirror `formulaContextFrom` — a name missing
-    // here fails the lint as "unknown identifier" even though it is real.
+    // Must mirror `formulaContextFrom` — a name missing here fails the lint as
+    // unknown even though it is real.
     inflationThisYear: 0.031,
     lastRaisePct: 0.018,
   },
@@ -228,8 +227,7 @@ describe('golden: fixed seed, fixed state, exact selection and delta', () => {
         condition: { type: 'flag', value: 'job_requires_vehicle' },
         effects: [{ k: 'flag', add: 'job_at_risk_no_vehicle' }],
         logbookKey: undefined,
-        // Carried from the scheduling choice, so a deferred cost keeps the
-        // severity the card quoted rather than falling back to the midpoint.
+        // Carried from the scheduling choice, not reset to the midpoint.
         roll: formulaContext.vars.roll,
       },
     ]);
@@ -317,21 +315,15 @@ describe('golden: fixed seed, fixed state, exact selection and delta', () => {
 });
 
 /**
- * A card must not promise a price nothing charges.
- *
- * `displayVars` and effects are two separate formula strings, so they can drift
- * apart silently — the card says $400, the choice takes $700, and no test that
- * only runs the simulation would notice unless that particular event happened
- * to fire. This is checked statically instead, so it covers every event in the
- * pool rather than the handful a given seed reaches.
+ * A card must not promise a price nothing charges. `displayVars` and effects are
+ * separate formula strings and can drift apart silently. Checked statically, so
+ * it covers the whole pool rather than the handful a given seed reaches.
  */
 describe('event cards quote what they charge', () => {
   /**
-   * Magnitudes an event actually applies, as written and unsigned.
-   *
-   * A cost is written negated (`-clamp(...)`) while the card quotes the price
-   * itself, and "put it on the card" charges the same price as a `debt`
-   * principal rather than as cash — both are the same number to the player.
+   * Magnitudes an event applies, as written and unsigned: costs are negated
+   * while the card quotes the price, and "put it on the card" charges the same
+   * price as a debt principal.
    */
   function chargedMagnitudes(event: EventDef): string[] {
     return event.choices
@@ -355,8 +347,8 @@ describe('event cards quote what they charge', () => {
       for (const [key, spec] of Object.entries(event.displayVars ?? {})) {
         if (spec.as !== 'money') continue;
         const charged = chargedMagnitudes(event);
-        // Formula strings are compared verbatim: the point is that the card and
-        // the effect are the *same* expression, not merely equal on one seed.
+        // Compared verbatim: the card and the effect must be the *same*
+        // expression, not merely equal on one seed.
         expect(charged, `${event.id}.${key} quotes a price no choice charges`).toContain(
           String(spec.value).replace(/^-/, ''),
         );
@@ -364,7 +356,7 @@ describe('event cards quote what they charge', () => {
       }
     }
 
-    // Every shipped money card is covered, so this cannot pass by finding none.
+    // So this cannot pass by finding nothing to check.
     expect(checked.length).toBeGreaterThanOrEqual(5);
   });
 });
@@ -375,11 +367,9 @@ function structuredCloneish<T>(value: T): T {
 }
 
 /**
- * A repeated event must not read identically every time.
- *
- * The Logbook has had a 3-variant floor since it shipped; the event card, which
- * the player reads *during* the decision rather than after it, had none. A
- * common event fires six or seven times in a 30-year run.
+ * A repeated event must not read identically every time. The Logbook has had a
+ * 3-variant floor since it shipped; the card, read *during* the decision, had
+ * none, and a common event fires six or seven times a run.
  */
 describe('event card variants', () => {
   it('gives a different card on a later firing of the same event', () => {
@@ -388,8 +378,7 @@ describe('event card variants', () => {
 
     for (const event of repeatable) {
       const seen = new Set<string>();
-      // Consecutive weeks stand in for consecutive firings; cooldowns mean real
-      // firings are much further apart, which only spreads them further.
+      // Consecutive weeks stand in for firings; cooldowns only spread them more.
       for (let week = 0; week < (event.body as string[]).length; week++) {
         seen.add(cardVariant(event, week).body);
       }
@@ -402,8 +391,7 @@ describe('event card variants', () => {
   it('pairs a title with its own body, and is stable for a given week', () => {
     const event = eventById('EMG_CAR_BREAKDOWN')!;
     expect(cardVariant(event, 41)).toEqual(cardVariant(event, 41));
-    // One title against a pool of bodies: the title is reused, not indexed off
-    // the end.
+    // One title against a pool of bodies: reused, not indexed off the end.
     expect(cardVariant(event, 41).title).toBe(event.title);
   });
 });

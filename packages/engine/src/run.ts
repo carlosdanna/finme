@@ -179,8 +179,7 @@ export interface AdvanceResult {
   readonly weeksAdvanced: number;
   /**
    * Set when the run stopped on an event the caller declined to answer. `run`
-   * sits at the start of that week; pass this back as `TickInput.eventRoll`
-   * when re-ticking it, so the event costs what its card said it would.
+   * sits at the start of that week; pass this back as `TickInput.eventRoll`.
    */
   readonly eventRoll: number | null;
 }
@@ -208,13 +207,9 @@ export function advance(
       return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: null };
     }
 
-    // The caller wants to answer an event before the week is committed. `tick`
-    // gave back the state it was handed, so no week is applied — but it *did*
-    // take the event's single `eventMagnitude` draw, returned here as
-    // `eventRoll`. Feed that back through `TickInput.eventRoll` when re-ticking
-    // the week; calling `advance` again instead abandons a second week and
-    // burns a second draw, putting the session ahead of a §14 replay of its own
-    // decision log.
+    // No week is applied, but the `eventMagnitude` draw *was* taken and comes
+    // back as `eventRoll`. Feed it to the re-tick rather than calling `advance`
+    // again, which burns a second draw.
     if (result.awaitingEventChoice !== null) {
       return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: result.eventRoll };
     }

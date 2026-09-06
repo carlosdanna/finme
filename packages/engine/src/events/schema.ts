@@ -130,9 +130,9 @@ export interface Choice {
 }
 
 /**
- * A `{{placeholder}}` value for an event card: what to compute, and how it is
- * meant to read. Evaluated against the same context and the same `roll` as the
- * event's effects, so the card cannot quote a price the choice will not charge.
+ * A `{{placeholder}}` value for an event card. Evaluated against the same
+ * context and `roll` as the effects, so the card cannot quote a price the
+ * choice will not charge.
  */
 export interface DisplayVar {
   readonly as: 'money' | 'number';
@@ -154,12 +154,9 @@ export interface EventDef {
   /** One title, or one per card variant. Supports {{var}} interpolation. */
   readonly title: string | readonly string[];
   /**
-   * One body, or one per card variant.
-   *
-   * A common event fires six or seven times in a run and the player reads this
-   * paragraph every time, so repeatable events carry several. Variant counts
-   * are budgeted by rarity tier in `docs/EVENT-CATALOGUE.md` §3.3 and enforced
-   * at load. Supports {{var}} interpolation.
+   * One body, or one per card variant. A common event fires six or seven times
+   * in a run, so repeatable events carry several — budgeted by rarity tier in
+   * `docs/EVENT-CATALOGUE.md` §3.3 and enforced at load.
    */
   readonly body: string | readonly string[];
   /** Values for the placeholders in `title` and `body`. */
@@ -173,15 +170,10 @@ export type EventHistory = Readonly<Record<string, readonly number[]>>;
 /**
  * The card to show for one firing of an event.
  *
- * Deliberately **not** an RNG draw. The variant is a pure function of the event
- * and the week it fired in, so it needs no stream, cannot shift one, and gives
- * the same card to two players sharing a seed. Adding a variant changes which
- * card an existing seed shows — prose only, never a number — which is the same
- * licence the Logbook has under TDD §2.2.
- *
- * When both `title` and `body` are pools they must be the same length, and the
- * index picks a matching pair: a variant is a whole card, not two independent
- * draws that could pair an opening line with the wrong follow-through.
+ * Deliberately not an RNG draw: a pure function of the event and its week needs
+ * no stream and cannot shift one. Adding a variant changes which card a seed
+ * shows — prose only, never a number, the same licence the Logbook has (§2.2).
+ * The index picks a matching title/body pair, so a variant is a whole card.
  */
 export function cardVariant(event: EventDef, weekIndex: number): { title: string; body: string } {
   const titles = Array.isArray(event.title) ? event.title : [event.title as string];

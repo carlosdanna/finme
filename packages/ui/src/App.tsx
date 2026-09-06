@@ -75,9 +75,8 @@ export default function App() {
   if (run === null) return null;
   const { state, world } = run;
 
-  // The event card's placeholders: the event's own computed values, plus the
-  // two names the run drew at init. Event keys are declared in content and
-  // linted at load, so a card can never reach here with an unresolved one.
+  // Event-computed values plus the two names the run drew at init. Event keys
+  // are linted at load, so none can arrive here unresolved.
   const cardVars = {
     ...(pendingEvent?.vars ?? {}),
     friendName: world.names.friendName,

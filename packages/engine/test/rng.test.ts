@@ -86,10 +86,8 @@ describe('stream derivation (TDD §2.2)', () => {
       'eventOutcome',
       'jobApplication',
       'flavor',
-      // Added 2026-09-06 for per-firing event magnitudes. Appending a name is
-      // safe in a way that reordering or renaming is not: each stream is
-      // derived from `fnv1a(seed::name)`, so the existing five keep generating
-      // exactly what they generated before.
+      // Appending is safe where reordering or renaming is not: streams derive
+      // from `fnv1a(seed::name)`, so the existing five are unaffected.
       'eventMagnitude',
     ]);
     expect(STREAM_NAMES).toHaveLength(9);

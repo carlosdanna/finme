@@ -46,10 +46,7 @@ export type Panel =
 export interface PendingEvent {
   readonly event: EventDef;
   readonly choiceIds: readonly string[];
-  /**
-   * The event's magnitude roll, drawn when the card was presented and fed back
-   * into the resolving tick so the player is charged the number they read.
-   */
+  /** Drawn when the card was presented, fed back into the resolving tick. */
   readonly roll: number;
   /** `{{placeholder}}` values for the card, already formatted. */
   readonly vars: Readonly<Record<string, string>>;
@@ -104,10 +101,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   advanceTime: () => {
     const { run, granularity, allocation, pendingEvent: awaiting } = get();
     if (run === null) return;
-    // A card is already open. Advancing again would abandon a second week and
-    // take a second `eventMagnitude` draw for an event that has not resolved,
-    // leaving the session one draw ahead of a replay of its own decision log.
-    // The advance control is disabled while a card is up; this is the guard for
+    // A second advance would take another `eventMagnitude` draw for an
+    // unresolved event. The control is disabled while a card is up; this guards
     // every other way in.
     if (awaiting !== null) return;
 
@@ -119,10 +114,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       stateAtWeekStart = state;
       return {
         allocation,
-        // Decline to choose. The engine abandons the week untouched and hands
-        // it back; the modal asks, and `resolveEvent` ticks that same week once
-        // with the real answer. Returning a default here instead would commit a
-        // week the player never agreed to and then tick a second one on top.
+        // Decline, so the week comes back untouched for the modal to ask
+        // about. A default here would commit a week the player never chose.
         chooseEvent: (eventId, choiceIds) => {
           const event = run.world.eventDefs.find((definition) => definition.id === eventId);
           if (event !== undefined) {
@@ -143,11 +136,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
             event,
             choiceIds: capturedChoiceIds,
             roll,
-            // Evaluated against the *event's own* week — the one about to be
-            // ticked — and the roll it will be charged with.
             vars: eventDisplayVars(event, stateAtWeekStart, run.world, roll),
-            // The week the event fires in, so the same event reads differently
-            // on its second and third visit.
+            // Keyed on the firing week, so a repeat reads differently.
             ...cardVariant(event, pendingEventWeek(stateAtWeekStart)),
           };
 
@@ -166,10 +156,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resolveEvent: (choiceId) => {
     const { run, allocation } = get();
     if (run === null) return;
-    // Tick the event's own week — the one `advanceTime` left uncommitted — with
-    // the player's actual choice. This is the first and only time that week
-    // runs, so its interrupts are the ones to surface. The roll comes back from
-    // the presenting tick, so the choice is charged what the card quoted.
+    // The week `advanceTime` left uncommitted, with the real choice and the
+    // roll the card quoted. Its first and only run, so its interrupts stand.
     const pending = get().pendingEvent;
     const input: TickInput = {
       allocation,
