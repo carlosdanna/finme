@@ -118,9 +118,27 @@ by the spread's mean:
 => 0.48 × monthlyIncome × (0.5 + 1.5·roll)    mean 0.6, unchanged
 ```
 
-The clamp bounds stay where they were; they truncate the tails, which is what
-they are for. Balance changes are a separate decision from variance and belong in
-their own DECISIONS entry.
+**The mean is preserved before the clamp, not after it.** The clamp bounds stay
+where they were, and truncating a spread is not mean-neutral: mass that would
+have landed above the ceiling piles up on it instead. Where the *old* fixed value
+already sat at the ceiling, the spread can only move downwards, so the effective
+mean falls. For `EMG_CAR_BREAKDOWN`:
+
+| monthlyIncome | old | new E[cost] | |
+|---|---|---|---|
+| $2,000 | $1,200 | $1,195 | −0.4% |
+| $3,000 | $1,800 (clamped) | $1,530 | **−15.0%** |
+| $3,500 | $1,800 (clamped) | $1,617 | −10.2% |
+| $4,500 | $1,800 (clamped) | $1,720 | −4.4% |
+| $6,000 | $1,800 (clamped) | $1,785 | −0.8% |
+
+The effect is nil at low incomes, largest just past the point where the old value
+started pinning, and fades again as the spread's lower half also clears the
+ceiling. It is a real softening in the mid band, accepted rather than corrected:
+widening the clamps to compensate would be a balance change, and balance changes
+are a separate decision from variance and belong in their own DECISIONS entry.
+Anyone adding a spread to a clamped anchor should check this table's shape
+against their own bounds.
 
 ### 3.2 Outcome variance — *works today*
 

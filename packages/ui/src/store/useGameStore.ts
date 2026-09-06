@@ -17,6 +17,7 @@ import {
   type TickInput,
   advance,
   cardVariant,
+  pendingEventWeek,
   defaultGranularity,
   parseSave,
   planLoad,
@@ -101,8 +102,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   dismissInterrupts: () => set({ interrupts: [] }),
 
   advanceTime: () => {
-    const { run, granularity, allocation } = get();
+    const { run, granularity, allocation, pendingEvent: awaiting } = get();
     if (run === null) return;
+    // A card is already open. Advancing again would abandon a second week and
+    // take a second `eventMagnitude` draw for an event that has not resolved,
+    // leaving the session one draw ahead of a replay of its own decision log.
+    // The advance control is disabled while a card is up; this is the guard for
+    // every other way in.
+    if (awaiting !== null) return;
 
     let capturedEvent: EventDef | null = null;
     let capturedChoiceIds: readonly string[] = [];
@@ -141,7 +148,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             vars: eventDisplayVars(event, stateAtWeekStart, run.world, roll),
             // The week the event fires in, so the same event reads differently
             // on its second and third visit.
-            ...cardVariant(event, stateAtWeekStart.weekIndex + 1),
+            ...cardVariant(event, pendingEventWeek(stateAtWeekStart)),
           };
 
     set({ run: result.run, interrupts: result.interrupts, pendingEvent });

@@ -37,6 +37,17 @@ export interface ScheduledEffect {
   readonly condition: DeferredEffect['condition'];
   readonly effects: readonly Effect[];
   readonly logbookKey?: string;
+  /**
+   * The magnitude roll of the event that scheduled this.
+   *
+   * A deferred effect does not re-roll — its size belongs to the choice that
+   * scheduled it, not to the week it lands in. `HLT_UNEXPECTED_DENTAL`'s
+   * "postpone" schedules a cost derived from the same `roll` as the price the
+   * card quoted, so a bad x-ray stays a bad x-ray six months later. Without
+   * this the deferred formula falls back to `roll = 0.5` and every player pays
+   * the same constant however severe their card was.
+   */
+  readonly roll?: number;
 }
 
 export function emptyOutcome(): EffectOutcome {
@@ -200,6 +211,8 @@ export function resolveChoice(
           condition: deferred.condition,
           effects: deferred.effects,
           logbookKey: deferred.logbookKey,
+          // Carried, not re-rolled — see `ScheduledEffect.roll`.
+          roll: context.vars.roll,
         })),
       ],
     };

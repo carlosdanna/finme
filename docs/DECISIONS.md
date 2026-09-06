@@ -1330,6 +1330,16 @@ code the issue pointed at.
    `[0.5–2.0]`). Caught by a golden fixture that moved far more than variance
    could explain.
 
+   **This holds before the `clamp`, not after it.** Truncating a spread is not
+   mean-neutral, and where the old fixed value already sat on the ceiling the
+   spread can only move down. For `EMG_CAR_BREAKDOWN` the effective mean falls
+   by up to **15%** around $3,000/month, fading to nil at both ends of the
+   income range. Accepted rather than corrected — widening the clamps to
+   compensate would be a balance change in its own right. C1 passes and C6@45's
+   medians move a few percent either way, so the aggregate effect is small, but
+   it is not zero and it is not uniform. Table in
+   `docs/EVENT-CATALOGUE.md` §3.1.
+
 ## 2026-09-06 — `eventMagnitude` stream and card variants
 **Context:** the catalogue specifies a per-firing magnitude spread and a
 prose-variant budget. Neither was expressible.

@@ -31,6 +31,10 @@ const formulaContext = {
     // The per-firing magnitude draw (TDD §9.3). Held at the middle of its range
     // here; the spread itself is exercised by the engine tests.
     roll: 0.5,
+    // Rates a card may quote. Must mirror `formulaContextFrom` — a name missing
+    // here fails the lint as "unknown identifier" even though it is real.
+    inflationThisYear: 0.031,
+    lastRaisePct: 0.018,
   },
   price: (assetId: string) => ({ SAFE: 12_345, CRYP: 640, MOON: 8_000 })[assetId] ?? Number.NaN,
 };
@@ -224,6 +228,9 @@ describe('golden: fixed seed, fixed state, exact selection and delta', () => {
         condition: { type: 'flag', value: 'job_requires_vehicle' },
         effects: [{ k: 'flag', add: 'job_at_risk_no_vehicle' }],
         logbookKey: undefined,
+        // Carried from the scheduling choice, so a deferred cost keeps the
+        // severity the card quoted rather than falling back to the midpoint.
+        roll: formulaContext.vars.roll,
       },
     ]);
   });
@@ -398,5 +405,31 @@ describe('event card variants', () => {
     // One title against a pool of bodies: the title is reused, not indexed off
     // the end.
     expect(cardVariant(event, 41).title).toBe(event.title);
+  });
+});
+
+describe('deferred effects keep the roll that scheduled them', () => {
+  it('costs more when the card quoted more, six months later', () => {
+    const postpone = eventById('HLT_UNEXPECTED_DENTAL')!.choices.find((c) => c.id === 'postpone')!;
+    const rng = () => 0.5;
+
+    const cheap = { ...formulaContext, vars: { ...formulaContext.vars, roll: 0.05 } };
+    const dear = { ...formulaContext, vars: { ...formulaContext.vars, roll: 0.95 } };
+
+    const scheduledCheap = resolveChoice(postpone, cheap, 100, rng).deferred[0];
+    const scheduledDear = resolveChoice(postpone, dear, 100, rng).deferred[0];
+
+    // Resolved later, against a context that knows nothing about the event.
+    const laterCheap = applyEffects(scheduledCheap.effects, {
+      ...formulaContext,
+      vars: { ...formulaContext.vars, roll: scheduledCheap.roll ?? 0.5 },
+    });
+    const laterDear = applyEffects(scheduledDear.effects, {
+      ...formulaContext,
+      vars: { ...formulaContext.vars, roll: scheduledDear.roll ?? 0.5 },
+    });
+
+    // Without the carried roll both fall back to 0.5 and these are identical.
+    expect(laterDear.cashDeltaCents).toBeLessThan(laterCheap.cashDeltaCents);
   });
 });

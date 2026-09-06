@@ -307,6 +307,13 @@ export function collectFormulas(
         if (typeof branch.p === 'string' && branch.p !== 'rest') push(event.id, branch.p);
       }
     }
+
+    // Card values are formulas too. Leaving them out meant a typo'd variable
+    // passed every check and then threw a FormulaError out of the tick, at the
+    // moment the player was shown the card.
+    for (const spec of Object.values(event.displayVars ?? {})) {
+      push(event.id, spec.value);
+    }
   }
   return found;
 }

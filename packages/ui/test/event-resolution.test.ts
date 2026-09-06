@@ -7,6 +7,7 @@
  * the engine tests, because the engine is never wrong — it is asked twice.
  */
 import { WEEKS_PER_YEAR, formulaContextFrom, interpolate, resolveMagnitude } from '@finme/engine';
+import { formatCents } from '../src/lib/format.ts';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useGameStore } from '../src/store/useGameStore.ts';
 
@@ -93,41 +94,67 @@ describe('resolving an event from the modal', () => {
     expect(cards).toBeGreaterThan(0);
   });
 
-  it('quotes on the card exactly what the choice charges', () => {
-    // The failure this guards: `displayVars` and the effect are two separate
-    // formula strings, so a card can promise one number and the choice take
-    // another. They are only equal because they are written the same and are
-    // evaluated against the same state and the same `roll` — which is why the
-    // roll is drawn when the card appears and fed back into the resolving tick,
-    // rather than drawn fresh at resolution.
-    let checked = 0;
-    for (let step = 0; step < 400 && checked < 6; step++) {
-      if (!advanceToEvent(1)) continue;
-      const pending = useGameStore.getState().pendingEvent!;
-      const { state, world } = useGameStore.getState().run!;
-      const context = formulaContextFrom(state, world, pending.roll);
+  it('quotes on the card the number the tick will charge', () => {
+    // Two ways this goes wrong, both seen for real:
+    //   1. `displayVars` and the effect drift apart as formula strings. That is
+    //      caught statically in @finme/content, over the whole pool.
+    //   2. The card is evaluated a week early. `advanceTime` holds the state
+    //      from *before* the event's tick, and step 1 of the pipeline
+    //      increments `weekIndex` before anything reads it — so quoting from
+    //      the un-incremented state is off by a week, and by a whole year of
+    //      inflation whenever the event lands on a year boundary. This test
+    //      covers that one, which is invisible to a static check.
+    //
+    // The comparison must build its own context from `weekIndex + 1`. Reusing
+    // the store's own context would compare the card against itself.
+    let cards = 0;
+    const wrong: string[] = [];
 
-      for (const [key, spec] of Object.entries(pending.event.displayVars ?? {})) {
-        if (spec.as !== 'money') continue;
-        // Every cash effect across the event's choices that quotes this price.
-        const quoted = resolveMagnitude(spec.value, context);
-        // Cash and recurring expenses both count: HOU_RENT_INCREASE quotes a
-        // monthly rent rise, which lands as an `expense`, not a `cash` effect.
-        const charged = pending.event.choices
-          .flatMap((choice) => [
-            ...choice.effects,
-            ...(choice.outcomeRoll?.branches ?? []).flatMap((branch) => branch.effects),
-          ])
-          .filter((effect) => effect.k === 'cash' || effect.k === 'expense')
-          .map((effect) => Math.abs(resolveMagnitude(effect.cents, context)));
+    for (const seed of ['4F2A9C1B', 'BBBB2222']) {
+      useGameStore.getState().start(seed);
+      for (let step = 0; step < 1600; step++) {
+        useGameStore.getState().advanceTime();
+        const pending = useGameStore.getState().pendingEvent;
+        if (pending === null) continue;
 
-        if (charged.length === 0) continue;
-        expect(charged, `${pending.event.id}.${key}`).toContain(Math.abs(quoted));
-        checked++;
+        const { state, world } = useGameStore.getState().run!;
+        const charged = formulaContextFrom(
+          { ...state, weekIndex: state.weekIndex + 1 },
+          world,
+          pending.roll,
+        );
+
+        for (const [key, spec] of Object.entries(pending.event.displayVars ?? {})) {
+          cards++;
+          const value = resolveMagnitude(spec.value, charged);
+          const expected =
+            spec.as === 'money'
+              ? formatCents(Math.round(value))
+              : value.toFixed(spec.precision ?? 0);
+          if (pending.vars[key] !== expected) {
+            wrong.push(`${seed} w${state.weekIndex} ${pending.event.id}.${key}: card ${pending.vars[key]}, charged ${expected}`);
+          }
+        }
+        useGameStore.getState().resolveEvent(pending.choiceIds[0]);
       }
-      useGameStore.getState().resolveEvent(pending.choiceIds[0]);
     }
-    expect(checked).toBeGreaterThan(0);
+
+    expect(cards).toBeGreaterThan(100);
+    expect(wrong).toEqual([]);
+  });
+
+  it('ignores a second advance while a card is open', () => {
+    expect(advanceToEvent()).toBe(true);
+    const before = useGameStore.getState().run!.state.weekIndex;
+    const pending = useGameStore.getState().pendingEvent!;
+
+    useGameStore.getState().advanceTime();
+
+    // Same week, same card, same roll: no second week abandoned and no second
+    // `eventMagnitude` draw taken for an event that has not resolved.
+    expect(useGameStore.getState().run!.state.weekIndex).toBe(before);
+    expect(useGameStore.getState().pendingEvent!.roll).toBe(pending.roll);
+    expect(useGameStore.getState().pendingEvent!.event.id).toBe(pending.event.id);
   });
 
   it('clears the pending event once resolved', () => {

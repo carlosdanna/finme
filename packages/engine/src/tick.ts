@@ -199,10 +199,11 @@ export function lifeStageFor(age: number): string {
  *
  * `roll` is a uniform in [0, 1) drawn once per fired event, so a magnitude can
  * say `0.6*monthlyIncome*(0.5+1.5*roll)` and cost a different amount each time
- * the event lands. It defaults to 0.5 — the middle of the spread — for the
- * contexts that have no event behind them, such as a deferred effect resolving
- * weeks later. Deferred effects deliberately do **not** re-roll: their
- * magnitude belongs to the choice that scheduled them.
+ * the event lands. It defaults to 0.5 — the middle of the spread — only for
+ * contexts with no event behind them at all. A deferred effect is not one of
+ * those: it carries the roll of the choice that scheduled it (see
+ * `ScheduledEffect.roll`), because its size belongs to that decision rather
+ * than to the week it happens to land in.
  */
 export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5) {
   const week = state.weekIndex;
@@ -225,6 +226,28 @@ export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5)
     price: (assetId: string) =>
       world.market.series[assetId as AssetId]?.priceCents[week] ?? Number.NaN,
   };
+}
+
+/**
+ * The context the *next* `tick` will evaluate this week's event in.
+ *
+ * Step 1 of the pipeline increments `weekIndex` before anything reads it, so a
+ * caller holding the pre-tick state — an interactive front-end showing a card
+ * for a week it has not committed — is one week behind. Evaluating a card's
+ * `displayVars` against the un-incremented state quotes prices from the wrong
+ * week: harmless most of the time, and wrong by a whole year's inflation
+ * whenever the event lands on a year boundary.
+ *
+ * The `+ 1` lives here rather than in the caller because it is a fact about the
+ * pipeline, not about the UI.
+ */
+export function pendingEventContext(state: RunState, world: RunWorld, roll: number) {
+  return formulaContextFrom({ ...state, weekIndex: state.weekIndex + 1 }, world, roll);
+}
+
+/** The week a pending event will fire in, given the state before its tick. */
+export function pendingEventWeek(state: RunState): number {
+  return state.weekIndex + 1;
 }
 
 // --- the pipeline -----------------------------------------------------------
@@ -453,7 +476,7 @@ export function tick(
     const eventState = eventStateFrom(state, world);
     for (const deferred of due) {
       if (deferred.condition !== undefined && !passesGate(deferred.condition, eventState)) continue;
-      const outcome = applyEffects(deferred.effects, formulaContextFrom(state, world));
+      const outcome = applyEffects(deferred.effects, formulaContextFrom(state, world, deferred.roll));
       state = applyOutcome(state, outcome, priceAt, week);
       if (deferred.logbookKey !== undefined) {
         pending.push({ trigger: { k: 'firstTime', action: 'deferred' }, key: deferred.logbookKey });

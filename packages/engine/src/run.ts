@@ -209,8 +209,12 @@ export function advance(
     }
 
     // The caller wants to answer an event before the week is committed. `tick`
-    // gave back the state it was handed and consumed no draw, so stopping here
-    // leaves the run exactly as it was at the start of that week.
+    // gave back the state it was handed, so no week is applied — but it *did*
+    // take the event's single `eventMagnitude` draw, returned here as
+    // `eventRoll`. Feed that back through `TickInput.eventRoll` when re-ticking
+    // the week; calling `advance` again instead abandons a second week and
+    // burns a second draw, putting the session ahead of a §14 replay of its own
+    // decision log.
     if (result.awaitingEventChoice !== null) {
       return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: result.eventRoll };
     }

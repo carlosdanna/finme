@@ -14,7 +14,7 @@ import {
   type EventDef,
   type RunState,
   type RunWorld,
-  formulaContextFrom,
+  pendingEventContext,
   resolveMagnitude,
 } from '@finme/engine';
 import { formatCents } from '@/lib/format';
@@ -31,7 +31,8 @@ export function eventDisplayVars(
   world: RunWorld,
   roll: number,
 ): Record<string, string> {
-  const context = formulaContextFrom(state, world, roll);
+  // `state` is the week *before* the event's own. The engine owns that offset.
+  const context = pendingEventContext(state, world, roll);
   const out: Record<string, string> = {};
 
   for (const [key, spec] of Object.entries(event.displayVars ?? {})) {
