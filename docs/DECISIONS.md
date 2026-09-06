@@ -1040,3 +1040,159 @@ The performance check measures uPlot drawing the app's series with the app's
 options, injected from disk, rather than `<NetWorthChart>` mounted end to end.
 The production bundle inlines uPlot, so there is no module to import in a preview
 server, and adding a test hook to production code would be worse.
+
+## 2026-09-06 — The page canvas is no longer the card surface
+**Context:** `--background` was `oklch(1 0 0)` in light mode, identical to
+`--card`. Every card was therefore a white rectangle drawn on white, with only a
+10% hairline ring separating it from the page, so nothing on any screen read as
+raised. Dark mode already distinguished the two (`0.148` page against `0.218`
+card); light mode never did.
+**Decision:** `--background` becomes `oklch(0.963 0.002 197.1)` — the existing
+`--muted` value — and `--card` stays pure white. No new token: this is what
+shadcn's two tokens are already for.
+**Consequences:** `--background` and `--muted` now hold the same value in light
+mode, so a `bg-muted` element placed directly on the page is invisible. Inside a
+card it is not, which is where all of them are today. Anything that used
+`bg-background` as a *surface* rather than as the page had to move to `bg-card`:
+the tab bar and the advance control's granularity chip both did.
+
+This also exposed a latent bug. `TabBar` styled its selected tab with
+`data-[selected]:bg-transparent`, but the Base UI attribute is `data-active` — the
+selector had never matched anything. It went unnoticed because `TabsTrigger`'s own
+`data-active:bg-background` painted white on white. On a tinted canvas it became a
+grey box behind the active tab.
+
+## 2026-09-06 — The advance control is docked, and both its controls are 44px
+**Context:** `AdvanceControl` was a fixed FAB floating over the page. It overlaps
+whatever scrolls beneath it; on the Life panel it sat squarely on top of the Side
+hustle row's `−` stepper, which made that row impossible to operate. The button
+was also 56px against the granularity chip's 44px.
+**Decision:** the control is a docked bar above the tab bar, and both controls are
+44px.
+**Consequences:** the collision is gone by construction rather than by tuning
+`bottom` — a floating control over scrolling content has no safe offset. Content
+clearance is now `TAB_BAR_CLEARANCE + ADVANCE_BAR_HEIGHT`, so the two bars are
+composed rather than hard-coded.
+
+The 56px was deliberate — the old comment called this "the most-pressed control in
+the game by an order of magnitude". Matching the chip trades that emphasis for a
+consistent pair; 44px still clears the touch-target floor. Reverting means
+changing one class, not the layout.
+
+## 2026-09-06 — Steppers are 36px with a 44px touch target
+**Context:** the allocation steppers were 44px circles. Requested smaller; the
+44px floor in CLAUDE.md is not negotiable.
+**Decision:** the visible circle is `size-9` (36px) and a centred `after:size-11`
+pseudo-element carries the 44px hit area — the technique `Term` already uses for
+the glossary trigger.
+**Consequences:** the visual and the target are now separate numbers, so shrinking
+one no longer shrinks the other. Verified rather than assumed: `elementFromPoint`
+returns the stepper out to ±22px from its centre, and Chromium's touch adjustment
+makes real taps more forgiving still.
+
+Two tests needed the distinction taught to them:
+- `panels.test.tsx` asserted `size-11`, which the class `after:size-11` satisfies
+  as a substring — it would have passed even if the target had been lost. It now
+  asserts `after:size-11` and `size-9` separately.
+- `device.spec.ts`'s `hitArea` measured the `::after` overlay's **height only**,
+  which was sufficient while `<Term>` was its only user: a glossary word is wide
+  and short, so height was the only axis ever in question. A stepper is
+  undersized on both, so the helper now takes width from the overlay too.
+
+## 2026-09-06 — Two defects found while restyling, fixed in place
+**Context:** both predate this work and are visible on `main`.
+**Decision:** fixed alongside the redesign rather than filed.
+**Consequences:**
+1. **`Meter` drew every bar twice.** `Progress` renders `{children}` *and* its own
+   default `ProgressTrack`, and `Meter` passed a track as a child. The height now
+   comes from a descendant selector on the track `Progress` renders itself.
+2. **Event sheets were dismissible.** `EventModal` documents itself as "not
+   dismissible: an event is a decision, and there is no 'close without choosing'
+   outcome in the simulation", but `SheetContent` renders a close button by
+   default and the sheet did not opt out. It now passes `showCloseButton={false}`.
+
+Still open, deliberately: event bodies interpolate only `friendName` and
+`advisorName`, so an event whose copy references a computed magnitude renders the
+placeholder — "the renewal letter" shows a literal `{{rentIncrease}}`. That is a
+content/engine gap, not a styling one, and it is untouched here.
+
+## 2026-09-06 — The shell is a column, not a stack of layers
+**Context:** the header was `sticky z-30`, the advance bar `fixed z-40`, the tab
+bar `fixed z-40`. Three of the app's own elements had left the document flow, so
+`main` had to reserve their combined height as padding — a number that had to be
+kept in sync by hand with two exported constants — and any of them could be
+scrolled underneath.
+**Decision:** `h-dvh` flex column: header, `main`, advance bar, tab bar. `main` is
+the only scroller. No `fixed`, no `sticky`, no `z-index` in the app's own
+components; `TAB_BAR_CLEARANCE` and `ADVANCE_BAR_HEIGHT` are deleted.
+**Consequences:** the bars cannot be overlapped or scrolled past, and the reserved
+padding is gone rather than merely correct.
+
+A flex child defaults to `min-height: auto` and refuses to shrink below its
+content, which would make the column grow instead of scrolling. `min-h-0` guards
+that — but only where overflow is `visible`: a non-visible overflow already
+resolves the automatic minimum to 0, and both scrollers here set `overflow-y:
+auto`. So `min-h-0` is belt-and-braces on both, kept so the scroller survives
+someone taking the overflow off. An earlier draft of this entry called it
+load-bearing; removing it changes nothing, and the e2e suite stays green.
+
+Two stacking contexts remain, deliberately:
+- **The modal portals.** An overlay is inherently a layer; `Sheet`, `Dialog` and
+  `Popover` cannot work in flow.
+- **`AnnualReviewPanel`'s pinned first column** (`sticky left-0 z-10`). It pins row
+  labels inside a table that scrolls *sideways*; it does not float over the page,
+  and removing it leaves columns of unlabelled numbers. Its backdrop moved from
+  `bg-background` to `bg-card` — after the canvas/card split those are different
+  colours, and it had been painting the page colour onto a card.
+
+## 2026-09-06 — One type scale, in a `Typography` component
+**Context:** text was sized ad hoc per screen — `text-[15px]`, `text-[11px]`,
+`text-[2.125rem]`, `text-lg`, `text-base`, `text-sm` — so no two panels agreed.
+**Decision:** `Typography` with six steps (`h1`–`h4`, `body`, `caption`). `variant`
+picks the step and the element; `as` changes the element without the step; `size`
+changes the step without the element; `color` is `default | muted | warning |
+success | error`.
+**Consequences:** `warning` and `success` needed tokens, which the palette did not
+have — added alongside the existing `--destructive`, with dark-mode values.
+
+**These three colours are a live hazard.** GDD §1 forbids red-for-negative and
+green-for-positive, and `Money`/`Pct` deliberately expose no colour prop, so they
+cannot reach them. They are for system state — a failed save, a finished export —
+never for a figure or an outcome. The constraint is documented on the component
+and on the token block; it is not enforced by the type system, and a lint rule
+banning `color="error"` in the same expression as `<Money>` would be the way to
+make it structural if it ever gets used wrongly.
+
+## 2026-09-06 — Modal and card padding are mobile-first
+**Context:** `SheetHeader`/`SheetFooter` were a flat `p-6`, `DialogContent` a flat
+`p-6`, and `Card` a flat 24px `--card-spacing`. On a 390px screen 24px of inset is
+12% of the width, and a panel card holding figure cards paid it twice.
+**Decision:** all three step down below `sm:` — sheets and dialogs to 16px/20px,
+`--card-spacing` to 16px (12px at `size="sm"`), with the 24px values kept above
+`sm:`.
+**Consequences:** this edits three vendored shadcn components. They are already
+customised in this repo (the sheet close button carries its own 44px comment), and
+a mobile-first app cannot take a desktop component set's desktop padding as given.
+Re-running the shadcn generator over these files will revert it.
+
+The dashboard's vitals card also dropped to `py-0`: the grid supplies its own 16px
+cell padding, so `Card`'s block padding on top of it was a band of dead space above
+the first row and below the last. `AllocationPanel`'s footer no longer cancels the
+card's padding with a negative margin — the card is `py-0` and each section states
+its own padding.
+
+## 2026-09-06 — Sheets scroll from a flex column, not nested height caps
+**Context:** the secondary-panel sheet put a `ScrollArea` with `max-h-[75dvh]`
+inside a `SheetContent` with `max-h-[92dvh]`, and the event sheet made the whole
+popup the scroller. The nested caps disagreed, and a long panel stranded its last
+section with no way to reach it.
+**Decision:** one pattern for both. `SheetContent` is `p-0` and keeps its own
+`max-h-[90dvh]`; the header is `flex-none`; the body is `min-h-0 flex-1
+overflow-y-auto overscroll-contain` and carries the padding plus the safe-area
+inset. `ScrollArea` is gone from `App`.
+**Consequences:** the header stays put while the body scrolls, and `overscroll-contain`
+stops a scroll at the sheet's end from chaining to the page behind it. `device.spec.ts`
+gains a test that scrolls a real panel to its end; the tab-bar clearance test now
+asserts that the scroller's bottom edge clears the bar rather than that `main`
+carries a padding value, since the padding it checked for no longer exists — and a
+padding value never showed whether anything was actually visible.

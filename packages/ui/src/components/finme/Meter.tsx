@@ -1,4 +1,5 @@
-import { Progress, ProgressIndicator, ProgressTrack } from '@/components/ui/progress';
+import { Typography } from '@/components/finme/Typography';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 /**
@@ -8,6 +9,10 @@ import { cn } from '@/lib/utils';
  * when low would be the interface passing judgement on a state the player is
  * already living in — and §7.4 guarantees that state is recoverable, so alarm
  * would also be misleading.
+ *
+ * **`Progress` supplies its own track.** It renders `{children}` *and* a default
+ * `ProgressTrack`, so passing one as a child drew the bar twice. The height is
+ * set on the track it renders instead.
  */
 export function Meter({
   label,
@@ -22,14 +27,18 @@ export function Meter({
   return (
     <div className={cn('space-y-1.5', className)}>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <span className="text-sm tabular-nums">{rounded}</span>
+        <Typography variant="caption" color="muted">
+          {label}
+        </Typography>
+        <Typography variant="body" as="span" className="tabular-nums">
+          {rounded}
+        </Typography>
       </div>
-      <Progress value={rounded} aria-label={typeof label === 'string' ? label : undefined}>
-        <ProgressTrack className="h-2">
-          <ProgressIndicator />
-        </ProgressTrack>
-      </Progress>
+      <Progress
+        value={rounded}
+        className="[&_[data-slot=progress-track]]:h-2"
+        aria-label={typeof label === 'string' ? label : undefined}
+      />
     </div>
   );
 }

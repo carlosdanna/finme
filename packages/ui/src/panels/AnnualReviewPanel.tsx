@@ -68,7 +68,15 @@ export function AnnualReviewPanel({
         </CardHeader>
       </Card>
 
-      {/* Year over year. Horizontally scrollable, first column pinned. */}
+      {/*
+        Year over year. Horizontally scrollable, first column pinned.
+
+        The only `sticky`/`z-index` left in the app outside the modal portals. It
+        pins row labels inside a table that scrolls sideways — it does not float
+        over the page, and dropping it would scroll the labels out of view and
+        leave columns of unlabelled numbers. Its backdrop must be the card
+        surface, not `bg-background`: those are different colours now.
+      */}
       <Card>
         <CardHeader>
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -82,7 +90,7 @@ export function AnnualReviewPanel({
               <tr>
                 <th
                   scope="col"
-                  className="sticky left-0 z-10 bg-background py-2 pr-4 text-left font-medium"
+                  className="sticky left-0 z-10 bg-card py-2 pr-4 text-left font-medium"
                 >
                   <span className="sr-only">Figure</span>
                 </th>
@@ -102,7 +110,7 @@ export function AnnualReviewPanel({
                 <tr key={row.key}>
                   <th
                     scope="row"
-                    className="sticky left-0 z-10 border-t bg-background py-2 pr-4 text-left font-normal text-muted-foreground"
+                    className="sticky left-0 z-10 border-t bg-card py-2 pr-4 text-left font-normal text-muted-foreground"
                   >
                     {row.label}
                   </th>
