@@ -86,7 +86,9 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-1.5 p-6", className)}
+      // Mobile-first: 24px of inset on a 390px screen spends 12% of the width on
+      // nothing. 16px below `sm:`, the app's standard gutter.
+      className={cn("flex flex-col gap-1.5 p-4 sm:p-6", className)}
       {...props}
     />
   )
@@ -96,7 +98,7 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-6", className)}
+      className={cn("mt-auto flex flex-col gap-2 p-4 sm:p-6", className)}
       {...props}
     />
   )
