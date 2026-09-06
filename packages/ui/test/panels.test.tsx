@@ -100,9 +100,14 @@ describe('the allocation panel', () => {
 
     const plus = screen.getAllByLabelText('One more point of Rest')[0];
     const minus = screen.getAllByLabelText('One less point of Rest')[0];
-    // size-11 is 44px in Tailwind's 4px scale.
-    expect(plus.className).toContain('size-11');
-    expect(minus.className).toContain('size-11');
+    // The visible circle is 36px (size-9), but the touch target is still 44px:
+    // `after:size-11` is a centred pseudo-element that extends the hit area past
+    // the circle's edge. Assert the target explicitly — a bare `size-11` check
+    // passes on the `after:` prefix alone and would not catch losing it.
+    for (const stepper of [plus, minus]) {
+      expect(stepper.className).toContain('after:size-11');
+      expect(stepper.className).toContain('size-9');
+    }
 
     // Nothing draggable anywhere.
     expect(container.querySelector('[draggable="true"]')).toBeNull();
@@ -118,7 +123,11 @@ describe('the allocation panel', () => {
       />,
     );
     expect(screen.getByText('8 of 10 points')).toBeDefined();
-    expect(screen.getAllByText('Energy after this week').length).toBeGreaterThan(0);
+    // The projection is a labelled footer group now, so the meters read "Energy"
+    // and "Mood" under one "After this week" heading rather than repeating it.
+    expect(screen.getByText('After this week')).toBeDefined();
+    expect(screen.getAllByText('Energy').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Mood').length).toBeGreaterThan(0);
   });
 
   it('disables the minus stepper at zero rather than allowing negatives', () => {

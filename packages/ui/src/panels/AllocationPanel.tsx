@@ -7,28 +7,28 @@ import {
   nextEnergy,
   nextMood,
 } from '@finme/engine';
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Add01Icon, Remove01Icon } from '@hugeicons/core-free-icons';
 import { Meter } from '@/components/finme/Meter';
-import { Button } from '@/components/ui/button';
-import { ButtonGroup } from '@/components/ui/button-group';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemGroup,
-  ItemTitle,
-} from '@/components/ui/item';
+import { Typography } from '@/components/finme/Typography';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 /**
  * The weekly time allocation — **+/− steppers, not drag-and-drop.**
  *
  * Drag-and-drop on a phone competes with scrolling and has no keyboard story.
- * Steppers are unambiguous, reachable one-handed, and every button here is 44px.
+ * Steppers are unambiguous and reachable one-handed.
  *
  * The projected energy and mood update as the player adjusts, because the whole
  * point of §7.2's arithmetic is that the tradeoff is visible. It does not say
- * whether the split is a good one.
+ * whether the split is a good one. They sit in the card's footer rather than in
+ * a second card further down, so the tradeoff is on screen while it is being
+ * made.
+ *
+ * Rows were ~250px tall, which put two activities on a phone screen and hid the
+ * rest behind a scroll. At 56px all six fit at once on a 390x844 screen, which is
+ * the only way the ten points read as a single decision.
  */
 const ACTIVITIES = [
   { key: 'rest', label: 'Rest', detail: '+18 energy, +2 mood' },
@@ -44,6 +44,44 @@ const WORK_MODES: readonly { readonly mode: WorkMode; readonly label: string }[]
   { mode: 'part-time', label: 'Part-time' },
   { mode: 'full-time', label: 'Full-time' },
 ];
+
+/**
+ * A stepper: a 36px circle with a 44px touch target.
+ *
+ * The visible control is smaller than the target it answers to. The `after:`
+ * box extends the hit area past the circle's edge without changing the layout —
+ * the same technique `Term` uses for the glossary trigger. Shrinking the circle
+ * alone would have taken these under the 44px floor, and these are small
+ * controls doing high-frequency work.
+ */
+function Stepper({
+  label,
+  glyph,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  glyph: 'plus' | 'minus';
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={label}
+      className={cn(
+        'relative flex size-9 shrink-0 items-center justify-center rounded-full border bg-muted transition-opacity',
+        'after:absolute after:top-1/2 after:left-1/2 after:size-11 after:-translate-x-1/2 after:-translate-y-1/2 after:content-[""]',
+        'focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none',
+        'disabled:pointer-events-none disabled:opacity-40',
+      )}
+    >
+      <HugeiconsIcon icon={glyph === 'plus' ? Add01Icon : Remove01Icon} size={16} strokeWidth={2.2} />
+    </button>
+  );
+}
 
 export function AllocationPanel({
   allocation,
@@ -81,89 +119,112 @@ export function AllocationPanel({
   });
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-baseline justify-between text-base">
-            <span>Time this week</span>
-            <span className="text-sm font-normal tabular-nums text-muted-foreground">
-              {used} of {TIME_POINTS_PER_WEEK} points
-            </span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <ButtonGroup className="w-full">
-            {WORK_MODES.map(({ mode, label }) => (
-              <Button
+    /* `py-0` plus explicit section padding. The card previously kept its own
+       block padding and the footer cancelled it again with a negative margin —
+       two paddings fighting, which is what made the spacing look arbitrary. */
+    <Card className="gap-0 py-0">
+      <div className="flex items-baseline justify-between gap-2 px-4 pt-4">
+        <Typography variant="h4" as="h2">
+          Time this week
+        </Typography>
+        <Typography variant="body" color="muted" className="tabular-nums">
+          {used} of {TIME_POINTS_PER_WEEK} points
+        </Typography>
+      </div>
+
+      <div className="space-y-3 p-4">
+        {/* A segmented track — a recessed rail with one raised pill — rather than
+            three joined outline buttons, which read as three separate controls
+            with one inexplicably filled. */}
+        <div role="group" aria-label="Work mode" className="flex gap-1 rounded-full bg-muted p-1">
+          {WORK_MODES.map(({ mode, label }) => {
+            const selected = allocation.work === mode;
+            return (
+              <button
                 key={mode}
                 type="button"
-                variant={allocation.work === mode ? 'default' : 'outline'}
                 onClick={() => setWork(mode)}
-                aria-pressed={allocation.work === mode}
-                className="h-11 flex-1"
+                aria-pressed={selected}
+                className={cn(
+                  'flex h-11 flex-1 items-center justify-center gap-1 rounded-full text-sm font-medium transition-colors',
+                  selected ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground',
+                )}
               >
                 {label}
                 {WORK_TIME_POINTS[mode] > 0 && (
-                  <span className="ml-1 text-xs opacity-70">{WORK_TIME_POINTS[mode]}p</span>
+                  <Typography variant="caption" className="opacity-75">
+                    {WORK_TIME_POINTS[mode]}p
+                  </Typography>
                 )}
-              </Button>
-            ))}
-          </ButtonGroup>
+              </button>
+            );
+          })}
+        </div>
 
-          <ItemGroup className="gap-2">
-            {ACTIVITIES.map(({ key, label, detail }) => {
-              const disabled = key === 'overtime' && allocation.work === 'none';
-              return (
-                <Item key={key} variant="outline" size="sm">
-                  <ItemContent>
-                    <ItemTitle>{label}</ItemTitle>
-                    <ItemDescription>{detail}</ItemDescription>
-                  </ItemContent>
-                  <ItemActions>
-                    {/* 44px minimum on both steppers — small controls doing
-                        high-frequency work. */}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-11"
-                      onClick={() => step(key, -1)}
-                      disabled={allocation[key] === 0}
-                      aria-label={`One less point of ${label}`}
-                    >
-                      −
-                    </Button>
-                    <span className="w-6 text-center tabular-nums" aria-live="polite">
-                      {allocation[key]}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      className="size-11"
-                      onClick={() => step(key, 1)}
-                      disabled={disabled || remaining <= 0}
-                      aria-label={`One more point of ${label}`}
-                    >
-                      +
-                    </Button>
-                  </ItemActions>
-                </Item>
-              );
-            })}
-          </ItemGroup>
-        </CardContent>
-      </Card>
+        <div role="list" className="flex flex-col gap-1.5">
+          {ACTIVITIES.map(({ key, label, detail }) => {
+            const disabled = key === 'overtime' && allocation.work === 'none';
+            return (
+              <div
+                key={key}
+                role="listitem"
+                className="flex min-h-14 items-center gap-3 rounded-2xl border px-3 py-2"
+              >
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <Typography variant="body" className="font-medium">
+                    {label}
+                  </Typography>
+                  <Typography variant="caption" color="muted" className="text-pretty">
+                    {detail}
+                  </Typography>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Stepper
+                    label={`One less point of ${label}`}
+                    glyph="minus"
+                    disabled={allocation[key] === 0}
+                    onClick={() => step(key, -1)}
+                  />
+                  <Typography
+                    variant="body"
+                    as="span"
+                    className="w-5 text-center font-medium tabular-nums"
+                    aria-live="polite"
+                  >
+                    {allocation[key]}
+                  </Typography>
+                  <Stepper
+                    label={`One more point of ${label}`}
+                    glyph="plus"
+                    disabled={disabled || remaining <= 0}
+                    onClick={() => step(key, 1)}
+                  />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">After this week</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-2 gap-4">
-          <Meter label="Energy after this week" value={projectedEnergy} />
-          <Meter label="Mood after this week" value={projectedMood} />
-        </CardContent>
-      </Card>
-    </div>
+      <div className="border-t bg-muted p-4">
+        <Typography variant="caption" color="muted" className="mb-2 block">
+          After this week
+        </Typography>
+        <div className="flex gap-4">
+          {/* The footer sits on `muted`, which is also the meter track's own
+              colour — the track needs the card surface here to stay visible. */}
+          <Meter
+            className="flex-1 [&_[data-slot=progress-track]]:bg-card"
+            label="Energy"
+            value={projectedEnergy}
+          />
+          <Meter
+            className="flex-1 [&_[data-slot=progress-track]]:bg-card"
+            label="Mood"
+            value={projectedMood}
+          />
+        </div>
+      </div>
+    </Card>
   );
 }
