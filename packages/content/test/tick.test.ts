@@ -225,4 +225,3 @@ describe('the advance control (GDD §2.1)', () => {
     expect(MOOD_INTERRUPT_FLOOR).toBe(25);
   });
 });
-
