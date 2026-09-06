@@ -80,14 +80,16 @@ export function Typography({
   ...props
 }: TypographyProps) {
   // `size` wins over `variant` for the step; `variant` still picks the element.
+  //
+  // Passing the resolved step as `variant` rather than leaving it `undefined`:
+  // `undefined` falls through to cva's `defaultVariants`, which put `body`'s
+  // classes into the output alongside the requested size and left the outcome
+  // riding on tailwind-merge resolving the conflict in the right direction.
   const Component = as ?? DEFAULT_TAG[variant ?? 'body'];
   return (
     <Component
       data-slot="typography"
-      className={cn(
-        typographyVariants({ variant: size === undefined ? variant : undefined, size, color }),
-        className,
-      )}
+      className={cn(typographyVariants({ variant: size ?? variant, size, color }), className)}
       {...props}
     />
   );

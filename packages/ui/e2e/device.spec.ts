@@ -178,6 +178,23 @@ test('no fixed bottom element sits under the safe-area inset', async ({ page }) 
 });
 
 test('content is not hidden behind the tab bar at the end of a long scroll', async ({ page }) => {
+  // The Logbook is empty on a fresh run — 653px of content in a 653px scroller.
+  // Without making some history first, every assertion below holds trivially and
+  // the test proves nothing about a long scroll.
+  const advance = page.getByRole('button', { name: 'Advance', exact: true });
+  for (let i = 0; i < 20; i++) {
+    if (await advance.isEnabled().catch(() => false)) {
+      await advance.tap();
+      await page.waitForTimeout(40);
+    }
+    // Resolve in the same pass: an event blocks the next advance, so spending a
+    // whole iteration on it halves the history this produces.
+    const choice = page.locator('[data-slot="event-choices"] button').first();
+    if (await choice.isVisible().catch(() => false)) {
+      await choice.tap();
+      await page.waitForTimeout(40);
+    }
+  }
   await page.getByRole('tab', { name: 'Logbook' }).tap();
 
   // `main` is the scroller, not the window — the shell is a fixed-height column,
@@ -187,36 +204,46 @@ test('content is not hidden behind the tab bar at the end of a long scroll', asy
     page.viewportSize()!.height + 1,
   );
 
+  const overflows = await main.evaluate((el) => el.scrollHeight > el.clientHeight);
+  expect(overflows, 'the Logbook must overflow or this test asserts nothing').toBe(true);
+
   await main.evaluate((el) => el.scrollTo(0, el.scrollHeight));
   await page.waitForTimeout(100);
 
-  // Assert the outcome rather than the mechanism: whatever ends up last, its
-  // bottom edge is above the bar. Reserved padding used to stand in for this,
-  // and a padding value cannot tell you whether anything is actually visible.
-  const navBox = (await page.getByRole('navigation', { name: 'Primary' }).boundingBox())!;
-  const mainBox = (await main.boundingBox())!;
-  expect(Math.round(mainBox.y + mainBox.height)).toBeLessThanOrEqual(Math.round(navBox.y) + 1);
+  const atEnd = await main.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1);
+  expect(atEnd, 'the scroller must reach its end').toBe(true);
 
-  const atEnd = await main.evaluate(
-    (el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1,
-  );
-  expect(atEnd).toBe(true);
+  // The outcome, not the mechanism: the last entry is fully clear of the bar.
+  // Reserved padding used to stand in for this, and a padding value cannot tell
+  // you whether anything is actually visible.
+  const navBox = (await page.getByRole('navigation', { name: 'Primary' }).boundingBox())!;
+  const lastEntry = (await main.locator('[data-slot="item"]').last().boundingBox())!;
+  expect(Math.round(lastEntry.y + lastEntry.height)).toBeLessThanOrEqual(Math.round(navBox.y) + 1);
 });
 
 test('a long secondary panel scrolls to its end inside the sheet', async ({ page }) => {
   await page.getByRole('tab', { name: 'Money' }).tap();
-  await page.getByRole('button', { name: /Annual review/ }).tap();
+  // `If nothing else changed` overflows the sheet on a fresh run (837px into
+  // 702px). `Annual review` does not — it is a 160px empty state until a year
+  // closes, and pointing this test at it made it pass without ever scrolling.
+  await page.getByRole('button', { name: /If nothing else changed/ }).tap();
 
   const body = page.locator('[data-slot="sheet-content"] > div').last();
   await expect(body).toBeVisible();
 
+  // No short-circuit on `scrollHeight <= clientHeight`: a panel that stops
+  // overflowing must fail here rather than pass silently, which is exactly what
+  // the previous version of this test did.
+  const overflows = await body.evaluate((el) => el.scrollHeight > el.clientHeight);
+  expect(overflows, 'the panel must overflow or this test asserts nothing').toBe(true);
+
   // The nested `max-h` on a `ScrollArea` inside a `max-h` sheet used to strand
   // the last section with no way to reach it.
-  const reachedEnd = await body.evaluate((el) => {
+  const atEnd = await body.evaluate((el) => {
     el.scrollTo(0, el.scrollHeight);
-    return el.scrollHeight <= el.clientHeight || el.scrollTop > 0;
+    return el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
   });
-  expect(reachedEnd).toBe(true);
+  expect(atEnd, 'the sheet body must reach its end').toBe(true);
 });
 
 test('the advance control sits in the thumb zone', async ({ page }) => {

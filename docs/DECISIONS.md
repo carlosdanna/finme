@@ -1126,10 +1126,15 @@ scrolled underneath.
 the only scroller. No `fixed`, no `sticky`, no `z-index` in the app's own
 components; `TAB_BAR_CLEARANCE` and `ADVANCE_BAR_HEIGHT` are deleted.
 **Consequences:** the bars cannot be overlapped or scrolled past, and the reserved
-padding is gone rather than merely correct. `min-h-0` on `main` is load-bearing —
-a flex child defaults to `min-height: auto` and refuses to shrink below its
-content, so without it the column grows instead of scrolling and the last
-screenful is unreachable.
+padding is gone rather than merely correct.
+
+A flex child defaults to `min-height: auto` and refuses to shrink below its
+content, which would make the column grow instead of scrolling. `min-h-0` guards
+that — but only where overflow is `visible`: a non-visible overflow already
+resolves the automatic minimum to 0, and both scrollers here set `overflow-y:
+auto`. So `min-h-0` is belt-and-braces on both, kept so the scroller survives
+someone taking the overflow off. An earlier draft of this entry called it
+load-bearing; removing it changes nothing, and the e2e suite stays green.
 
 Two stacking contexts remain, deliberately:
 - **The modal portals.** An overlay is inherently a layer; `Sheet`, `Dialog` and

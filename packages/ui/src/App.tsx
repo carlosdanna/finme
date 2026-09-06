@@ -107,9 +107,12 @@ export default function App() {
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
       <TopBar title={TAB_TITLE[tab]} clock={clock} />
 
-      {/* `min-h-0` is load-bearing: a flex child defaults to `min-height: auto`,
-          which refuses to shrink below its content, so the scroller silently
-          grows instead of scrolling and the last screenful becomes unreachable. */}
+      {/* A flex child defaults to `min-height: auto` and refuses to shrink below
+          its content, which would let this grow instead of scrolling. `overflow-y:
+          auto` already resolves that automatic minimum to 0, so `min-h-0` is
+          belt-and-braces here rather than load-bearing — verified by removing it,
+          which changes nothing. It is kept so the scroller survives someone
+          taking the overflow off. */}
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {rulesetBanner !== null && (
