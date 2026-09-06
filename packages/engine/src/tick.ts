@@ -89,8 +89,16 @@ export interface Interrupt {
 export interface TickInput {
   /** How the player spent the week. Defaults to the standing order. */
   readonly allocation?: Allocation;
-  /** Which choice to take if an event fires. Defaults to the first available. */
-  readonly chooseEvent?: (eventId: string, choiceIds: readonly string[]) => string;
+  /**
+   * Which choice to take if an event fires. Defaults to the first available.
+   *
+   * Returning `null` means **"the player has not answered yet"**: the week is
+   * abandoned, `tick` returns the state it was given, and the caller re-ticks
+   * the same state once a choice exists. That is what lets an interactive
+   * front-end show the card before the week is committed — see
+   * `TickResult.awaitingEventChoice`.
+   */
+  readonly chooseEvent?: (eventId: string, choiceIds: readonly string[]) => string | null;
   /** Discretionary spending this week, for the mood term. */
   readonly discretionarySpendCents?: number;
 }
@@ -99,6 +107,18 @@ export interface TickResult {
   readonly state: RunState;
   readonly interrupts: readonly Interrupt[];
   readonly firedEventId: string | null;
+  /**
+   * The event whose choice the caller declined to make, or `null`.
+   *
+   * When set, `state` is **the state `tick` was given** — the week did not
+   * happen. No draw is consumed reaching this point: the event step precedes
+   * both the `eventOutcome` draw (which only a choice with an `outcomeRoll`
+   * takes) and the Logbook's `flavor` draw, so abandoning the week here leaves
+   * every stream exactly where it was. This is what keeps a live session
+   * identical to a §14 replay of its own decision log; committing a speculative
+   * week and re-ticking would advance the streams twice and diverge on reload.
+   */
+  readonly awaitingEventChoice: string | null;
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -205,6 +225,7 @@ export function tick(
       state: previous,
       interrupts: [{ reason: 'run-complete', weekIndex: previous.weekIndex }],
       firedEventId: null,
+      awaitingEventChoice: null,
     };
   }
 
@@ -355,6 +376,24 @@ export function tick(
         (choice) => (choice.requires ?? []).every((gate) => passesGate(gate, eventStateFrom(state, world))),
       );
       const pick = input.chooseEvent?.(selected.id, available.map((c) => c.id));
+
+      // The caller declined to choose: the player is looking at the card. Give
+      // back the state we were handed and let them re-tick it once they answer.
+      //
+      // [F] Nothing above this line consumes an in-play stream — the
+      // `eventOutcome` draw happens in `resolveChoice` below, and the Logbook's
+      // `flavor` draw in step 11 — so abandoning the week here leaves every
+      // stream exactly where it was. That is what makes a live session
+      // reproduce as a §14 replay of its own decision log.
+      if (pick === null) {
+        return {
+          state: previous,
+          interrupts: [{ reason: 'event', weekIndex: week, detail: selected.id }],
+          firedEventId: selected.id,
+          awaitingEventChoice: selected.id,
+        };
+      }
+
       const choice = available.find((c) => c.id === pick) ?? available[0];
 
       if (choice !== undefined) {
@@ -492,7 +531,7 @@ export function tick(
   // ---- 15. Evaluate interrupt conditions
   interrupts.push(...evaluateInterrupts(state, previous));
 
-  return { state, interrupts, firedEventId };
+  return { state, interrupts, firedEventId, awaitingEventChoice: null };
 }
 
 // --- step helpers -----------------------------------------------------------

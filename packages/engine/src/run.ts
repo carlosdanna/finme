@@ -201,6 +201,13 @@ export function advance(
       return { run: current, interrupts: result.interrupts, weeksAdvanced };
     }
 
+    // The caller wants to answer an event before the week is committed. `tick`
+    // gave back the state it was handed and consumed no draw, so stopping here
+    // leaves the run exactly as it was at the start of that week.
+    if (result.awaitingEventChoice !== null) {
+      return { run: current, interrupts: result.interrupts, weeksAdvanced };
+    }
+
     current = { ...current, state: result.state };
     weeksAdvanced++;
 

@@ -95,11 +95,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     let captured: PendingEvent | null = null;
     const result = advance(run, granularity, () => ({
       allocation,
-      // Capture the event instead of choosing for the player; the modal asks.
+      // Decline to choose. The engine abandons the week untouched and hands it
+      // back; the modal asks, and `resolveEvent` ticks that same week once with
+      // the real answer. Returning a default here instead would commit a week
+      // the player never agreed to and then tick a second one on top of it.
       chooseEvent: (eventId, choiceIds) => {
         const event = run.world.eventDefs.find((definition) => definition.id === eventId);
         if (event !== undefined) captured = { event, choiceIds };
-        return choiceIds[0];
+        return null;
       },
     }));
 
@@ -118,10 +121,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   resolveEvent: (choiceId) => {
     const { run, allocation } = get();
     if (run === null) return;
-    // Re-run the event's week with the player's actual choice.
+    // Tick the event's own week — the one `advanceTime` left uncommitted — with
+    // the player's actual choice. This is the first and only time that week
+    // runs, so its interrupts are the ones to surface.
     const input: TickInput = { allocation, chooseEvent: () => choiceId };
     const result = tick(run.world, run.streams, run.state, input);
-    set({ run: { ...run, state: result.state }, pendingEvent: null });
+    set({
+      run: { ...run, state: result.state },
+      interrupts: result.interrupts,
+      pendingEvent: null,
+    });
   },
 }));
 
