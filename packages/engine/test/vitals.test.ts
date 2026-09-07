@@ -116,6 +116,7 @@ describe('mood (TDD §7.3)', () => {
     expect(nextMood(50, alloc({ freeSocial: 1 }), CALM)).toBe(56);
     expect(nextMood(50, alloc({ rest: 1 }), CALM)).toBe(51);
     expect(nextMood(50, alloc({ work: 'full-time' }), CALM)).toBe(44);
+    expect(nextMood(50, alloc({ work: 'part-time' }), CALM)).toBe(46);
     expect(nextMood(50, alloc({ work: 'full-time', overtime: 1 }), CALM)).toBe(38);
     expect(nextMood(50, alloc({ study: 1 }), CALM)).toBe(47);
     expect(nextMood(50, alloc({ sideHustle: 1 }), CALM)).toBe(45);
