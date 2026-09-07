@@ -533,6 +533,7 @@ mood[t+1] = clamp(
   +  7 · freeSocialPoints
   +  2 · restPoints
   −  5 · (workFullTime ? 1 : 0)
+  −  3 · (workPartTime ? 1 : 0)
   −  6 · overtimePoints
   −  2 · studyPoints
   −  4 · sideHustlePoints

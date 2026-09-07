@@ -1446,3 +1446,18 @@ The Zod enum derives from the same array.
 **Consequences:** adding a kind now fails at `applyCreditEvent`'s switch — the
 site that has to handle it — rather than at an unrelated array assignment.
 Verified by adding a fifth kind and checking the only error points at the switch.
+
+## 2026-09-07 — Part-time work costs −3 mood; TDD §7.3 amended to say so
+**Context:** the open question from the 2026-09-04 entry above. GDD §3.6's table
+gives part-time work −3 mood; TDD §7.3's formula had no part-time term at all,
+and the engine implemented the formula, so part-time cost energy but no mood.
+**Decision:** GDD §3.6 wins. `MOOD_PART_TIME` is now −3, and §7.3's formula gains
+a `− 3 · (workPartTime ? 1 : 0)` line so the formula authority and the code agree.
+§7.2 already carries part-time energy at −24, and nothing in the design argues for
+part-time being exempt from the mood cost that full-time and overtime both pay.
+**Consequences:** part-time is no longer strictly gentler than the GDD intends —
+it costs 3/5 of full-time's mood for 3/5 of its time points. `MOOD_PART_TIME` is
+[T], so no ruleset version bump. The §7.4 anti-spiral property test was re-run and
+is unaffected: its scripted recovery strategy allocates rest and free social only,
+so no work mode enters it. Done before any balance test exercises time allocation,
+so nothing had to be re-run for it.

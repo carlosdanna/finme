@@ -132,13 +132,9 @@ export function nextEnergy(energy: number, mood: number, allocation: Allocation)
 export const MOOD_PER_PAID_SOCIAL = 12;
 export const MOOD_PER_FREE_SOCIAL = 7;
 export const MOOD_PER_REST = 2;
+/** [T] Part-time is 3 of 5 work points and costs mood in proportion (GDD §3.6). */
 export const MOOD_FULL_TIME = -5;
-/**
- * [T] §7.3's formula has no part-time term, though GDD §3.6's table gives −3.
- * Implemented as the TDD specifies — the TDD is the formula authority — with the
- * gap made a named constant so closing it is one line. See docs/DECISIONS.md.
- */
-export const MOOD_PART_TIME = 0;
+export const MOOD_PART_TIME = -3;
 export const MOOD_PER_OVERTIME = -6;
 export const MOOD_PER_STUDY = -2;
 export const MOOD_PER_SIDE_HUSTLE = -4;
