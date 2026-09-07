@@ -1395,3 +1395,21 @@ Three coherence fixes went in alongside, because the −80 was a symptom of them
    which the rule in `version.ts` covers — but they were unreachable from any
    executed path, no content emits a `creditEvent`, and `missInstallment` has no
    production caller. Both golden fixtures are unchanged, which is the evidence.
+
+## 2026-09-07 — A contributor glossary, separate from the player one
+**Context:** acronyms are dense here and often far from their definitions —
+`CRYP` appears bare inside event formula strings, `DTI` names three constants and
+was expanded nowhere in the repo, and `TDD` means Technical Design Document while
+universally meaning Test-Driven Development everywhere else.
+**Decision:** added `docs/GLOSSARY.md` for contributors, and expanded `DTI` at
+two constants. Deliberately no other inline expansions.
+**Consequences:**
+1. It does **not** restate `packages/content/glossary.json`, which holds the 26
+   player-facing definitions the `<Term>` component renders and stays
+   authoritative for anything a player reads. `APR`, `BNPL` and `CPI` appear in
+   both: the glossary gives the expansion, the JSON gives the shipped wording.
+   Defining them twice would let the two drift.
+2. Inline expansions are limited to acronyms expanded *nowhere near* their use,
+   which turned out to be `DTI` alone — `GBM` is spelled out at `market.ts:242`,
+   `FIFO` at `tax.ts:85`. Commenting those would be the restating that the
+   2026-09-06 comment trim removed.

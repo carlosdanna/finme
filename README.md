@@ -123,7 +123,9 @@ references `indexedDB` or `localStorage`.
 |---|---|
 | [`docs/GDD.md`](docs/GDD.md) | Game design: what it teaches, and the tone rules |
 | [`docs/TDD.md`](docs/TDD.md) | Every formula and constant, by section |
-| [`docs/DECISIONS.md`](docs/DECISIONS.md) | 72 dated entries — why things are the way they are |
+| [`docs/DECISIONS.md`](docs/DECISIONS.md) | 87 dated entries — why things are the way they are |
+| [`docs/EVENT-CATALOGUE.md`](docs/EVENT-CATALOGUE.md) | The event pool, sized: category, rarity, magnitude spread, firings per run |
+| [`docs/GLOSSARY.md`](docs/GLOSSARY.md) | Acronyms and asset ids. Start here if `TDD` or `CRYP` mean nothing to you |
 | [`docs/BUILD-PLAN.md`](docs/BUILD-PLAN.md) | How the project was built, prompt by prompt |
 | [`CLAUDE.md`](CLAUDE.md) | The rules, in the form an agent reads them |
 | [`CONTRIBUTING.md`](CONTRIBUTING.md) | Setup, the branch policy, and how to change a constant |
