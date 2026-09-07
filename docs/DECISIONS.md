@@ -1363,3 +1363,86 @@ variable; widened `title`/`body` to variant pools. `RULESET_VERSION` 0.3.0 →
 4. GDD Appendix B undercounted Logbook copy by 3× — it sized event entries as
    variant-free while the schema requires three — and had no line for card
    variants at all. Restated: ~505 for MVP, ~888 for the 76-event catalogue.
+
+## 2026-09-07 — Issue #2: §5.5 is authoritative, and the derogatory component was inert
+**Context:** §5.3 called a BNPL collection a "−80 equivalent" credit hit; §5.5's
+formula caps one collection at 13.75 points (10% of a 550-point span × a 0.25
+penalty). Checking which document was wrong turned up that the question was moot
+in code: nothing ever recorded a collection.
+**Decision:** Option A from the issue — §5.5's formula stands, §5.3's figures
+become descriptive intent. No constant changed and no balance parameter moved.
+Three coherence fixes went in alongside, because the −80 was a symptom of them.
+**Consequences:**
+1. **The derogatory component never moved in a real run.** `recordCollection`
+   and `recordBankruptcy` had zero production callers, and `tick.ts` reduced
+   `creditEvents` with a ternary that named `missed` and `onTime` and returned
+   the state unchanged for anything else — so `collection` and `inquiry` were
+   silently dropped. `derogatoryScore` sat at 1.0 for the whole of every run, a
+   fixed +55 points, leaving the score's effective range 495 rather than 550.
+   Replaced with `applyCreditEvent`, a switch that is total over a named
+   `CreditEventKind`, so a new kind now fails to compile rather than being
+   ignored. `inquiry` is a named no-op: §5.5 has no inquiry term.
+2. **BNPL encoded point deltas the credit model cannot apply.**
+   `BNPL_MISS_CREDIT_IMPACT` (−15) and `BNPL_COLLECTIONS_CREDIT_IMPACT` (−80)
+   were returned by `missInstallment` as `MissResult.creditImpact` and consumed
+   by nothing — the score is a recomputed composite, so there is nothing for a
+   −80 to be subtracted from. Deleted, and replaced with
+   `creditEvents: readonly CreditEventKind[]`. The third miss now yields
+   `['missed', 'collection']`, which is also the issue's own answer to itself:
+   three misses plus a mark is how a thin file approaches the severity §5.3
+   describes, while a mature file barely notices.
+3. **No `RULESET_VERSION` bump.** The two deleted constants are `[T]`-marked,
+   which the rule in `version.ts` covers — but they were unreachable from any
+   executed path, no content emits a `creditEvent`, and `missInstallment` has no
+   production caller. Both golden fixtures are unchanged, which is the evidence.
+
+## 2026-09-07 — A contributor glossary, separate from the player one
+**Context:** acronyms are dense here and often far from their definitions —
+`CRYP` appears bare inside event formula strings, `DTI` names three constants and
+was expanded nowhere in the repo, and `TDD` means Technical Design Document while
+universally meaning Test-Driven Development everywhere else.
+**Decision:** added `docs/GLOSSARY.md` for contributors, and expanded `DTI` at
+two constants. Deliberately no other inline expansions.
+**Consequences:**
+1. It does **not** restate `packages/content/glossary.json`, which holds the 26
+   player-facing definitions the `<Term>` component renders and stays
+   authoritative for anything a player reads. `APR`, `BNPL` and `CPI` appear in
+   both: the glossary gives the expansion, the JSON gives the shipped wording.
+   Defining them twice would let the two drift.
+2. Inline expansions are limited to acronyms expanded *nowhere near* their use,
+   which turned out to be `DTI` alone — `GBM` is spelled out at `market.ts:242`,
+   `FIFO` at `tax.ts:85`. Commenting those would be the restating that the
+   2026-09-06 comment trim removed.
+
+## 2026-09-07 — The ruleset-bump rule is about effect, not about markers
+**Context:** PR #23 deleted two `[T]`-marked constants that no executed path
+reached, and did not bump `RULESET_VERSION`. By the letter of the comment in
+`version.ts` — "bump in the SAME COMMIT as any change to a [T] or [F] constant" —
+that was wrong; by CLAUDE.md, which asks for a bump on `[F]` and a DECISIONS
+entry on `[T]`, it was right. Review caught that the practice and the comment now
+disagree, and that the next person to delete a dead constant will read the
+comment.
+**Decision:** restated `version.ts` around the actual principle — **bump when the
+change alters what an existing seed produces** — with a narrow carve-out for
+changes that provably cannot, evidenced by byte-identical golden fixtures.
+**Consequences:**
+1. The marker is no longer the test; the effect is. A `[T]` constant still needs
+   a DECISIONS entry either way, which is what CLAUDE.md already said.
+2. The carve-out is deliberately hard to claim: "if you cannot demonstrate the
+   fixtures are byte-identical, bump." That keeps it from becoming a way to avoid
+   versioning a real change.
+3. Bumping for an unreachable constant is not free — it marks every existing save
+   non-comparable (§14) for no behavioural reason, which is the cost the old
+   wording ignored.
+
+## 2026-09-07 — `CreditEventKind` is declared once
+**Context:** the credit event union was spelled out in three places — the effect
+type in `schema.ts`, `EffectOutcome.creditEvents` in `effects.ts`, and the Zod
+enum in the content package. Adding a kind type-checked in two of them and was
+silently rejected at content load by the third.
+**Decision:** one runtime `CREDIT_EVENT_KINDS` array in `credit.ts` with the type
+derived from it, matching how `EVENT_CATEGORIES` and `STREAM_NAMES` already work.
+The Zod enum derives from the same array.
+**Consequences:** adding a kind now fails at `applyCreditEvent`'s switch — the
+site that has to handle it — rather than at an unrelated array assignment.
+Verified by adding a fifth kind and checking the only error points at the switch.

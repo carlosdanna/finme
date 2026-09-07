@@ -8,6 +8,7 @@
  */
 import {
   BASE_WEIGHT_COMMON,
+  CREDIT_EVENT_KINDS,
   BASE_WEIGHT_UNCOMMON,
   EVENT_CATEGORIES,
   type EventDef,
@@ -95,7 +96,7 @@ const effectSchema = z.discriminatedUnion('k', [
     .object({ k: z.literal('flag'), add: z.string().min(1).optional(), remove: z.string().min(1).optional() })
     .refine((e) => e.add !== undefined || e.remove !== undefined, 'a flag effect must add or remove something'),
   z.object({ k: z.literal('jobOffer'), jobId: z.string().min(1) }),
-  z.object({ k: z.literal('creditEvent'), kind: z.enum(['missed', 'onTime', 'collection', 'inquiry']) }),
+  z.object({ k: z.literal('creditEvent'), kind: z.enum(CREDIT_EVENT_KINDS) }),
 ]);
 
 const deferredSchema = z.object({

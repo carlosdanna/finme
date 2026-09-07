@@ -163,6 +163,8 @@ export {
   recordMissedPayment,
   recordCollection,
   recordBankruptcy,
+  applyCreditEvent,
+  CREDIT_EVENT_KINDS,
   decayWeek,
   paymentHistoryScore,
   utilizationScore,
@@ -174,7 +176,7 @@ export {
   targetScore,
   updateMonthly,
 } from './credit.ts';
-export type { CreditState, CreditInputs } from './credit.ts';
+export type { CreditState, CreditInputs, CreditEventKind } from './credit.ts';
 
 // Owned assets (TDD §8).
 export {

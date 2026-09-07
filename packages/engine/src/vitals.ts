@@ -149,7 +149,7 @@ export const MOOD_DISCRETIONARY_MAX = 8;
 /** [T] Housing tier 0..3. */
 export const HOUSING_MOOD_MODIFIER: readonly number[] = [-4, 0, 3, 5];
 
-/** [T] Unsecured debt against annual gross. */
+/** [T] Unsecured debt against annual gross — DTI is debt-to-income. */
 export const DEBT_STRESS_HIGH_DTI = 1.0;
 export const DEBT_STRESS_MID_DTI = 0.5;
 export const DEBT_STRESS_HIGH = 6;

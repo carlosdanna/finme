@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   AUTO_LOAN_BASE_APR,
-  BNPL_COLLECTIONS_CREDIT_IMPACT,
   BNPL_FREEZE_WEEKS,
   BNPL_INSTALLMENTS,
   BNPL_LATE_FEE_CENTS,
-  BNPL_MISS_CREDIT_IMPACT,
   CARD_MIN_PAYMENT_FLOOR_CENTS,
   MORTGAGE_MIN_CREDIT_SCORE,
   PAYDAY_EFFECTIVE_APR,
@@ -355,7 +353,7 @@ describe('BNPL (TDD §5.3)', () => {
   it('charges a fee and dings credit on the first miss', () => {
     const result = missInstallment(plan(), 12);
     expect(result.feeChargedCents).toBe(BNPL_LATE_FEE_CENTS);
-    expect(result.creditImpact).toBe(BNPL_MISS_CREDIT_IMPACT);
+    expect(result.creditEvents).toEqual(['missed']);
     expect(result.plan.balanceCents).toBe(40_000 + BNPL_LATE_FEE_CENTS);
     expect(result.plan.status).toBe('active');
   });
@@ -380,7 +378,8 @@ describe('BNPL (TDD §5.3)', () => {
     const third = missInstallment(p2, 16);
 
     expect(third.plan.status).toBe('collections');
-    expect(third.creditImpact).toBe(BNPL_COLLECTIONS_CREDIT_IMPACT);
+    // A missed payment *and* a derogatory mark: the third miss is both.
+    expect(third.creditEvents).toEqual(['missed', 'collection']);
     // No further fee, but the debt persists.
     expect(third.feeChargedCents).toBe(0);
     expect(third.plan.balanceCents).toBe(40_000 + BNPL_LATE_FEE_CENTS * 2);
@@ -395,7 +394,7 @@ describe('BNPL (TDD §5.3)', () => {
     const further = missInstallment(p, 18);
     expect(further.plan.balanceCents).toBe(balanceAtCollections);
     expect(further.feeChargedCents).toBe(0);
-    expect(further.creditImpact).toBe(0);
+    expect(further.creditEvents).toEqual([]);
   });
 
   it('charges no interest — the cost is the fees', () => {

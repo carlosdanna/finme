@@ -12,7 +12,7 @@
 import { clamp } from './math.ts';
 import { WEEKS_PER_YEAR } from './time.ts';
 
-/** [F] All three conditions must hold (§13, step 6e). */
+/** [F] All three conditions must hold (§13, step 6e). DTI = debt-to-income. */
 export const BANKRUPTCY_DTI_MULTIPLE = 2.0;
 export const BANKRUPTCY_MISSED_MONTHS = 3;
 
