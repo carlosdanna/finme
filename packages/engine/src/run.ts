@@ -79,6 +79,7 @@ export function createRun(config: RunConfig): Run {
     eventOutcome: stream(config.seed, 'eventOutcome'),
     jobApplication: stream(config.seed, 'jobApplication'),
     flavor: stream(config.seed, 'flavor'),
+    eventMagnitude: stream(config.seed, 'eventMagnitude'),
   };
 
   const startingJob = config.jobs.find((job) => job.id === config.startingJobId);
@@ -176,6 +177,11 @@ export interface AdvanceResult {
   readonly run: Run;
   readonly interrupts: readonly Interrupt[];
   readonly weeksAdvanced: number;
+  /**
+   * Set when the run stopped on an event the caller declined to answer. `run`
+   * sits at the start of that week; pass this back as `TickInput.eventRoll`.
+   */
+  readonly eventRoll: number | null;
 }
 
 /**
@@ -198,18 +204,25 @@ export function advance(
   for (let step = 0; step < budget; step++) {
     const result: TickResult = tick(current.world, current.streams, current.state, inputFor(current.state));
     if (result.interrupts.some((i) => i.reason === 'run-complete')) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced };
+      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: null };
+    }
+
+    // No week is applied, but the `eventMagnitude` draw *was* taken and comes
+    // back as `eventRoll`. Feed it to the re-tick rather than calling `advance`
+    // again, which burns a second draw.
+    if (result.awaitingEventChoice !== null) {
+      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: result.eventRoll };
     }
 
     current = { ...current, state: result.state };
     weeksAdvanced++;
 
     if (result.interrupts.length > 0) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced };
+      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: null };
     }
   }
 
-  return { run: current, interrupts: [], weeksAdvanced };
+  return { run: current, interrupts: [], weeksAdvanced, eventRoll: null };
 }
 
 /** Run `weeks` ticks regardless of interrupts. Used by the harness and fixtures. */

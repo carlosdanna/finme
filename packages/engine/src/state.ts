@@ -181,10 +181,18 @@ export interface RunWorld {
   readonly templates: TemplatePools;
 }
 
-/** The three in-play streams. Never serialized; re-derived on replay (§14). */
+/** The in-play streams. Never serialized; re-derived on replay (§14). */
 export interface RunStreams {
   readonly eventOutcome: Rng;
   readonly jobApplication: Rng;
+  /**
+   * One draw per fired event, feeding the `roll` formula variable (TDD §9.3).
+   *
+   * [F] Its own stream, not a second use of `eventOutcome`: adding a draw to an
+   * existing stream shifts every later value on it and rewrites what each
+   * existing seed produces.
+   */
+  readonly eventMagnitude: Rng;
   /**
    * [F] The Logbook's only source of randomness. Passing anything else here
    * would break the §2.2 guarantee that flavor never influences simulation.

@@ -37,6 +37,13 @@ export interface ScheduledEffect {
   readonly condition: DeferredEffect['condition'];
   readonly effects: readonly Effect[];
   readonly logbookKey?: string;
+  /**
+   * The magnitude roll of the event that scheduled this. A deferred effect does
+   * not re-roll: its size belongs to the choice that scheduled it, so a bad
+   * x-ray is still a bad x-ray six months later. Without it the formula falls
+   * back to 0.5 and every player pays the same constant.
+   */
+  readonly roll?: number;
 }
 
 export function emptyOutcome(): EffectOutcome {
@@ -200,6 +207,7 @@ export function resolveChoice(
           condition: deferred.condition,
           effects: deferred.effects,
           logbookKey: deferred.logbookKey,
+          roll: context.vars.roll, // carried, not re-rolled
         })),
       ],
     };
@@ -208,9 +216,22 @@ export function resolveChoice(
   return out;
 }
 
-/** Interpolate `{{var}}` placeholders in an event body. */
+/** Every `{{var}}` an event body references, in source order. */
+export function placeholdersIn(template: string): string[] {
+  return [...template.matchAll(PLACEHOLDER)].map((match) => match[1]);
+}
+
+const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g;
+
+/**
+ * Interpolate `{{var}}` placeholders in an event body.
+ *
+ * An unresolved key is left as written — better than throwing mid-render, but
+ * also how eight events shipped printing a literal `{{repairCost}}`. The
+ * load-time lint in `@finme/content` is what keeps one from getting this far.
+ */
 export function interpolate(template: string, values: Readonly<Record<string, string>>): string {
-  return template.replace(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g, (match, key: string) =>
+  return template.replace(PLACEHOLDER, (match, key: string) =>
     Object.prototype.hasOwnProperty.call(values, key) ? values[key] : match,
   );
 }

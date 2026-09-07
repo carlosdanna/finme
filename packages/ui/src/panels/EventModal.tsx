@@ -60,11 +60,14 @@ function Choices({
 export function EventModal({
   event,
   choiceIds,
+  title,
   body,
   onChoose,
 }: {
   event: EventDef | null;
   choiceIds: readonly string[];
+  /** Interpolated by the caller — titles may carry `{{placeholders}}` too. */
+  title: string;
   body: string;
   onChoose: (choiceId: string) => void;
 }) {
@@ -99,7 +102,7 @@ export function EventModal({
           <SheetHeader className="flex-none pb-0">
             <SheetTitle className="text-left">
               <Typography variant="h3" as="span">
-                {event.title}
+                {title}
               </Typography>
             </SheetTitle>
           </SheetHeader>
@@ -121,7 +124,7 @@ export function EventModal({
           phone could be escaped on a desktop. */}
       <DialogContent showCloseButton={false} className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>{event.title}</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="max-h-[70dvh] overflow-y-auto overscroll-contain">{content}</div>
       </DialogContent>

@@ -5,9 +5,11 @@ export {
   BASE_WEIGHT_UNCOMMON,
   BASE_WEIGHT_RARE,
   REST_BRANCH,
+  cardVariant,
 } from './schema.ts';
 export type {
   EventDef,
+  DisplayVar,
   EventCategory,
   EventHistory,
   Gate,
@@ -58,5 +60,6 @@ export {
   branchProbabilities,
   resolveChoice,
   interpolate,
+  placeholdersIn,
 } from './effects.ts';
 export type { EffectOutcome, ScheduledEffect } from './effects.ts';

@@ -82,9 +82,16 @@ describe('stream derivation (TDD §2.2)', () => {
       'eventSlots',
       'eventSelection',
     ]);
-    expect([...IN_PLAY_STREAMS]).toEqual(['eventOutcome', 'jobApplication', 'flavor']);
-    expect(STREAM_NAMES).toHaveLength(8);
-    expect(new Set(STREAM_NAMES).size).toBe(8);
+    expect([...IN_PLAY_STREAMS]).toEqual([
+      'eventOutcome',
+      'jobApplication',
+      'flavor',
+      // Appending is safe where reordering or renaming is not: streams derive
+      // from `fnv1a(seed::name)`, so the existing five are unaffected.
+      'eventMagnitude',
+    ]);
+    expect(STREAM_NAMES).toHaveLength(9);
+    expect(new Set(STREAM_NAMES).size).toBe(9);
   });
 
   it('produces identical sequences for the same seed and stream name', () => {

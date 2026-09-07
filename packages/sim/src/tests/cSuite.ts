@@ -7,6 +7,9 @@
  * Run: `pnpm -F @finme/sim c-suite`
  */
 import {
+  BASE_WEIGHT_COMMON,
+  BASE_WEIGHT_RARE,
+  BASE_WEIGHT_UNCOMMON,
   type Interrupt,
   type Run,
   type RunState,
@@ -30,11 +33,11 @@ import { describe, formatCents } from '../stats.ts';
  * to be content, which is what separates an engine failure from an unwritten
  * one.
  */
-function fillerEvent(n: number): EventDef {
+function fillerEvent(n: number, baseWeight: number): EventDef {
   return {
     id: `ZZZ_FILLER_${String(n).padStart(3, '0')}`,
     category: 'social',
-    baseWeight: 100,
+    baseWeight,
     cooldownWeeks: 52,
     gates: [],
     multipliers: [],
@@ -47,16 +50,42 @@ function fillerEvent(n: number): EventDef {
   };
 }
 
-/** The shipped pool, diluted to `size` with fillers. */
+/**
+ * [T] The rarity mix fillers are drawn in (`docs/EVENT-CATALOGUE.md` §4).
+ *
+ * Uniformly-common fillers made the diluted pool a bad model of a real one: C5
+ * then measured a pool with no rare events at all.
+ */
+const FILLER_TIER_MIX: readonly number[] = (() => {
+  const counts: readonly (readonly [number, number])[] = [
+    [BASE_WEIGHT_COMMON, 21],
+    [BASE_WEIGHT_UNCOMMON, 35],
+    [BASE_WEIGHT_RARE, 20],
+  ];
+  // Interleaved, not blocked, so any prefix is a representative mix.
+  return counts
+    .flatMap(([weight, n]) =>
+      Array.from({ length: n }, (_, k) => ({ weight, spread: (k + 0.5) / n })),
+    )
+    .sort((a, b) => a.spread - b.spread || b.weight - a.weight)
+    .map((entry) => entry.weight);
+})();
+
+/** The shipped pool, diluted to `size` with fillers in the catalogue's tier mix. */
 export function dilutedPool(size: number): EventDef[] {
   return [
     ...EVENTS,
-    ...Array.from({ length: Math.max(0, size - EVENTS.length) }, (_, i) => fillerEvent(i)),
+    ...Array.from({ length: Math.max(0, size - EVENTS.length) }, (_, i) =>
+      fillerEvent(i, FILLER_TIER_MIX[i % FILLER_TIER_MIX.length]),
+    ),
   ];
 }
 
 /** GDD §5.3's MVP target. */
 export const MVP_POOL_SIZE = 45;
+
+/** GDD §5.3's full-game target. C5's per-tier limits are sized against this. */
+export const FULL_POOL_SIZE = 120;
 
 export interface CResult {
   readonly id: string;
@@ -192,6 +221,23 @@ export function runC3(seedCount = 120): CResult {
 
 // --- C4 — decision density --------------------------------------------------
 
+/**
+ * [T] Decision points per 30-year run (issue #1, 2026-09-06).
+ *
+ * An event *is* a decision point, so §5.3's frequency and this are the same
+ * number; they agreed at ~255 and C4's old 150-250 was the outlier. The ceiling
+ * is 320 rather than 255 because a larger pool leaves fewer slots with nothing
+ * eligible, so density rises with pool size on a fixed schedule.
+ */
+export const DENSITY_MIN = 150;
+export const DENSITY_MAX = 320;
+
+/**
+ * [T] Longest acceptable stretch with no player interaction. C4 says "~6 in-game
+ * months"; the assertion has always been 30 while the label said 26. Kept at 30.
+ */
+export const QUIET_STRETCH_MAX_WEEKS = 30;
+
 export function runC4(seedCount = 60, pool?: readonly EventDef[]): CResult {
   const counts: number[] = [];
   const longestGaps: number[] = [];
@@ -217,8 +263,8 @@ export function runC4(seedCount = 60, pool?: readonly EventDef[]): CResult {
 
   const density = describe(counts);
   const gaps = describe(longestGaps);
-  // 150-250 decision points, and no stretch beyond ~6 in-game months.
-  const passed = density.p50 >= 150 && density.p50 <= 250 && gaps.p90 <= 30;
+  const passed =
+    density.p50 >= DENSITY_MIN && density.p50 <= DENSITY_MAX && gaps.p90 <= QUIET_STRETCH_MAX_WEEKS;
 
   return {
     id: 'C4',
@@ -226,34 +272,81 @@ export function runC4(seedCount = 60, pool?: readonly EventDef[]): CResult {
     passed,
     lines: [
       `${seedCount} full runs`,
-      `decision points: p10 ${density.p10.toFixed(0)}, p50 ${density.p50.toFixed(0)}, p90 ${density.p90.toFixed(0)} (target 150-250)`,
-      `longest quiet stretch: p50 ${gaps.p50.toFixed(0)}w, p90 ${gaps.p90.toFixed(0)}w, max ${gaps.max.toFixed(0)}w (target <= 26w)`,
+      `decision points: p10 ${density.p10.toFixed(0)}, p50 ${density.p50.toFixed(0)}, p90 ${density.p90.toFixed(0)} (target ${DENSITY_MIN}-${DENSITY_MAX})`,
+      `longest quiet stretch: p50 ${gaps.p50.toFixed(0)}w, p90 ${gaps.p90.toFixed(0)}w, max ${gaps.max.toFixed(0)}w (target <= ${QUIET_STRETCH_MAX_WEEKS}w)`,
     ],
   };
 }
 
 // --- C5 — event repetition --------------------------------------------------
 
+type Tier = 'common' | 'uncommon' | 'rare';
+
+/**
+ * [T] Firings of one event per 30-year run, per rarity tier, at the **p90** of
+ * the (run, event) distribution (issue #1, 2026-09-06).
+ *
+ * Per tier because a common event carries 8x a rare event's weight and fires 8x
+ * as often by design. At p90 rather than the maximum because a maximum grows
+ * with sample count, so the old check got stricter when `seedCount` rose.
+ * Numbers scale §5.3's "no more than 3-4 times" by tier weight.
+ */
+export const REPEAT_LIMIT_P90: Readonly<Record<Tier, number>> = {
+  common: 8,
+  uncommon: 4,
+  rare: 2,
+};
+
+function tierOf(event: EventDef): Tier {
+  if (event.baseWeight >= BASE_WEIGHT_COMMON) return 'common';
+  if (event.baseWeight >= BASE_WEIGHT_UNCOMMON) return 'uncommon';
+  return 'rare';
+}
+
 export function runC5(seedCount = 200, pool?: readonly EventDef[]): CResult {
-  let worstRepeat = 0;
-  let repeatsInFirstFive = 0;
+  const events = pool ?? EVENTS;
+  const byId = new Map(events.map((event) => [event.id, event]));
+
+  const firings: Record<Tier, number[]> = { common: [], uncommon: [], rare: [] };
+  const worst: Record<Tier, number> = { common: 0, uncommon: 0, rare: 0 };
+  let cooldownBreaches = 0;
   const repeatCounts: number[] = [];
 
   for (const seed of seeds(seedCount, 'C5')) {
     const run = baselineRun(seed, WEEKS_PER_YEAR * 30, pool);
-    const history = run.state.eventHistory;
 
-    for (const [, weeks] of Object.entries(history)) {
-      worstRepeat = Math.max(worstRepeat, weeks.length);
+    for (const [id, weeks] of Object.entries(run.state.eventHistory)) {
+      const event = byId.get(id);
+      if (event === undefined) continue;
+      const tier = tierOf(event);
+
+      firings[tier].push(weeks.length);
+      worst[tier] = Math.max(worst[tier], weeks.length);
       repeatCounts.push(weeks.length);
-      // A repeat inside the first five in-game years.
-      const early = weeks.filter((week) => week < WEEKS_PER_YEAR * 5);
-      if (early.length > 1) repeatsInFirstFive++;
+
+      // Replaces "no event repeats inside the first 5 years", which no pool
+      // could satisfy: a common event has ~1.1 expected firings in five years,
+      // so a repeat somewhere across 200 runs is a certainty, not a defect.
+      for (let i = 1; i < weeks.length; i++) {
+        if (weeks[i] - weeks[i - 1] < event.cooldownWeeks) cooldownBreaches++;
+      }
     }
   }
 
   const stats = describe(repeatCounts);
-  const passed = worstRepeat <= 4 && repeatsInFirstFive === 0;
+  const tiers = Object.keys(REPEAT_LIMIT_P90) as Tier[];
+  const overLimit = tiers.filter((tier) => {
+    const counts = firings[tier];
+    return counts.length > 0 && describe(counts).p90 > REPEAT_LIMIT_P90[tier];
+  });
+  const passed = overLimit.length === 0 && cooldownBreaches === 0;
+
+  const tierLine = (tier: Tier): string => {
+    const counts = firings[tier];
+    if (counts.length === 0) return `  ${tier}: no events in pool`;
+    const t = describe(counts);
+    return `  ${tier}: p50 ${t.p50.toFixed(1)}, p90 ${t.p90.toFixed(1)} (limit ${REPEAT_LIMIT_P90[tier]}), worst ${worst[tier]}`;
+  };
 
   return {
     id: 'C5',
@@ -261,10 +354,13 @@ export function runC5(seedCount = 200, pool?: readonly EventDef[]): CResult {
     passed,
     lines: [
       `${seedCount} full runs`,
-      `most times any event fired in one run: ${worstRepeat} (limit 4)`,
-      `firings per event: p50 ${stats.p50.toFixed(1)}, p90 ${stats.p90.toFixed(1)}`,
-      `events repeating inside the first 5 years: ${repeatsInFirstFive} (must be 0)`,
-      `pool size: ${(pool ?? EVENTS).length} events (GDD §5.3 targets ~45 for MVP, ~120 full)`,
+      'firings per event in one run, by rarity tier — p90 is the assertion:',
+      tierLine('common'),
+      tierLine('uncommon'),
+      tierLine('rare'),
+      `all tiers: p50 ${stats.p50.toFixed(1)}, p90 ${stats.p90.toFixed(1)}`,
+      `firings inside the event's own cooldown: ${cooldownBreaches} (must be 0)`,
+      `pool size: ${events.length} events (GDD §5.3 targets ~45 for MVP, ~120 full)`,
     ],
   };
 }
@@ -347,7 +443,17 @@ export function runCSuiteAtMvpPool(): CResult[] {
     runC4(30, pool),
     runC5(60, pool),
     runC6(60, pool),
-  ].map((result) => ({ ...result, id: `${result.id}@45` }));
+  ].map((result) => ({ ...result, id: `${result.id}@${MVP_POOL_SIZE}` }));
+}
+
+/**
+ * C5 against §5.3's full-game pool target. Its limits describe the shipped game,
+ * so this is what shows they are met by pool size alone — and that the failures
+ * above are unwritten content rather than a broken parameter.
+ */
+export function runC5AtFullPool(): CResult {
+  const result = runC5(60, dilutedPool(FULL_POOL_SIZE));
+  return { ...result, id: `C5@${FULL_POOL_SIZE}` };
 }
 
 export function formatCSuite(results: readonly CResult[]): string {
@@ -372,6 +478,9 @@ export function formatCSuite(results: readonly CResult[]): string {
 if (import.meta.url === `file://${process.argv[1]}`) {
   console.log(formatCSuite(runCSuite()));
   console.log('');
-  console.log('Diagnostic — the same tests with the pool diluted to the MVP target of 45');
+  console.log(`Diagnostic — the same tests with the pool diluted to the MVP target of ${MVP_POOL_SIZE}`);
   console.log(formatCSuite(runCSuiteAtMvpPool()));
+  console.log('');
+  console.log(`Diagnostic — C5 at §5.3's full-game pool target of ${FULL_POOL_SIZE}`);
+  console.log(formatCSuite([runC5AtFullPool()]));
 }

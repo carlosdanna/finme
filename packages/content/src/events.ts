@@ -6,12 +6,52 @@
  * id collides. **Event ids are stable forever** — a rename silently changes what
  * every existing seed produces.
  */
-import { EVENT_CATEGORIES, type EventDef, FORMULA_FUNCTIONS, evaluateFormula } from '@finme/engine';
+import {
+  BASE_WEIGHT_COMMON,
+  BASE_WEIGHT_UNCOMMON,
+  EVENT_CATEGORIES,
+  type EventDef,
+  FORMULA_FUNCTIONS,
+  evaluateFormula,
+  placeholdersIn,
+} from '@finme/engine';
 import { z } from 'zod';
 import data from '../events/mvp.json' with { type: 'json' };
 
+/** Placeholders the run supplies rather than the event (TDD §12). */
+export const RUN_SCOPED_VARS: readonly string[] = ['friendName', 'advisorName'];
+
 /** A magnitude is a literal number or a formula string (TDD §9.3). */
 const magnitudeSchema = z.union([z.number(), z.string().min(1)]);
+
+/**
+ * One `{{placeholder}}` value: what to compute, and how to render it. `number`
+ * is bare, for prose that supplies its own unit — the bodies read "{{raisePct}}
+ * percent", so a `<Pct>` would print the symbol twice.
+ */
+const displayVarSchema = z.object({
+  as: z.enum(['money', 'number']),
+  value: magnitudeSchema,
+  /** Decimal places for `number`. Ignored for `money`. */
+  precision: z.number().int().min(0).max(2).optional(),
+});
+
+/** A card field: one string, or a pool of variants. */
+const cardTextSchema = z.union([z.string().min(1), z.array(z.string().min(1)).min(1)]);
+
+const asPool = (value: string | readonly string[]): readonly string[] =>
+  Array.isArray(value) ? value : [value as string];
+
+/**
+ * [T] Minimum card variants by rarity tier (`docs/EVENT-CATALOGUE.md` §3.3),
+ * budgeted by how often the tier repeats. The Logbook has had a floor of 3 per
+ * key since it shipped, for the same reason — see `MIN_VARIANTS_PER_KEY`.
+ */
+export const MIN_CARD_VARIANTS: Readonly<Record<'common' | 'uncommon' | 'rare', number>> = {
+  common: 3,
+  uncommon: 2,
+  rare: 1,
+};
 
 const comparisonOpSchema = z.enum(['<', '<=', '>', '>=', '==', '!=']);
 
@@ -116,8 +156,13 @@ export const eventSchema = z
     cooldownWeeks: z.number().int().nonnegative(),
     gates: z.array(gateSchema),
     multipliers: z.array(z.object({ when: gateSchema, factor: z.number().positive() })),
-    title: z.string().min(1),
-    body: z.string().min(1),
+    title: cardTextSchema,
+    body: cardTextSchema,
+    /**
+     * Values for the `{{placeholders}}` in `title` and `body`. Magnitudes in
+     * the same language as an effect's, against the same context and `roll`.
+     */
+    displayVars: z.record(z.string().min(1), displayVarSchema).optional(),
     choices: z.array(choiceSchema).min(2),
   })
   .superRefine((event, ctx) => {
@@ -127,6 +172,57 @@ export const eventSchema = z
         ctx.addIssue({ code: 'custom', message: `duplicate choice id '${choice.id}' in ${event.id}` });
       }
       choiceIds.add(choice.id);
+    }
+
+    // `interpolate` passes an unknown key through as literal text, so without
+    // this a typo ships as `{{repairCost}}` on the card.
+    const declared = new Set([...Object.keys(event.displayVars ?? {}), ...RUN_SCOPED_VARS]);
+    const titles = asPool(event.title);
+    const bodies = asPool(event.body);
+
+    for (const [field, pool] of [['title', titles], ['body', bodies]] as const) {
+      for (const text of pool) {
+        for (const key of placeholdersIn(text)) {
+          if (!declared.has(key)) {
+            ctx.addIssue({
+              code: 'custom',
+              message: `${event.id}: ${field} references {{${key}}}, which nothing provides — add it to displayVars`,
+            });
+          }
+        }
+      }
+    }
+
+    const allText = [...titles, ...bodies];
+    for (const key of Object.keys(event.displayVars ?? {})) {
+      if (!allText.some((text) => placeholdersIn(text).includes(key))) {
+        ctx.addIssue({
+          code: 'custom',
+          message: `${event.id}: displayVars.${key} is never referenced by title or body`,
+        });
+      }
+    }
+
+    // A variant is a whole card, so the pools must line up.
+    if (titles.length > 1 && bodies.length > 1 && titles.length !== bodies.length) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${event.id}: ${titles.length} titles against ${bodies.length} bodies — a variant is a title and a body together`,
+      });
+    }
+
+    const tier =
+      event.baseWeight >= BASE_WEIGHT_COMMON
+        ? 'common'
+        : event.baseWeight >= BASE_WEIGHT_UNCOMMON
+          ? 'uncommon'
+          : 'rare';
+    const variants = Math.max(titles.length, bodies.length);
+    if (variants < MIN_CARD_VARIANTS[tier]) {
+      ctx.addIssue({
+        code: 'custom',
+        message: `${event.id} is ${tier} and fires often enough to need ${MIN_CARD_VARIANTS[tier]} card variants — it has ${variants}`,
+      });
     }
   });
 
@@ -196,6 +292,12 @@ export function collectFormulas(
       for (const branch of choice.outcomeRoll?.branches ?? []) {
         if (typeof branch.p === 'string' && branch.p !== 'rest') push(event.id, branch.p);
       }
+    }
+
+    // Card values are formulas too; omitting them let a typo'd variable pass
+    // every check and then throw out of the tick.
+    for (const spec of Object.values(event.displayVars ?? {})) {
+      push(event.id, spec.value);
     }
   }
   return found;

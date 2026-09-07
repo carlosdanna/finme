@@ -1196,3 +1196,170 @@ gains a test that scrolls a real panel to its end; the tab-bar clearance test no
 asserts that the scroller's bottom edge clears the bar rather than that `main`
 carries a padding value, since the padding it checked for no longer exists — and a
 padding value never showed whether anything was actually visible.
+
+## 2026-09-06 — Event catalogue split out of the GDD appendix
+**Context:** issue #1 asks how many events a 30-year run should fire, weighing
+GDD §5.3's ~300 against Appendix C4's 150–250 ceiling. Neither document assigns
+the events an engine `category` or a rarity tier, so the trade-off could not be
+priced. GDD Appendix A is prose and its headings do not match
+`EVENT_CATEGORIES`.
+**Decision:** added `docs/EVENT-CATALOGUE.md` as the sized, per-category list —
+45 MVP events with `id`, tier, gate and modelled fires per run. Appendix A stays
+authoritative for what each event *is*; the catalogue is authoritative for how
+often it fires. No constant changed and no event content was written, so no
+ruleset version bump. Issue #1 is left open.
+**Consequences:**
+1. Three Appendix A entries were recategorised to match the engine enum: A#15
+   *Rent increase* → `housing` (already shipped that way as `HOU_RENT_INCREASE`),
+   A#12 *Medical bill* and A#20 *Unexpected dental* → `health`.
+2. Appendix A claims 45 ★ MVP events but marks only 42. Three unmarked entries
+   were promoted to reach the stated count: A#7 `WIN_SOLD_OLD_THING`, A#47
+   `SOC_SUBSCRIPTION_CREEP`, A#50 `SOC_FAMILY_ASKS_HELP`.
+3. **A third constraint on issue #1.** §5.3's "no more than 3–4 times" and C5's
+   hard limit of 4 make pool size a function of decision density: ~68 events at
+   255 fires, ~52 even at C4's 200-fire ceiling. A 45-event pool fails C5 under
+   every option the issue lists, and Option C (redefine "decision point") cannot
+   fix repetition at all, because C5 counts firings rather than decisions.
+4. Emergency carries 18% of the weight budget on 5 events — 6.1 points below its
+   §9.5 share before multipliers. Expansion priority is emergency, then social
+   and career, which is a different order from Appendix A's own note.
+
+## 2026-09-06 — Event variance model, and a correction to yesterday's C5 floor
+**Context:** the catalogue needed per-event variance (magnitude and prose) and
+more events per category. Sizing the expansion exposed an error in the entry
+above.
+**Decision:** expanded `docs/EVENT-CATALOGUE.md` to a **76-event pool** with a
+magnitude spread and a variance mechanism per event, and tuned the rarity tiers
+so raw weight share tracks §9.5 within 1.1 points in every category. Ten events
+are new, not from Appendix A: six social, four emergency. No engine code changed
+and no shipped event's `baseWeight` moved, so no ruleset version bump. Issue #1
+stays open.
+**Consequences:**
+1. **Correction.** The entry above put the C5 floor at "~68 events at 255 fires,
+   ~52 at C4's ceiling". That assumed events within a category fire equally,
+   which the C/U/R tier system contradicts. The binding constraint is the common
+   tier: a C event fires `255 × 100 ÷ totalWeight` times, so passing C5's limit
+   of 4 needs `totalWeight ≥ 6,375` — **~124 events at 255 fires, ~98 at 200**.
+   The real floor is roughly double what was recorded. 45 fails, 76 fails, and
+   the full ~120 target only just clears it.
+2. That makes a **per-tier repetition limit** a live option for issue #1, and a
+   smaller change than lowering `SLOT_LAMBDA` or compressing the tiers. A common
+   event firing 6 times in thirty years may simply be correct; C5's global limit
+   of 4 is what makes it a failure. Recorded, not decided.
+3. **Magnitude variance needs an engine change.** Formula functions are all
+   deterministic, so every firing of an event costs the same fraction of income.
+   The catalogue specifies spreads as `anchor × [lo–hi]`, which needs a `roll`
+   variable fed by a **new `eventMagnitude` in-play RNG stream**. It must be a
+   new stream — adding a draw to `eventOutcome` shifts every downstream value and
+   breaks existing seeds.
+4. **Event cards have no prose variants.** `title` and `body` are single strings,
+   so a repeated event reads identically every time, while the Logbook already
+   enforces 3 variants per key. Widening both fields to arrays drawn from
+   `flavor` is a content-only change, since `flavor` cannot move a number.
+   Budget: C→3 variants, U→2, R→1 = 153 card variants for this pool.
+5. **GDD Appendix B undercounts Logbook copy by 3×.** It sizes Tier 3 as
+   "no variants", but `MIN_VARIANTS_PER_KEY = 3` is enforced at load. The real
+   figure for 76 events is ~570 Logbook lines, ~735 with Tiers 1–2, ~888 with
+   card variants — against Appendix B's "~450 for 120 events". Appendix B should
+   be restated.
+
+## 2026-09-06 — Issue #1 settled: §5.3 wins, and C5 was unsatisfiable
+**Context:** GDD §5.3 said a 30-year run fires ~300 events; Appendix C4 capped
+"meaningful decision points" at 250. C4, C5 and C6 all failed. Sizing the event
+catalogue showed the two documents were arguing about the same number seen from
+two directions, and reading the tests showed two of the assertions could not be
+satisfied by any amount of content.
+**Decision:** §5.3 stands; C4 moves. Density band 150–250 → **150–320**, and
+`SLOT_LAMBDA` does **not** change, so no existing seed shifts. C5 is
+respecified per rarity tier and asserts on p90 rather than the worst case.
+**Consequences:**
+1. **C4's ceiling.** An event presents 2–3 choices, so an event *is* a decision
+   point. §5.3's "one event every 4–6 weeks" and the implemented λ already
+   agreed at ~255 measured; C4 was the outlier. 320 rather than 255 leaves
+   headroom, because a larger pool leaves fewer slots with nothing eligible and
+   density therefore rises with pool size even though the schedule is fixed.
+   The quiet-stretch half asserted 30w while printing "26w" — both now say 30.
+2. **C5 was unachievable, twice over.** `repeatsInFirstFive === 0` required zero
+   repeats across 200 runs, but ~42 firings in five years give a common event
+   ~1.1 expected firings, so a repeat somewhere is a certainty. It is replaced
+   by the invariant it was reaching for: no event fires again inside its own
+   cooldown, which holds at 0 breaches everywhere. Separately the limit asserted
+   on the **maximum** across all runs — a statistic that grows with sample count,
+   so raising `seedCount` made the test stricter with no change to the game. It
+   now asserts p90.
+3. **Per-tier limits.** One global limit of 4 ignored the weight system: a common
+   event carries 8× a rare event's weight and fires 8× as often by design.
+   Limits are common 8 / uncommon 4 / rare 2, sized against §5.3's full-game
+   pool — `C5@120` passes on every tier, so they are reachable by pool size
+   alone. `C5@45` fails, correctly: that is unwritten content, not a bad
+   parameter.
+4. **Filler events now follow the catalogue's tier mix** (21C/35U/20R,
+   interleaved) instead of being uniformly common. The old filler held the real
+   events to 16% of pool weight against ~30% in a true pool. This moved `C6@45`
+   from pass to fail: it had been passing because the diluted pool under-fired
+   the expensive events. C6 is out of scope here and fails at the shipped pool
+   too.
+
+## 2026-09-06 — Three bugs found while implementing the above
+**Context:** none of these are in issue #1; all three were found by reading the
+code the issue pointed at.
+**Decision:** fixed, with regression tests.
+**Consequences:**
+1. **The player's event choice was mostly discarded.** `advanceTime` ticked the
+   event's week with `choiceIds[0]` and committed it, then `resolveEvent` ticked
+   a *second, different* week. Picking "negotiate" applied "accept", and one
+   card cost two weeks of bills. `chooseEvent` may now return `null`, meaning
+   the player has not answered; `tick` abandons the week and returns the state
+   it was given. This is an engine change where a store-level fix was planned —
+   streams are stateful closures, so rewinding state alone cannot rewind
+   `eventOutcome` and `flavor`, and §14 loads by replaying the decision log
+   against re-derived streams, so a live session would have diverged from its
+   own reload.
+2. **Every event card showed raw `{{mustache}}`.** All eight events used
+   placeholders the UI never supplied, and `interpolate` passes an unknown key
+   through as literal text. Events now declare `displayVars`, evaluated against
+   the same context and the same `roll` as the effects, with load-time lints for
+   undeclared and unused keys and a static check that a money placeholder quotes
+   a formula some choice actually applies. Static deliberately: two runtime
+   versions of that test passed vacuously because the events they needed never
+   fired on the test seed.
+3. **Spreads must be mean-preserving.** A spread `[lo–hi]` averages `(lo+hi)/2`,
+   above 1 for every range in the catalogue, so applying one to an existing
+   anchor raises typical costs by up to 70% — a balance change wearing variance
+   as a disguise. Anchors are divided by their spread's mean (0.6 → 0.48 for
+   `[0.5–2.0]`). Caught by a golden fixture that moved far more than variance
+   could explain.
+
+   **This holds before the `clamp`, not after it.** Truncating a spread is not
+   mean-neutral, and where the old fixed value already sat on the ceiling the
+   spread can only move down. For `EMG_CAR_BREAKDOWN` the effective mean falls
+   by up to **15%** around $3,000/month, fading to nil at both ends of the
+   income range. Accepted rather than corrected — widening the clamps to
+   compensate would be a balance change in its own right. C1 passes and C6@45's
+   medians move a few percent either way, so the aggregate effect is small, but
+   it is not zero and it is not uniform. Table in
+   `docs/EVENT-CATALOGUE.md` §3.1.
+
+## 2026-09-06 — `eventMagnitude` stream and card variants
+**Context:** the catalogue specifies a per-firing magnitude spread and a
+prose-variant budget. Neither was expressible.
+**Decision:** added the `eventMagnitude` in-play stream and the `roll` formula
+variable; widened `title`/`body` to variant pools. `RULESET_VERSION` 0.3.0 →
+0.4.0 with the golden run fixture regenerated in the same commit.
+**Consequences:**
+1. **Its own stream, not `eventOutcome`.** Streams derive from
+   `fnv1a(seed::name)`, so appending a name leaves the existing five untouched —
+   confirmed by the market golden fixture, which does not move. Adding a draw to
+   `eventOutcome` would have shifted every later value on it.
+2. **Exactly one draw per fired event**, never per choice or per effect. If the
+   count depended on the choice taken, two players sharing a seed would diverge
+   the first time they answered differently. The roll is drawn when the card is
+   presented and fed back through `TickInput.eventRoll`, so the choice is
+   charged the number the card quoted.
+3. **Card variants are a pure function of the week, not an RNG draw.** Drawing
+   from `flavor` inside `tick` would consume a draw only on the interactive
+   path, leaving a headless run and a played one at different stream positions.
+   A function of `weekIndex` needs no stream and cannot shift one.
+4. GDD Appendix B undercounted Logbook copy by 3× — it sized event entries as
+   variant-free while the schema requires three — and had no line for card
+   variants at all. Restated: ~505 for MVP, ~888 for the 76-event catalogue.

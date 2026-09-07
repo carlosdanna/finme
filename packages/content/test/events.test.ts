@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   EVENT_CATEGORIES,
+  type EventDef,
   type EventState,
   applyEffects,
+  cardVariant,
   eligibleEvents,
   evaluateFormula,
   eventWeight,
@@ -26,6 +28,12 @@ const formulaContext = {
     monthlyIncome: 400_000,
     carScrapValue: 192_000,
     performanceNorm: 0.6,
+    // The per-firing magnitude draw (TDD §9.3), held at mid-range.
+    roll: 0.5,
+    // Must mirror `formulaContextFrom` — a name missing here fails the lint as
+    // unknown even though it is real.
+    inflationThisYear: 0.031,
+    lastRaisePct: 0.018,
   },
   price: (assetId: string) => ({ SAFE: 12_345, CRYP: 640, MOON: 8_000 })[assetId] ?? Number.NaN,
 };
@@ -219,6 +227,8 @@ describe('golden: fixed seed, fixed state, exact selection and delta', () => {
         condition: { type: 'flag', value: 'job_requires_vehicle' },
         effects: [{ k: 'flag', add: 'job_at_risk_no_vehicle' }],
         logbookKey: undefined,
+        // Carried from the scheduling choice, not reset to the midpoint.
+        roll: formulaContext.vars.roll,
       },
     ]);
   });
@@ -304,7 +314,110 @@ describe('golden: fixed seed, fixed state, exact selection and delta', () => {
   });
 });
 
+/**
+ * A card must not promise a price nothing charges. `displayVars` and effects are
+ * separate formula strings and can drift apart silently. Checked statically, so
+ * it covers the whole pool rather than the handful a given seed reaches.
+ */
+describe('event cards quote what they charge', () => {
+  /**
+   * Magnitudes an event applies, as written and unsigned: costs are negated
+   * while the card quotes the price, and "put it on the card" charges the same
+   * price as a debt principal.
+   */
+  function chargedMagnitudes(event: EventDef): string[] {
+    return event.choices
+      .flatMap((choice) => [
+        ...choice.effects,
+        ...(choice.outcomeRoll?.branches ?? []).flatMap((branch) => branch.effects),
+        ...(choice.deferred ?? []).flatMap((deferred) => deferred.effects),
+      ])
+      .flatMap((effect) => {
+        if (effect.k === 'cash' || effect.k === 'expense') return [String(effect.cents)];
+        if (effect.k === 'debt') return [String(effect.principalCents)];
+        return [];
+      })
+      .map((source) => source.replace(/^-/, ''));
+  }
+
+  it('every money placeholder matches an effect the event can apply', () => {
+    const checked: string[] = [];
+
+    for (const event of EVENTS) {
+      for (const [key, spec] of Object.entries(event.displayVars ?? {})) {
+        if (spec.as !== 'money') continue;
+        const charged = chargedMagnitudes(event);
+        // Compared verbatim: the card and the effect must be the *same*
+        // expression, not merely equal on one seed.
+        expect(charged, `${event.id}.${key} quotes a price no choice charges`).toContain(
+          String(spec.value).replace(/^-/, ''),
+        );
+        checked.push(`${event.id}.${key}`);
+      }
+    }
+
+    // So this cannot pass by finding nothing to check.
+    expect(checked.length).toBeGreaterThanOrEqual(5);
+  });
+});
+
 /** A structured clone that keeps the object mutable and typed loosely enough to break. */
 function structuredCloneish<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
+
+/**
+ * A repeated event must not read identically every time. The Logbook has had a
+ * 3-variant floor since it shipped; the card, read *during* the decision, had
+ * none, and a common event fires six or seven times a run.
+ */
+describe('event card variants', () => {
+  it('gives a different card on a later firing of the same event', () => {
+    const repeatable = EVENTS.filter((event) => (Array.isArray(event.body) ? event.body : []).length > 1);
+    expect(repeatable.length).toBeGreaterThan(0);
+
+    for (const event of repeatable) {
+      const seen = new Set<string>();
+      // Consecutive weeks stand in for firings; cooldowns only spread them more.
+      for (let week = 0; week < (event.body as string[]).length; week++) {
+        seen.add(cardVariant(event, week).body);
+      }
+      expect(seen.size, `${event.id} shows the same body every time`).toBe(
+        (event.body as string[]).length,
+      );
+    }
+  });
+
+  it('pairs a title with its own body, and is stable for a given week', () => {
+    const event = eventById('EMG_CAR_BREAKDOWN')!;
+    expect(cardVariant(event, 41)).toEqual(cardVariant(event, 41));
+    // One title against a pool of bodies: reused, not indexed off the end.
+    expect(cardVariant(event, 41).title).toBe(event.title);
+  });
+});
+
+describe('deferred effects keep the roll that scheduled them', () => {
+  it('costs more when the card quoted more, six months later', () => {
+    const postpone = eventById('HLT_UNEXPECTED_DENTAL')!.choices.find((c) => c.id === 'postpone')!;
+    const rng = () => 0.5;
+
+    const cheap = { ...formulaContext, vars: { ...formulaContext.vars, roll: 0.05 } };
+    const dear = { ...formulaContext, vars: { ...formulaContext.vars, roll: 0.95 } };
+
+    const scheduledCheap = resolveChoice(postpone, cheap, 100, rng).deferred[0];
+    const scheduledDear = resolveChoice(postpone, dear, 100, rng).deferred[0];
+
+    // Resolved later, against a context that knows nothing about the event.
+    const laterCheap = applyEffects(scheduledCheap.effects, {
+      ...formulaContext,
+      vars: { ...formulaContext.vars, roll: scheduledCheap.roll ?? 0.5 },
+    });
+    const laterDear = applyEffects(scheduledDear.effects, {
+      ...formulaContext,
+      vars: { ...formulaContext.vars, roll: scheduledDear.roll ?? 0.5 },
+    });
+
+    // Without the carried roll both fall back to 0.5 and these are identical.
+    expect(laterDear.cashDeltaCents).toBeLessThan(laterCheap.cashDeltaCents);
+  });
+});

@@ -129,6 +129,18 @@ export interface Choice {
   readonly logbookKey: string;
 }
 
+/**
+ * A `{{placeholder}}` value for an event card. Evaluated against the same
+ * context and `roll` as the effects, so the card cannot quote a price the
+ * choice will not charge.
+ */
+export interface DisplayVar {
+  readonly as: 'money' | 'number';
+  readonly value: Magnitude;
+  /** Decimal places for `number`. Ignored for `money`. */
+  readonly precision?: number;
+}
+
 export interface EventDef {
   readonly id: string;
   readonly category: EventCategory;
@@ -139,11 +151,37 @@ export interface EventDef {
   readonly gates: readonly Gate[];
   /** Product of the factors whose gate passes. */
   readonly multipliers: readonly Multiplier[];
-  readonly title: string;
-  /** Supports {{var}} interpolation. */
-  readonly body: string;
+  /** One title, or one per card variant. Supports {{var}} interpolation. */
+  readonly title: string | readonly string[];
+  /**
+   * One body, or one per card variant. A common event fires six or seven times
+   * in a run, so repeatable events carry several — budgeted by rarity tier in
+   * `docs/EVENT-CATALOGUE.md` §3.3 and enforced at load.
+   */
+  readonly body: string | readonly string[];
+  /** Values for the placeholders in `title` and `body`. */
+  readonly displayVars?: Readonly<Record<string, DisplayVar>>;
   readonly choices: readonly Choice[];
 }
 
 /** Weeks at which each event has fired, by event id. */
 export type EventHistory = Readonly<Record<string, readonly number[]>>;
+
+/**
+ * The card to show for one firing of an event.
+ *
+ * Deliberately not an RNG draw: a pure function of the event and its week needs
+ * no stream and cannot shift one. Adding a variant changes which card a seed
+ * shows — prose only, never a number, the same licence the Logbook has (§2.2).
+ * The index picks a matching title/body pair, so a variant is a whole card.
+ */
+export function cardVariant(event: EventDef, weekIndex: number): { title: string; body: string } {
+  const titles = Array.isArray(event.title) ? event.title : [event.title as string];
+  const bodies = Array.isArray(event.body) ? event.body : [event.body as string];
+  const index = weekIndex % Math.max(titles.length, bodies.length);
+
+  return {
+    title: titles[index % titles.length],
+    body: bodies[index % bodies.length],
+  };
+}

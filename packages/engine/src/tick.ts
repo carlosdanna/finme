@@ -89,16 +89,37 @@ export interface Interrupt {
 export interface TickInput {
   /** How the player spent the week. Defaults to the standing order. */
   readonly allocation?: Allocation;
-  /** Which choice to take if an event fires. Defaults to the first available. */
-  readonly chooseEvent?: (eventId: string, choiceIds: readonly string[]) => string;
+  /**
+   * Which choice to take if an event fires. Defaults to the first available.
+   * Returning `null` means "not answered yet" — the week is abandoned and the
+   * caller re-ticks the same state once a choice exists.
+   */
+  readonly chooseEvent?: (eventId: string, choiceIds: readonly string[]) => string | null;
   /** Discretionary spending this week, for the mood term. */
   readonly discretionarySpendCents?: number;
+  /**
+   * The magnitude roll from a previous `tick` that returned
+   * `awaitingEventChoice`. Supplying it takes no new draw, so the choice is
+   * charged the price the card quoted.
+   */
+  readonly eventRoll?: number;
 }
 
 export interface TickResult {
   readonly state: RunState;
   readonly interrupts: readonly Interrupt[];
   readonly firedEventId: string | null;
+  /**
+   * The event whose choice the caller declined to make, or `null`. `state` is
+   * then the state `tick` was given — the week did not happen.
+   *
+   * [F] Only `eventMagnitude` is touched, taking its single per-event draw and
+   * returning it as `eventRoll`. Fed back into the resolving tick, the total is
+   * one draw per fired event either way — the count a §14 replay produces.
+   */
+  readonly awaitingEventChoice: string | null;
+  /** The roll drawn for the awaited event. Pass it back as `TickInput.eventRoll`. */
+  readonly eventRoll: number | null;
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -161,8 +182,15 @@ export function lifeStageFor(age: number): string {
   return 'retirement';
 }
 
-/** The formula context an event's magnitudes are evaluated against (§9.3). */
-export function formulaContextFrom(state: RunState, world: RunWorld) {
+/**
+ * The formula context an event's magnitudes are evaluated against (§9.3).
+ *
+ * `roll` is a uniform in [0, 1) drawn once per fired event, so a magnitude like
+ * `0.6*monthlyIncome*(0.5+1.5*roll)` costs a different amount each firing. It
+ * falls back to 0.5 only for contexts with no event behind them — a deferred
+ * effect carries its scheduling roll instead (see `ScheduledEffect.roll`).
+ */
+export function formulaContextFrom(state: RunState, world: RunWorld, roll = 0.5) {
   const week = state.weekIndex;
   return {
     vars: {
@@ -173,10 +201,32 @@ export function formulaContextFrom(state: RunState, world: RunWorld) {
       cashCents: state.cashCents,
       mood: state.mood,
       energy: state.energy,
+      roll,
+      // Fractions, not percentages — a card writes `inflationThisYear*100`.
+      inflationThisYear:
+        world.market.inflation.annualRate[Math.min(yearIndex(week), state.runLengthYears - 1)],
+      lastRaisePct: state.lastRaisePct,
     },
     price: (assetId: string) =>
       world.market.series[assetId as AssetId]?.priceCents[week] ?? Number.NaN,
   };
+}
+
+/**
+ * The context the *next* `tick` will evaluate this week's event in.
+ *
+ * Step 1 increments `weekIndex` before anything reads it, so a caller holding
+ * the pre-tick state is one week behind — quoting a card from it is wrong by a
+ * whole year's inflation whenever the event lands on a year boundary. The `+ 1`
+ * lives here because it is a fact about the pipeline, not about the UI.
+ */
+export function pendingEventContext(state: RunState, world: RunWorld, roll: number) {
+  return formulaContextFrom({ ...state, weekIndex: state.weekIndex + 1 }, world, roll);
+}
+
+/** The week a pending event will fire in, given the state before its tick. */
+export function pendingEventWeek(state: RunState): number {
+  return state.weekIndex + 1;
 }
 
 // --- the pipeline -----------------------------------------------------------
@@ -205,6 +255,8 @@ export function tick(
       state: previous,
       interrupts: [{ reason: 'run-complete', weekIndex: previous.weekIndex }],
       firedEventId: null,
+      awaitingEventChoice: null,
+      eventRoll: null,
     };
   }
 
@@ -354,7 +406,22 @@ export function tick(
       const available = selected.choices.filter(
         (choice) => (choice.requires ?? []).every((gate) => passesGate(gate, eventStateFrom(state, world))),
       );
+      // [F] One draw per fired event. A count that varied with the choice
+      // taken would put two players sharing a seed out of step.
+      const roll = input.eventRoll ?? streams.eventMagnitude();
+
       const pick = input.chooseEvent?.(selected.id, available.map((c) => c.id));
+
+      if (pick === null) {
+        return {
+          state: previous,
+          interrupts: [{ reason: 'event', weekIndex: week, detail: selected.id }],
+          firedEventId: selected.id,
+          awaitingEventChoice: selected.id,
+          eventRoll: roll,
+        };
+      }
+
       const choice = available.find((c) => c.id === pick) ?? available[0];
 
       if (choice !== undefined) {
@@ -365,7 +432,7 @@ export function tick(
             { w: week, t: 'event', e: selected.id, c: choice.id },
           ],
         };
-        const outcome = resolveChoice(choice, formulaContextFrom(state, world), week, streams.eventOutcome);
+        const outcome = resolveChoice(choice, formulaContextFrom(state, world, roll), week, streams.eventOutcome);
         state = applyOutcome(state, outcome, priceAt, week);
         state = { ...state, eventHistory: recordFiring(state.eventHistory, selected.id, week) };
         for (const key of outcome.logbookKeys) {
@@ -382,7 +449,7 @@ export function tick(
     const eventState = eventStateFrom(state, world);
     for (const deferred of due) {
       if (deferred.condition !== undefined && !passesGate(deferred.condition, eventState)) continue;
-      const outcome = applyEffects(deferred.effects, formulaContextFrom(state, world));
+      const outcome = applyEffects(deferred.effects, formulaContextFrom(state, world, deferred.roll));
       state = applyOutcome(state, outcome, priceAt, week);
       if (deferred.logbookKey !== undefined) {
         pending.push({ trigger: { k: 'firstTime', action: 'deferred' }, key: deferred.logbookKey });
@@ -492,7 +559,7 @@ export function tick(
   // ---- 15. Evaluate interrupt conditions
   interrupts.push(...evaluateInterrupts(state, previous));
 
-  return { state, interrupts, firedEventId };
+  return { state, interrupts, firedEventId, awaitingEventChoice: null, eventRoll: null };
 }
 
 // --- step helpers -----------------------------------------------------------
