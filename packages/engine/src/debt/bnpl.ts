@@ -6,6 +6,7 @@
  * purchase** — before a single installment has been missed, and before anything
  * has gone wrong.
  */
+import type { CreditEventKind } from '../credit.ts';
 import type { Debt } from './types.ts';
 
 /** [F] Four installments, due at weeks 0, 2, 4 and 6 from purchase. */
@@ -17,10 +18,6 @@ export const BNPL_LATE_FEE_CENTS = 700;
 
 /** [T] A second miss freezes new BNPL for 26 weeks. */
 export const BNPL_FREEZE_WEEKS = 26;
-
-/** [T] Credit impact, applied through the missed-payment counter (§5.5). */
-export const BNPL_MISS_CREDIT_IMPACT = -15;
-export const BNPL_COLLECTIONS_CREDIT_IMPACT = -80;
 
 /** [T] Three strikes and the balance goes to collections. */
 export const BNPL_STRIKES_TO_COLLECTIONS = 3;
@@ -105,20 +102,26 @@ export function payInstallment(plan: BnplPlan): { plan: BnplPlan; paidCents: num
 export interface MissResult {
   readonly plan: BnplPlan;
   readonly feeChargedCents: number;
-  /** Points to feed the missed-payment counter in §5.5. Zero when nothing moved. */
-  readonly creditImpact: number;
+  /**
+   * What to record against the credit file (§5.5).
+   *
+   * Kinds, not point deltas: the score is a recomputed composite, so there is
+   * nothing for a "−80" to be subtracted from. §5.3's figures describe the
+   * intent; §5.5 decides what it costs.
+   */
+  readonly creditEvents: readonly CreditEventKind[];
 }
 
 /**
  * Miss an installment, escalating on the three-strike track (§5.3):
  *
- *   1. late fee, −15 credit impact
+ *   1. late fee, missed payment recorded
  *   2. second fee, account frozen for 26 weeks
- *   3. collections — remaining balance persists, severe credit hit, no interest
+ *   3. collections — balance persists, no interest, derogatory mark recorded
  */
 export function missInstallment(plan: BnplPlan, weekIndex: number): MissResult {
   if (plan.status === 'collections') {
-    return { plan, feeChargedCents: 0, creditImpact: 0 };
+    return { plan, feeChargedCents: 0, creditEvents: [] };
   }
 
   const missedCount = plan.missedCount + 1;
@@ -128,7 +131,10 @@ export function missInstallment(plan: BnplPlan, weekIndex: number): MissResult {
     return {
       plan: withBalance({ ...plan, missedCount, status: 'collections' }),
       feeChargedCents: 0,
-      creditImpact: BNPL_COLLECTIONS_CREDIT_IMPACT,
+      // The third miss is a missed payment in its own right *and* the mark that
+      // opens the collection. Both land — which is how a thin file gets near the
+      // severity §5.3 describes, while a mature file barely notices.
+      creditEvents: ['missed', 'collection'],
     };
   }
 
@@ -144,7 +150,7 @@ export function missInstallment(plan: BnplPlan, weekIndex: number): MissResult {
       frozenUntilWeek: frozen ? weekIndex + BNPL_FREEZE_WEEKS : plan.frozenUntilWeek,
     }),
     feeChargedCents: BNPL_LATE_FEE_CENTS,
-    creditImpact: BNPL_MISS_CREDIT_IMPACT,
+    creditEvents: ['missed'],
   };
 }
 

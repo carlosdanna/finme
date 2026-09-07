@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   ENERGY_INTERRUPT_FLOOR,
   MOOD_INTERRUPT_FLOOR,
+  type EventDef,
   type RunState,
   advance,
   createRun,
+  derogatoryScore,
   nextEnergy,
   defaultGranularity,
   emptyAllocation,
@@ -223,5 +225,59 @@ describe('the advance control (GDD §2.1)', () => {
   it('reports the floors it uses', () => {
     expect(ENERGY_INTERRUPT_FLOOR).toBe(20);
     expect(MOOD_INTERRUPT_FLOOR).toBe(25);
+  });
+});
+
+/**
+ * A `creditEvent` effect must actually reach the credit file.
+ *
+ * It did not: the tick's reducer named `missed` and `onTime` and returned the
+ * state unchanged for anything else, so `collection` was dropped and
+ * `derogatoryScore` sat at 1.0 for the whole of every run. Unit-testing
+ * `recordCollection` never caught it, because nothing called it.
+ */
+describe('credit events from an event effect', () => {
+  const marker = (kind: 'collection' | 'inquiry'): EventDef => ({
+    id: 'ZZZ_TEST_CREDIT',
+    category: 'emergency',
+    baseWeight: 100,
+    cooldownWeeks: 0,
+    gates: [],
+    multipliers: [],
+    title: 'A mark on the file',
+    body: 'Something was reported.',
+    choices: [
+      { id: 'mark', label: 'A', effects: [{ k: 'creditEvent', kind }], logbookKey: 'quiet' },
+      { id: 'nothing', label: 'B', effects: [], noop: true, logbookKey: 'quiet' },
+    ],
+  });
+
+  function fireOnce(kind: 'collection' | 'inquiry'): RunState {
+    let run = createRun({
+      ...scenarioConfig({ seed: '4F2A9C1B', runLengthYears: 30 }),
+      eventDefs: [marker(kind)],
+    });
+    for (let step = 0; step < 40; step++) {
+      const result = advance(run, 'until-something-happens', () => ({
+        allocation: DEFAULT_ALLOCATION,
+        chooseEvent: () => 'mark',
+      }));
+      run = result.run;
+      if (run.state.eventHistory.ZZZ_TEST_CREDIT !== undefined) break;
+    }
+    expect(run.state.eventHistory.ZZZ_TEST_CREDIT?.length ?? 0).toBeGreaterThan(0);
+    return run.state;
+  }
+
+  it('records a collection and moves the derogatory component', () => {
+    const state = fireOnce('collection');
+    expect(state.credit.collections).toBeGreaterThan(0);
+    expect(derogatoryScore(state.credit)).toBeLessThan(1);
+  });
+
+  it('accepts an inquiry without recording anything — §5.5 has no inquiry term', () => {
+    const state = fireOnce('inquiry');
+    expect(state.credit.collections).toBe(0);
+    expect(derogatoryScore(state.credit)).toBe(1);
   });
 });

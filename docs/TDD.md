@@ -348,7 +348,9 @@ installment   = purchaseAmount / 4
 schedule      = weeks [0, 2, 4, 6] from purchase
 lateFee       = 700   // $7 [T]
 ```
-Miss 1 → late fee, −15 credit score impact via missed-payment counter. Miss 2 → second fee, account frozen (no new BNPL for 26 weeks). Miss 3 → sent to collections: remaining balance becomes a collections debt, severe credit hit (−80 equivalent), no further interest but persistent.
+Miss 1 → late fee, and a missed payment recorded against §5.5's payment-history counter. Miss 2 → second fee, account frozen (no new BNPL for 26 weeks). Miss 3 → sent to collections: remaining balance becomes a collections debt, no further interest but persistent, and a **derogatory mark** recorded on top of the missed payment the third miss is in its own right.
+
+**§5.5 is authoritative for how much any of that costs.** Rev 1 gave figures here — "−15" for a miss and "−80 equivalent" for a collection — which read as a specification and are not one: the score is a recomputed composite, not a running total of point deltas, so nothing in the model can apply a fixed −80. On a mature file a collection is worth about **−14**; approaching −80 takes the accompanying payment-history damage, which only bites on a thin file. See `docs/DECISIONS.md` (2026-09-03, 2026-09-07).
 
 Critically: **BNPL obligations count as liabilities on the balance sheet from the moment of purchase.** The whole lesson is that it's debt that doesn't feel like debt.
 
@@ -392,6 +394,8 @@ derogatoryScore  = clamp(1 − 0.25·collections − 0.60·bankruptcies, 0, 1)
 ```
 
 Score is recomputed at each month boundary and moves toward its target by at most **±20 points/month** **[T]**, so it feels like a lagging indicator rather than a live readout — which is both realistic and better for pacing.
+
+**The derogatory term only moves when a collection or a bankruptcy is recorded.** Both are rare, so `derogatoryScore` is 1.0 for most of most runs and the component reads as a constant +55 points. That is intended, but it means the term is easy to leave unwired without anything failing: a collection is worth ~14 points on a mature file, and if nothing ever records one the score simply never notices. Anything that should mark the file — a BNPL third miss (§5.3), an event with a `collection` credit effect (§9.3) — has to say so explicitly.
 
 **Gates:** loan APRs (§5.2), housing tiers 2 and 3, insurance premiums, mortgage eligibility. **Never jobs** (GDD §3.5).
 

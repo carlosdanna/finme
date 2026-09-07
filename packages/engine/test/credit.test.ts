@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   AGE_SCORE_MAX_WEEKS,
   COMPONENT_WEIGHTS,
+  type CreditEventKind,
   type CreditInputs,
   type CreditState,
   ENTRY_SCORE_MAX,
@@ -12,6 +13,7 @@ import {
   SCORE_SPAN,
   THIN_FILE_WEEKS,
   ageScore,
+  applyCreditEvent,
   compositeScore,
   decayWeek,
   derogatoryScore,
@@ -317,6 +319,34 @@ describe('measured point impacts, against §5.3\'s stated equivalents', () => {
       targetScore(mature, inputs(400)) - targetScore(recordMissedPayment(mature), inputs(400));
 
     expect(thinCost).toBeGreaterThan(matureCost * 3);
+  });
+
+  it('handles every credit event kind, and each one distinctly', () => {
+    // The mapping used to be a ternary with an implicit fall-through, so
+    // `collection` did nothing. Every kind is named here so a new one cannot be
+    // added and quietly ignored the same way.
+    // A file with one blemish: on a spotless one, payment history is already
+    // exactly 1.0 and an on-time payment has nothing left to improve.
+    const base = maturedFile(200, { missAtWeek: 100 });
+    const kinds: readonly CreditEventKind[] = ['missed', 'onTime', 'collection', 'inquiry'];
+
+    const after = Object.fromEntries(
+      kinds.map((kind) => [kind, applyCreditEvent(base, kind)]),
+    ) as Record<CreditEventKind, CreditState>;
+
+    expect(after.missed.missedWeighted).toBeGreaterThan(base.missedWeighted);
+    expect(after.onTime.onTimeWeighted).toBeGreaterThan(base.onTimeWeighted);
+    expect(after.collection.collections).toBe(base.collections + 1);
+    // §5.5 has no inquiry term, so this one is a deliberate no-op.
+    expect(after.inquiry).toEqual(base);
+
+    // Only `inquiry` may leave the composite untouched. Compared before the
+    // rounding to a 300-850 point: one on-time payment against a long history
+    // moves the composite without moving the displayed score.
+    for (const kind of kinds) {
+      const moved = compositeScore(after[kind], inputs(200)) !== compositeScore(base, inputs(200));
+      expect(moved, kind).toBe(kind !== 'inquiry');
+    }
   });
 
   it('cannot cost 80 points for a collection — the component is only 55', () => {

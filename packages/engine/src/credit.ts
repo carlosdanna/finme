@@ -143,6 +143,31 @@ export function recordBankruptcy(state: CreditState): CreditState {
   return { ...state, bankruptcies: state.bankruptcies + 1 };
 }
 
+/** Everything that can mark a credit file. Event effects and BNPL both speak it. */
+export type CreditEventKind = 'missed' | 'onTime' | 'collection' | 'inquiry';
+
+/**
+ * Apply one credit event.
+ *
+ * Total over `CreditEventKind` on purpose: the previous version was a ternary
+ * that returned the state unchanged for anything it did not name, so
+ * `collection` was silently dropped and `derogatoryScore` never moved.
+ */
+export function applyCreditEvent(state: CreditState, kind: CreditEventKind): CreditState {
+  switch (kind) {
+    case 'missed':
+      return recordMissedPayment(state);
+    case 'onTime':
+      return recordOnTimePayment(state);
+    case 'collection':
+      return recordCollection(state);
+    case 'inquiry':
+      // §5.5 has no inquiry term, so there is nothing to record. Kept as a
+      // named case rather than a default, so adding a kind fails to compile.
+      return state;
+  }
+}
+
 /** One week of decay on both payment counters. Old sins fade; so does old credit. */
 export function decayWeek(state: CreditState): CreditState {
   return {

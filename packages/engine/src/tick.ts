@@ -12,7 +12,7 @@
  * ============================================================================
  */
 import { carValueCents, homeCarryingCostWeeklyCents, homeValueCents } from './assets.ts';
-import { type CreditState, decayWeek, recordMissedPayment, recordOnTimePayment, updateMonthly } from './credit.ts';
+import { type CreditState, applyCreditEvent, decayWeek, recordMissedPayment, recordOnTimePayment, updateMonthly } from './credit.ts';
 import { closeStatement, minimumPaymentCents } from './debt/creditCard.ts';
 import { type Debt, totalLiabilitiesCents } from './debt/types.ts';
 import {
@@ -691,10 +691,7 @@ function applyOutcome(
     flags,
     recurringExpenses: mergeRecurring(state.recurringExpenses, outcome.expenses),
     deferredEffects: [...state.deferredEffects, ...outcome.deferred],
-    credit: outcome.creditEvents.reduce<CreditState>(
-      (credit, kind) => (kind === 'missed' ? recordMissedPayment(credit) : kind === 'onTime' ? recordOnTimePayment(credit) : credit),
-      state.credit,
-    ),
+    credit: outcome.creditEvents.reduce<CreditState>(applyCreditEvent, state.credit),
   };
 }
 

@@ -8,6 +8,7 @@
  * **Event ids are stable forever.** Never rename one and never reuse one: a
  * rename silently changes what every existing seed produces.
  */
+import type { CreditEventKind } from '../credit.ts';
 import type { Magnitude } from './formula.ts';
 
 /** GDD §5.2. */
@@ -81,10 +82,7 @@ export type Effect =
     }
   | { readonly k: 'flag'; readonly add?: string; readonly remove?: string }
   | { readonly k: 'jobOffer'; readonly jobId: string }
-  | {
-      readonly k: 'creditEvent';
-      readonly kind: 'missed' | 'onTime' | 'collection' | 'inquiry';
-    };
+  | { readonly k: 'creditEvent'; readonly kind: CreditEventKind };
 
 export interface DeferredEffect {
   readonly afterWeeks: number;

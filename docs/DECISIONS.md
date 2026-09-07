@@ -1363,3 +1363,35 @@ variable; widened `title`/`body` to variant pools. `RULESET_VERSION` 0.3.0 →
 4. GDD Appendix B undercounted Logbook copy by 3× — it sized event entries as
    variant-free while the schema requires three — and had no line for card
    variants at all. Restated: ~505 for MVP, ~888 for the 76-event catalogue.
+
+## 2026-09-07 — Issue #2: §5.5 is authoritative, and the derogatory component was inert
+**Context:** §5.3 called a BNPL collection a "−80 equivalent" credit hit; §5.5's
+formula caps one collection at 13.75 points (10% of a 550-point span × a 0.25
+penalty). Checking which document was wrong turned up that the question was moot
+in code: nothing ever recorded a collection.
+**Decision:** Option A from the issue — §5.5's formula stands, §5.3's figures
+become descriptive intent. No constant changed and no balance parameter moved.
+Three coherence fixes went in alongside, because the −80 was a symptom of them.
+**Consequences:**
+1. **The derogatory component never moved in a real run.** `recordCollection`
+   and `recordBankruptcy` had zero production callers, and `tick.ts` reduced
+   `creditEvents` with a ternary that named `missed` and `onTime` and returned
+   the state unchanged for anything else — so `collection` and `inquiry` were
+   silently dropped. `derogatoryScore` sat at 1.0 for the whole of every run, a
+   fixed +55 points, leaving the score's effective range 495 rather than 550.
+   Replaced with `applyCreditEvent`, a switch that is total over a named
+   `CreditEventKind`, so a new kind now fails to compile rather than being
+   ignored. `inquiry` is a named no-op: §5.5 has no inquiry term.
+2. **BNPL encoded point deltas the credit model cannot apply.**
+   `BNPL_MISS_CREDIT_IMPACT` (−15) and `BNPL_COLLECTIONS_CREDIT_IMPACT` (−80)
+   were returned by `missInstallment` as `MissResult.creditImpact` and consumed
+   by nothing — the score is a recomputed composite, so there is nothing for a
+   −80 to be subtracted from. Deleted, and replaced with
+   `creditEvents: readonly CreditEventKind[]`. The third miss now yields
+   `['missed', 'collection']`, which is also the issue's own answer to itself:
+   three misses plus a mark is how a thin file approaches the severity §5.3
+   describes, while a mature file barely notices.
+3. **No `RULESET_VERSION` bump.** The two deleted constants are `[T]`-marked,
+   which the rule in `version.ts` covers — but they were unreachable from any
+   executed path, no content emits a `creditEvent`, and `missInstallment` has no
+   production caller. Both golden fixtures are unchanged, which is the evidence.
