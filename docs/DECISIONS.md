@@ -1413,3 +1413,36 @@ two constants. Deliberately no other inline expansions.
    which turned out to be `DTI` alone — `GBM` is spelled out at `market.ts:242`,
    `FIFO` at `tax.ts:85`. Commenting those would be the restating that the
    2026-09-06 comment trim removed.
+
+## 2026-09-07 — The ruleset-bump rule is about effect, not about markers
+**Context:** PR #23 deleted two `[T]`-marked constants that no executed path
+reached, and did not bump `RULESET_VERSION`. By the letter of the comment in
+`version.ts` — "bump in the SAME COMMIT as any change to a [T] or [F] constant" —
+that was wrong; by CLAUDE.md, which asks for a bump on `[F]` and a DECISIONS
+entry on `[T]`, it was right. Review caught that the practice and the comment now
+disagree, and that the next person to delete a dead constant will read the
+comment.
+**Decision:** restated `version.ts` around the actual principle — **bump when the
+change alters what an existing seed produces** — with a narrow carve-out for
+changes that provably cannot, evidenced by byte-identical golden fixtures.
+**Consequences:**
+1. The marker is no longer the test; the effect is. A `[T]` constant still needs
+   a DECISIONS entry either way, which is what CLAUDE.md already said.
+2. The carve-out is deliberately hard to claim: "if you cannot demonstrate the
+   fixtures are byte-identical, bump." That keeps it from becoming a way to avoid
+   versioning a real change.
+3. Bumping for an unreachable constant is not free — it marks every existing save
+   non-comparable (§14) for no behavioural reason, which is the cost the old
+   wording ignored.
+
+## 2026-09-07 — `CreditEventKind` is declared once
+**Context:** the credit event union was spelled out in three places — the effect
+type in `schema.ts`, `EffectOutcome.creditEvents` in `effects.ts`, and the Zod
+enum in the content package. Adding a kind type-checked in two of them and was
+silently rejected at content load by the third.
+**Decision:** one runtime `CREDIT_EVENT_KINDS` array in `credit.ts` with the type
+derived from it, matching how `EVENT_CATEGORIES` and `STREAM_NAMES` already work.
+The Zod enum derives from the same array.
+**Consequences:** adding a kind now fails at `applyCreditEvent`'s switch — the
+site that has to handle it — rather than at an unrelated array assignment.
+Verified by adding a fifth kind and checking the only error points at the switch.

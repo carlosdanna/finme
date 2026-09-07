@@ -164,6 +164,7 @@ export {
   recordCollection,
   recordBankruptcy,
   applyCreditEvent,
+  CREDIT_EVENT_KINDS,
   decayWeek,
   paymentHistoryScore,
   utilizationScore,

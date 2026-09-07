@@ -5,6 +5,7 @@
  * diff, which keeps this file pure, keeps it testable without a whole game
  * state, and keeps event resolution replayable.
  */
+import type { CreditEventKind } from '../credit.ts';
 import type { Rng } from '../rng.ts';
 import { type FormulaContext, resolveCents, resolveMagnitude } from './formula.ts';
 import { REST_BRANCH } from './schema.ts';
@@ -25,7 +26,7 @@ export interface EffectOutcome {
   readonly flagsAdded: readonly string[];
   readonly flagsRemoved: readonly string[];
   readonly jobOffers: readonly string[];
-  readonly creditEvents: readonly ('missed' | 'onTime' | 'collection' | 'inquiry')[];
+  readonly creditEvents: readonly CreditEventKind[];
   /** Logbook keys this resolution produced, in order. */
   readonly logbookKeys: readonly string[];
   /** Effects scheduled for a later week. */

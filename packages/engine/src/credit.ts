@@ -143,8 +143,15 @@ export function recordBankruptcy(state: CreditState): CreditState {
   return { ...state, bankruptcies: state.bankruptcies + 1 };
 }
 
-/** Everything that can mark a credit file. Event effects and BNPL both speak it. */
-export type CreditEventKind = 'missed' | 'onTime' | 'collection' | 'inquiry';
+/**
+ * Everything that can mark a credit file. Event effects and BNPL both speak it.
+ *
+ * A runtime array so the content package's Zod enum derives from it rather than
+ * restating it — otherwise a new kind type-checks everywhere and is silently
+ * rejected at content load.
+ */
+export const CREDIT_EVENT_KINDS = ['missed', 'onTime', 'collection', 'inquiry'] as const;
+export type CreditEventKind = (typeof CREDIT_EVENT_KINDS)[number];
 
 /**
  * Apply one credit event.
