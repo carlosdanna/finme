@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type RunState, weekOfMonth } from '@finme/engine';
+import { type RunState, formatSeedString, weekOfMonth } from '@finme/engine';
 import { Meter } from '@/components/finme/Meter';
 import { Money } from '@/components/finme/Money';
 import { NetWorthChart } from '@/components/finme/NetWorthChart';
@@ -51,6 +51,18 @@ export function DashboardPanel({ state }: { state: RunState }) {
     <div className="space-y-4">
       <Card className="p-4 sm:p-6">
         <div className="space-y-1">
+          {/* In the §2.3 display form, version and all: GDD §13 makes the seed
+              the unit of sharing, and a seed without its ruleset is not one. */}
+          <Typography
+            variant="caption"
+            color="muted"
+            className="flex flex-wrap items-baseline gap-x-2"
+          >
+            {state.playerName !== '' && <span>{state.playerName}</span>}
+            <span className="font-mono tabular-nums">
+              {formatSeedString(state.seed, state.rulesetVersion)}
+            </span>
+          </Typography>
           <Typography variant="h1" as="p" className="tabular-nums">
             <Money amountCents={shown} />
           </Typography>

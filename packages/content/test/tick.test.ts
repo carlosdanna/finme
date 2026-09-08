@@ -66,6 +66,23 @@ describe('golden seed 4F2A9C1B, 200 weeks, scripted default strategy', () => {
     expect(golden.lastRaisePct).toBeGreaterThan(0);
     expect(golden.ytd.withheldCents).toBeGreaterThan(0);
   });
+
+  it('is unmoved by the name the player gave themselves', () => {
+    // The fixture pins the key; this pins the guarantee. 200 weeks rather than
+    // one, so a leak has the whole pipeline to show up in.
+    const named = runWeeks(
+      createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30, playerName: 'Rosa' }),
+      200,
+      scripted,
+    );
+
+    const { playerName, ...rest } = serializeState(named.state);
+    const { playerName: goldenName, ...goldenRest } = golden as Record<string, unknown>;
+
+    expect(playerName).toBe('Rosa');
+    expect(goldenName).toBe('');
+    expect(rest).toEqual(goldenRest);
+  });
 });
 
 describe('the tick pipeline (TDD §10)', () => {

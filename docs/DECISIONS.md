@@ -1665,3 +1665,53 @@ not one the engine should be applying silently.
 takes the credit-score hit in a tight month. Previously a card minimum was paid
 unless the whole month was short, full stop. Recorded here because it is a real
 behavioural change that no test would otherwise explain.
+
+## 2026-09-08 — The run is set up by the player, and the seed generator lives in the UI
+**Context:** issue #28. The app auto-started one hardcoded seed in a `useEffect`,
+`runLengthYears` was pinned to 30 in the store, and `RunConfig.startAge` was
+unreachable. The whole of `seed.ts` — the §2.3 format, its Crockford alphabet,
+`parseSeedString`, `formatSeedString` — had no caller outside its own tests,
+which meant GDD §13's shared-run promise was unreachable by the person who would
+share a run.
+**Decision:** a new-run screen owns setup: name, seed with a Reroll, run length
+(§4.1's 10/30/40/50) and starting age. Four calls the specs do not make:
+
+1. **Seed *generation* lives in `packages/ui/src/lib/seed.ts`, not the engine.**
+   `Math.random` is banned in the engine and must stay banned; minting the label
+   for a new world is a different act from drawing anything inside it. To stop
+   the generator drifting from the validator, `SEED_ALPHABET` and `SEED_LENGTH`
+   are now exported from the engine and the UI draws from them.
+2. **Typed seeds are normalised with Crockford's decode aliases** — `I` and `L`
+   read as `1`, `O` as `0` — rather than being rejected or silently dropped. The
+   alphabet omits those letters *because* they are misread, so a player who
+   writes a seed down and types it back is the exact case the omission exists to
+   survive. `U` is dropped: it is excluded for a different reason and has no
+   digit behind it. The versioned form `4F2A9C1B/v0.5.0` is accepted whole.
+3. **`playerName` is on `RunState` and is cosmetic, permanently.** It is in the
+   golden snapshot for completeness, but the key can never move, so the fixture
+   is not what guards it — a paired-run assertion in `content/test/tick.test.ts`
+   runs 200 weeks with a name and without one and requires every other key to be
+   identical. Verified by mutation: making energy depend on the name fails it.
+   Its limit, also verified: substituting the name into a Logbook *template
+   variable* passes, because `serializeState` excludes the prose on purpose so
+   §2.2's "adding a variant moves no number" stays testable. The guard is about
+   arithmetic, not about text — and nothing wires the name into the prose today,
+   so the setup screen says only that the name is shown on the dashboard.
+4. **[T] The starting age spans 18–40.** 18 is where GDD §3.7's premise starts;
+   the ceiling is arbitrary and exists only so the stepper terminates.
+
+**Consequences:**
+1. **No `RULESET_VERSION` bump.** No stream gains, loses or reorders a draw, and
+   no existing value moved. The golden fixture gained exactly one key,
+   `"playerName": ""`, verified key-by-key against the committed file before
+   regenerating — added: `[playerName]`, removed: none, moved: none.
+2. `start` now takes a `RunSetup` rather than a seed string. `defaultSetup(seed)`
+   exists so a test that only cares about the seed does not restate the rest.
+3. Every Playwright spec that drives a running game now begins one first, via
+   `e2e/support/run.ts`. The touch-target helpers moved to `e2e/support/touch.ts`
+   so the setup screen gets the same 44px sweep the primary tabs get — it is now
+   the first screen a player meets, and it has a stepper and an icon button on it.
+4. A reload still lands on setup rather than resuming, because a run lives in
+   memory. The offline PWA test asserts that starting a *new* game works with no
+   network, which is the honest version of that promise until replay-based
+   loading is built (§14 is still unwired — `loadSave` only sets a banner).

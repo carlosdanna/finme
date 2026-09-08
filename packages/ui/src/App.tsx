@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import {
   ASSET_IDS,
   WEEKS_PER_YEAR,
@@ -29,6 +28,7 @@ import { HousingPanel } from '@/panels/HousingPanel';
 import { InvestingPanel } from '@/panels/InvestingPanel';
 import { JobsPanel } from '@/panels/JobsPanel';
 import { LogbookPanel } from '@/panels/LogbookPanel';
+import { NewRunPanel } from '@/panels/NewRunPanel';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -75,11 +75,8 @@ export default function App() {
     useGameStore();
   const { startChain, abandonChain, resolveChainStep } = useGameStore();
 
-  useEffect(() => {
-    if (run === null) start('4F2A9C1B');
-  }, [run, start]);
+  if (run === null) return <NewRunPanel onBegin={start} />;
 
-  if (run === null) return null;
   const { state, world } = run;
 
   // Event-computed values plus the two names the run drew at init. Event keys

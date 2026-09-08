@@ -6,7 +6,7 @@
 import { WEEKS_PER_YEAR, formulaContextFrom, interpolate, resolveMagnitude } from '@finme/engine';
 import { formatCents } from '../src/lib/format.ts';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useGameStore } from '../src/store/useGameStore.ts';
+import { defaultSetup, useGameStore } from '../src/store/useGameStore.ts';
 
 /** Advance until an event card is waiting, or give up. */
 function advanceToEvent(maxSteps = 400): boolean {
@@ -21,7 +21,7 @@ function advanceToEvent(maxSteps = 400): boolean {
 
 describe('resolving an event from the modal', () => {
   beforeEach(() => {
-    useGameStore.getState().start('4F2A9C1B');
+    useGameStore.getState().start(defaultSetup('4F2A9C1B'));
   });
 
   it('resolves the event in the week it fired, not the week after', () => {
@@ -93,7 +93,7 @@ describe('resolving an event from the modal', () => {
     const wrong: string[] = [];
 
     for (const seed of ['4F2A9C1B', 'BBBB2222']) {
-      useGameStore.getState().start(seed);
+      useGameStore.getState().start(defaultSetup(seed));
       for (let step = 0; step < 1600; step++) {
         useGameStore.getState().advanceTime();
         const pending = useGameStore.getState().pendingEvent;
