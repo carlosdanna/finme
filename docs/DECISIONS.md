@@ -1715,3 +1715,173 @@ share a run.
    memory. The offline PWA test asserts that starting a *new* game works with no
    network, which is the honest version of that promise until replay-based
    loading is built (§14 is still unwired — `loadSave` only sets a banner).
+
+## 2026-09-08 — The six starting positions, and a start that is dealt rather than drawn
+**Context:** issue #29. GDD §3.7 specifies six starting scenarios in a table and
+the code had one, hardcoded in `packages/content/src/scenario.ts`: age 22, $2,000,
+a warehouse job, no debt, every run and every seed. Two of the six needed state
+that was specified and never built — `availableTimePoints(committedPoints)` and
+`isValidAllocation(allocation, committedPoints)` both took an argument **no
+caller ever passed**, and `ineligibleReasons` read an `educationYears` that was
+pinned at `0` in the only place an `Applicant` was built, which left 7 of the 13
+jobs in `jobs.json` permanently unreachable.
+
+**Decision:** four additive `RunState` fields (`startId`, `educationYears`,
+`studyWeeks`, `committedTimePoints`), `packages/content/starts.json` with a Zod
+schema and `satisfies` against a new `StartDef` in the engine, and two
+step-9 changes in `tick.ts` that are no-ops at the defaults. Five calls the
+specs do not make:
+
+1. **The assignment is a hash, not a draw.** §3.7 assigns the start *because* a
+   chosen one breaks seed reproducibility on turn 1, and the tempting
+   implementation — a draw from `startingDraw` — is the one thing that cannot be
+   done: that stream is consumed in a contractual order (`run.ts`: names, then
+   `drawEntryScore`), so an inserted draw would shift the entry credit score of
+   every existing seed. `assignedStartId` is `fnv1a` over `` `${seed}:start` ``.
+   It consumes nothing, and Reroll still changes the start because Reroll changes
+   the seed. Pinned by a test that builds a run at each of the six starts and
+   requires `entryCreditScore`, `names`, `events`, `jobTimeline` and `market` to
+   land identically.
+2. **[T] The study→education conversion is `STUDY_WEEKS_PER_YEAR`, at 30.** The
+   TDD is silent, and without a conversion `study` costs 8 energy and 2 mood a
+   point and accumulates nothing — a permanent lock rather than the investment
+   §3.7's Student path row describes. The unit is a **point-week**: one point of
+   study for one week. Two points in a week move the counter by two, so studying
+   harder is faster, which is the only reading under which the allocation's
+   number means anything. `educationYears` is stored rather than derived, and
+   moves only when `studyWeeks` crosses a multiple of 30 — so education a start
+   *granted* is never re-derived away.
+3. **`head-start`'s "one skilled job unlocked" is `educationYears: 2`.**
+   `dental-hygienist` is the only skilled role needing education (2 years) and no
+   vehicle, so two years unlocks exactly it. `office-admin` is gated on
+   experience rather than education and cannot be granted this way. A test
+   asserts the unlocked set is exactly `['dental-hygienist']`, so a future job
+   with a 1- or 2-year requirement cannot widen this start silently.
+4. **[F] The clamp sheds points in a fixed order, and work goes last.**
+   `clampAllocation` is in `vitals.ts` and `tick` applies it at the top of step
+   9, so a Caregiver's commitment binds `packages/sim` and a replayed save and
+   not only the allocation screen. The order is `sideHustle, overtime,
+   paidSocial, freeSocial, study, rest`, then work downgraded a step at a time:
+   a start that commits time takes the week apart *around* the job rather than
+   taking the job away. It is contractual because two runs of one seed must shed
+   the same points.
+5. **Custom Start is one of the six, chosen rather than dealt — not a seventh.**
+   §3.7 wants it "flagged as non-comparable", and that flag needs no field:
+   `state.startId !== assignedStartId(state.seed)` is exactly the fact that the
+   start was set by hand, and it survives into a save for free. `App` states it
+   in the same plain `Alert` the `rulesetBanner` uses — `default`, never
+   `destructive` — as a fact about the run ("This seed deals a different
+   beginning"), never as a warning about the player.
+
+**Consequences:**
+1. **No `RULESET_VERSION` bump.** No stream gains, loses or reorders a draw. The
+   golden fixture gained exactly four keys at their defaults — `startId:
+   "stable-ground"`, `educationYears`, `studyWeeks`, `committedTimePoints` all
+   `0` — verified key-by-key against the committed file before regenerating:
+   added those four, removed none, moved none, shared key order unchanged.
+   `pnpm -F @finme/sim c1` is byte-identical either side of the change.
+2. **`scenarioConfig({ seed, runLengthYears })` with no `startId` is unchanged.**
+   `stable-ground` restates today's exact numbers and a content test asserts the
+   two configs deep-equal. That is the path the golden fixture and the whole
+   C-suite call, so it had to stay the no-argument default rather than becoming
+   one option among six.
+3. **`life-draw` draws whole positions, not independent fields.** §3.7's row
+   randomizes cash, debt and job, but drawing each separately produces
+   incoherent lives (no job, no cash, a mortgage). It carries five `variants`
+   over its declared position, and the same `fnv1a` picks one — six coherent
+   beginnings. Every other start has no variants, so its position is fixed and a
+   test pins that only `life-draw` moves with the seed.
+4. **A starting card carries its balance.** `openCreditCard` gained
+   `carriedBalanceCents`: a run that begins mid-life begins with the statement
+   already carried, so `behind-the-line` is charged interest in month 1 rather
+   than getting a free month of grace. Each starting debt also folds an
+   `openCreditLine` in at week 0, so a run that begins owing money begins with a
+   credit file that knows about it.
+5. `student` is a `LoanType` but not a `DebtInstrument`, so `buildStartingDebts`
+   constructs the loan directly rather than through `openDebtFromInstrument`,
+   priced at `loanApr(type, null)` — no file at week 0 is the same thin-file
+   treatment §5.5 gives everywhere else.
+6. The setup screen's "who decides" control is the same segmented rail as run
+   length rather than a `Switch`: the vendored switch renders a 1×1 hidden input
+   and a 34px overlay, both of which the e2e 44px sweep catches.
+
+---
+
+## 2026-09-08 — Work mode belongs to the job, not to the week
+**Context:** the weekly None / Part-time / Full-time toggle was not a decision.
+`allocation.work` and `state.job` are disjoint in the engine: pay accrues on
+`state.job !== null` alone (`tick.ts:594`), the toggle is read only by
+`vitals.ts` for points, energy and mood, and `state.job.workMode` — written at
+hire — enters no formula at all, being read only by `snapshot.ts:61` for
+display. So while employed, "None" paid in full for zero energy, zero mood and
+ten points back: strictly dominant. `emptyAllocation()` is `work: 'none'` and
+is also `standingOrders.defaultAllocation`, so the default *was* the exploit.
+GDD §3.6's zero-work firing rule, the only thing that would have closed this,
+was never implemented, and `cSuite.ts:184` pins `work: 'full-time'` in every
+scenario, so no balance run could ever have observed it.
+
+Two adjacent slots were inert for unrelated reasons: `weeklyGrossCents(job,
+overtimeHours)` is never called with a non-zero second argument outside a unit
+test, so overtime costs energy, mood and performance and pays nothing; and
+`ytd.sideHustleGrossCents` is initialised and taxed but never incremented. Of
+seven allocation slots, one was dominant and two dominated.
+
+**Decision:** design agreed, written up in `docs/WORK-REDESIGN.md`; no code has
+moved yet.
+
+1. **`state.job.workMode` becomes the single source of truth.**
+   `allocation.work` becomes engine-derived — `state.job?.workMode ?? 'none'`,
+   substituted in tick step 9 before `clampAllocation` — and the player's
+   submitted value is ignored rather than trusted. This is CLAUDE.md's
+   `weekIndex` rule applied to a second quantity that had grown two
+   representations that disagreed. It is also what the GDD always said: §2's
+   "hours set by job", §3.6's "(fixed)".
+2. **The toggle stays on screen and stops being a control.** It is how the
+   player sees which mode is in force, so it remains visible and should name
+   the job; it simply is not a dial. The weekly work decision becomes
+   *overtime*, which a real employee does choose week to week.
+3. **The `work` field stays on `Allocation`.** It is slot 0 of the seven-number
+   `encodeAllocation` array and saves are a replay log of those arrays;
+   dropping it shifts every index in every recorded save. Engine-written,
+   ignored on decode, revisited only with a deliberate save-format change.
+4. **Overtime pay and side-hustle income are prerequisites, not follow-ups.**
+   Without them the change removes a lever and replaces it with two that do not
+   work. Both need their own entries when implemented — the overtime
+   points→hours conversion is a new [T] constant, and salaried overtime needs an
+   explicit answer rather than an accidental one.
+5. **Quitting must be built first.** Nothing in `engine/src`, `ui/src` or the
+   content JSON implements quit/resign; being fired and the "None" toggle were
+   the only exits, and this removes the second. It is an engine *action*, not a
+   tick input, for the reason established for `beginChain` on 2026-09-08:
+   applying at the current `weekIndex` without advancing time is what stops a
+   tap from silently resolving a pending card.
+6. **Energy is deliberately left alone**, though it prompted the review. Work
+   does not feel expensive because energy is inert between 25 and 60 — the
+   performance thresholds are its only consumers — and because three rest
+   points (+54) against −40 net *+16*/week, so TDD §7.2's "2.2 rest points to
+   break even" is a break-even the player clears with a point to spare. Both
+   candidate fixes are balance changes needing C1 and C3, and are out of scope.
+
+**Consequences:**
+1. **`RULESET_VERSION` must bump from `0.5.0` in the implementing commit.** Any
+   existing seed that used "None" or "Part-time" while employed replays
+   differently; golden fixtures move. `version.ts`'s "no observable effect"
+   carve-out explicitly does not apply — the effect is the point.
+2. **`clampAllocation`'s work-downgrade loop (`vitals.ts:97-103`) becomes
+   unreachable**: a job's own points top out at 5, plus a caregiver's 2, under a
+   budget of 10. It should stay as an assertion-shaped fallback with a comment
+   saying so, not be deleted — `SHED_ORDER` beside it is [F] and contractual.
+3. **Caregiver + full-time becomes genuinely tight and must be measured.** Three
+   free points sustain roughly −4 energy and +1 mood per week; the old escape
+   was dialling work down while still drawing full pay. GDD §3.7 calls that
+   start "time poverty as distinct from money poverty", so this is plausibly
+   correct — but **C3 must be re-run from a caregiver start**, and if it fails
+   the fix is a starting-position parameter, not the return of the toggle.
+4. There is currently **no test anywhere asserting that pay depends on the
+   allocation**, which is why this survived. The regression guard is a fixed
+   case: employed, `work: 'none'` submitted, cash unchanged from the full-time
+   case and energy still spent.
+5. Sequenced behind the uncommitted `starting-scenarios` work, which touches
+   `vitals.ts`, `tick.ts`, `jobs.ts`, `state.ts` and `run.ts` — including
+   `clampAllocation` itself. Steps 1 and 2 above (quitting; overtime and side
+   hustle) each fix a live bug independently and can ship on their own.

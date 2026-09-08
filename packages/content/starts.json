@@ -1,0 +1,95 @@
+{
+  "starts": [
+    {
+      "id": "stable-ground",
+      "label": "Stable ground",
+      "blurb": "A full-time warehouse job, two thousand dollars, and nothing owed.",
+      "startingCashCents": 200000,
+      "startingJobId": "warehouse-picker",
+      "educationYears": 0,
+      "committedTimePoints": 0,
+      "debts": []
+    },
+    {
+      "id": "head-start",
+      "label": "Head start",
+      "blurb": "Twelve thousand dollars from family, two years of school already behind you, and the same warehouse job.",
+      "startingCashCents": 1200000,
+      "startingJobId": "warehouse-picker",
+      "educationYears": 2,
+      "committedTimePoints": 0,
+      "debts": []
+    },
+    {
+      "id": "behind-the-line",
+      "label": "Behind the line",
+      "blurb": "A hundred and fifty dollars, thirty hours a week behind a counter, and fourteen hundred already on a card.",
+      "startingCashCents": 15000,
+      "startingJobId": "barista",
+      "educationYears": 0,
+      "committedTimePoints": 0,
+      "debts": [{ "kind": "credit-card", "balanceCents": 140000, "creditLimitCents": 250000 }]
+    },
+    {
+      "id": "student-path",
+      "label": "Student path",
+      "blurb": "Five hundred dollars, part-time retail hours, and twenty-eight thousand in student loans against a degree you have not finished.",
+      "startingCashCents": 50000,
+      "startingJobId": "retail-associate",
+      "educationYears": 0,
+      "committedTimePoints": 0,
+      "debts": [
+        { "kind": "loan", "loanType": "student", "principalCents": 2800000, "termMonths": 120 }
+      ]
+    },
+    {
+      "id": "caregiver",
+      "label": "Caregiver",
+      "blurb": "The warehouse job, two thousand dollars, and two of your ten weekly hours already spoken for by someone who needs you.",
+      "startingCashCents": 200000,
+      "startingJobId": "warehouse-picker",
+      "educationYears": 0,
+      "committedTimePoints": 2,
+      "debts": []
+    },
+    {
+      "id": "life-draw",
+      "label": "Life draw",
+      "blurb": "Whatever the seed deals: the cash, the job and the debts are all drawn from it.",
+      "startingCashCents": 80000,
+      "startingJobId": "line-cook",
+      "educationYears": 0,
+      "committedTimePoints": 0,
+      "debts": [],
+      "variants": [
+        {
+          "startingCashCents": 0,
+          "startingJobId": null,
+          "debts": [{ "kind": "credit-card", "balanceCents": 60000, "creditLimitCents": 150000 }]
+        },
+        {
+          "startingCashCents": 450000,
+          "startingJobId": "retail-associate",
+          "educationYears": 1
+        },
+        {
+          "startingCashCents": 1800000,
+          "startingJobId": "barista",
+          "educationYears": 2,
+          "debts": [
+            { "kind": "loan", "loanType": "student", "principalCents": 1600000, "termMonths": 120 }
+          ]
+        },
+        {
+          "startingCashCents": 25000,
+          "startingJobId": "warehouse-picker",
+          "committedTimePoints": 2
+        },
+        {
+          "startingCashCents": 300000,
+          "startingJobId": null
+        }
+      ]
+    }
+  ]
+}

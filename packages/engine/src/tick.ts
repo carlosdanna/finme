@@ -37,9 +37,11 @@ import { openDebtFromInstrument } from './debt/open.ts';
 import { type Debt, monthlyRate, totalLiabilitiesCents } from './debt/types.ts';
 import {
   JOB_TIERS,
+  MAX_EDUCATION_YEARS,
   type JobTier,
   applicationProbability,
   availableJobIds,
+  educationYearsEarned,
   tierRank,
   weeklyGrossCents,
 } from './jobs.ts';
@@ -82,6 +84,7 @@ import { WEEKS_PER_YEAR, isMonthBoundary, isYearBoundary, yearIndex } from './ti
 import {
   type Allocation,
   REACH_OUT_MOOD_THRESHOLD,
+  clampAllocation,
   evaluatePerformanceTrack,
   nextEnergy,
   nextMood,
@@ -888,7 +891,13 @@ export function tick(
   }
 
   // ---- 9. Apply the time allocation → energy, mood, performance, side hustle
-  const allocation = input.allocation ?? state.standingOrders.defaultAllocation;
+  // Clamped before anything reads it: a permanent commitment (GDD §3.7) has to
+  // bind the harness and a replayed save, not only the allocation screen. A
+  // no-op for every run that commits nothing, which is the default.
+  const allocation = clampAllocation(
+    input.allocation ?? state.standingOrders.defaultAllocation,
+    state.committedTimePoints,
+  );
   const energy = nextEnergy(state.energy, state.mood, allocation);
   const mood = nextMood(state.mood, allocation, {
     discretionarySpendCents: input.discretionarySpendCents ?? 0,
@@ -910,6 +919,15 @@ export function tick(
   const workedTier =
     workedThisWeek ? world.jobs.find((job) => job.id === state.job!.jobId)?.tier : undefined;
 
+  // Study accumulates the same way, in point-weeks, and buys whole education
+  // years as it crosses them. Monotone: education already granted by a starting
+  // position is never re-derived away.
+  const studyWeeks = state.studyWeeks + allocation.study;
+  const educationYears = Math.min(
+    MAX_EDUCATION_YEARS,
+    state.educationYears + (educationYearsEarned(studyWeeks) - educationYearsEarned(state.studyWeeks)),
+  );
+
   state = {
     ...state,
     energy,
@@ -919,6 +937,8 @@ export function tick(
       workedTier === undefined
         ? state.experienceWeeks
         : { ...state.experienceWeeks, [workedTier]: state.experienceWeeks[workedTier] + 1 },
+    studyWeeks,
+    educationYears,
     consecutiveOvertimeWeeks,
     consecutiveLowMoodWeeks: mood < REACH_OUT_MOOD_THRESHOLD ? state.consecutiveLowMoodWeeks + 1 : 0,
     weeksUnemployed: state.job === null ? state.weeksUnemployed + 1 : 0,

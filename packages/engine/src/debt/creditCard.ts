@@ -39,18 +39,27 @@ export function openCreditCard(options: {
   creditLimitCents: number;
   openedWeek: number;
   creditRateAdjustment?: number;
+  /**
+   * A balance the card already carries. Only a starting position uses this
+   * (GDD §3.7): a run that begins mid-life begins with the statement already
+   * carried, so interest is charged from the first month rather than the
+   * second. Defaults to a card with no history.
+   */
+  carriedBalanceCents?: number;
 }): CreditCard {
+  const carried = Math.max(0, Math.round(options.carriedBalanceCents ?? 0));
   return {
     id: options.id,
     kind: 'credit-card',
-    balanceCents: 0,
+    balanceCents: carried,
     aprAnnual: cardApr(options.creditRateAdjustment ?? 0),
     openedWeek: options.openedWeek,
     creditLimitCents: options.creditLimitCents,
-    statementBalanceCents: 0,
+    statementBalanceCents: carried,
     newChargesCents: 0,
-    // A new card has nothing carried, so its first purchases are in grace.
-    inGracePeriod: true,
+    // A new card has nothing carried, so its first purchases are in grace. A
+    // carried balance is the definition of *not* in grace.
+    inGracePeriod: carried === 0,
   };
 }
 

@@ -19,6 +19,7 @@ import {
   WORK_TIME_POINTS,
   allocationPoints,
   availableTimePoints,
+  clampAllocation,
   clearTrack,
   debtStress,
   discretionarySatisfaction,
@@ -336,3 +337,73 @@ describe('job performance (TDD §7.5)', () => {
     expect(PERFORMANCE_FIRING_THRESHOLD).toBeLessThan(PERFORMANCE_WARNING_THRESHOLD);
   });
 });
+
+/**
+ * The Caregiver start's two committed points (GDD §3.7) are a rule about the
+ * week, not a rule about the screen — `tick` clamps through this before energy
+ * and mood read the allocation.
+ */
+describe('clampAllocation', () => {
+  const full: Allocation = {
+    ...emptyAllocation(),
+    work: 'full-time',
+    rest: 3,
+    freeSocial: 2,
+  };
+
+  it('leaves a week that already fits exactly alone', () => {
+    expect(allocationPoints(full)).toBe(TIME_POINTS_PER_WEEK);
+    expect(clampAllocation(full)).toEqual(full);
+    expect(clampAllocation(full, 0)).toBe(full);
+  });
+
+  it('sheds down to the budget a commitment leaves', () => {
+    const clamped = clampAllocation(full, 2);
+    expect(allocationPoints(clamped)).toBe(8);
+    expect(isValidAllocation(clamped, 2)).toBe(true);
+    // Free social goes before rest, and the job goes last of all.
+    expect(clamped.work).toBe('full-time');
+    expect(clamped.rest).toBe(3);
+    expect(clamped.freeSocial).toBe(0);
+  });
+
+  it('sheds in a fixed order, so the same seed sheds the same points', () => {
+    const busy: Allocation = {
+      work: 'part-time',
+      overtime: 1,
+      rest: 2,
+      paidSocial: 1,
+      freeSocial: 1,
+      study: 1,
+      sideHustle: 1,
+    };
+    expect(allocationPoints(busy)).toBe(TIME_POINTS_PER_WEEK);
+    const clamped = clampAllocation(busy, 3);
+    expect(clamped).toEqual(clampAllocation(busy, 3));
+    expect(allocationPoints(clamped)).toBe(7);
+    expect(clamped.sideHustle).toBe(0);
+    expect(clamped.overtime).toBe(0);
+    expect(clamped.work).toBe('part-time');
+  });
+
+  it('downgrades work only once nothing else is left to give', () => {
+    const working: Allocation = { ...emptyAllocation(), work: 'full-time' };
+    expect(clampAllocation(working, 4).work).toBe('full-time');
+    expect(clampAllocation(working, 6).work).toBe('part-time');
+    expect(clampAllocation(working, 8).work).toBe('none');
+  });
+
+  it('never leaves overtime on a week with no work', () => {
+    const clamped = clampAllocation({ ...emptyAllocation(), work: 'part-time', overtime: 2 }, 8);
+    expect(clamped.work).toBe('none');
+    expect(clamped.overtime).toBe(0);
+    expect(isValidAllocation(clamped, 8)).toBe(true);
+  });
+
+  it('produces a valid allocation for every commitment a start can carry', () => {
+    for (let committed = 0; committed <= TIME_POINTS_PER_WEEK; committed++) {
+      expect(isValidAllocation(clampAllocation(full, committed), committed)).toBe(true);
+    }
+  });
+});
+

@@ -64,6 +64,46 @@ export function availableTimePoints(committedPoints = 0): number {
   return TIME_POINTS_PER_WEEK - committedPoints;
 }
 
+/**
+ * [F] The order a week sheds points in when it does not fit its budget.
+ *
+ * Work is not in the list: it is downgraded last, after everything else has
+ * gone, because a start that commits time takes the week apart around the job
+ * rather than taking the job away. Fixed, and contractual: two runs of the same
+ * seed must shed the same points.
+ */
+const SHED_ORDER = ['sideHustle', 'overtime', 'paidSocial', 'freeSocial', 'study', 'rest'] as const;
+
+/**
+ * Fit an allocation inside the week's real budget.
+ *
+ * A permanent commitment (GDD §3.7's Caregiver start) is a rule about the week,
+ * not a rule about the screen: the harness and a replayed save must feel it too,
+ * so the clamp lives here and `tick` applies it before energy and mood read the
+ * allocation. A no-op when the allocation already fits, which is every run that
+ * commits nothing.
+ */
+export function clampAllocation(allocation: Allocation, committedPoints = 0): Allocation {
+  const budget = Math.max(0, availableTimePoints(committedPoints));
+  let result = allocation;
+
+  for (const key of SHED_ORDER) {
+    const over = allocationPoints(result) - budget;
+    if (over <= 0) return result;
+    const shed = Math.min(over, result[key]);
+    if (shed > 0) result = { ...result, [key]: result[key] - shed };
+  }
+
+  while (allocationPoints(result) > budget && result.work !== 'none') {
+    result = {
+      ...result,
+      work: result.work === 'full-time' ? 'part-time' : 'none',
+      overtime: 0,
+    };
+  }
+  return result;
+}
+
 export function isValidAllocation(allocation: Allocation, committedPoints = 0): boolean {
   const counts = [
     allocation.overtime,

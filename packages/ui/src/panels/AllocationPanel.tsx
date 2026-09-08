@@ -1,9 +1,9 @@
 import {
   type Allocation,
-  TIME_POINTS_PER_WEEK,
   WORK_TIME_POINTS,
   type WorkMode,
   allocationPoints,
+  availableTimePoints,
   nextEnergy,
   nextMood,
 } from '@finme/engine';
@@ -95,6 +95,7 @@ export function AllocationPanel({
   energy,
   mood,
   housingTier,
+  committedPoints = 0,
   onChange,
 }: {
   allocation: Allocation;
@@ -102,10 +103,16 @@ export function AllocationPanel({
   mood: number;
   /** The tier the player actually lives in — it feeds the projected mood. */
   housingTier: number;
+  /**
+   * Points a starting position has permanently spoken for (GDD §3.7). The
+   * budget shown is what is left, so the screen and `tick`'s clamp agree.
+   */
+  committedPoints?: number;
   onChange: (allocation: Allocation) => void;
 }) {
   const used = allocationPoints(allocation);
-  const remaining = TIME_POINTS_PER_WEEK - used;
+  const budget = availableTimePoints(committedPoints);
+  const remaining = budget - used;
 
   const step = (key: (typeof ACTIVITIES)[number]['key'], delta: number): void => {
     const next = Math.max(0, allocation[key] + delta);
@@ -138,7 +145,7 @@ export function AllocationPanel({
           Time this week
         </Typography>
         <Typography variant="body" color="muted" className="tabular-nums">
-          {used} of {TIME_POINTS_PER_WEEK} points
+          {used} of {budget} points
         </Typography>
       </div>
 

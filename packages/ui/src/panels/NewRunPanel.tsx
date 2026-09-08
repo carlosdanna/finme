@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { isValidSeed } from '@finme/engine';
+import { STARTS, assignedStartId } from '@finme/content';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Add01Icon, Refresh01Icon, Remove01Icon } from '@hugeicons/core-free-icons';
 import { Typography } from '@/components/finme/Typography';
@@ -23,6 +24,7 @@ const RUN_LENGTHS: readonly number[] = [10, 30, 40, 50];
 /** [T] The span the age stepper allows. 18 is where the GDD's premise starts. */
 const MIN_AGE = 18;
 const MAX_AGE = 40;
+
 
 /** A recessed rail with one raised pill — the control `AllocationPanel` uses for work mode. */
 function Segmented<T extends string | number>({
@@ -61,6 +63,81 @@ function Segmented<T extends string | number>({
 }
 
 /**
+ * GDD §3.7's six starting positions.
+ *
+ * Listed in declaration order, which is the file's order and not a ranking, and
+ * every row carries the identical class string — the dealt one is marked by a
+ * word and `aria-current`, never by weight, colour or position. No row says
+ * whether it is the easier one to be handed, because §3.7's closing line is
+ * that the game does not editorialize about which start is harder.
+ */
+function Starts({
+  dealtId,
+  chosenId,
+  onChoose,
+}: {
+  dealtId: string;
+  /** `null` while the seed is deciding. */
+  chosenId: string | null;
+  /** `null` when the list is a statement rather than a control. */
+  onChoose: ((startId: string) => void) | null;
+}) {
+  const activeId = chosenId ?? dealtId;
+
+  return (
+    <ul className="space-y-2">
+      {STARTS.map((start) => {
+        const active = start.id === activeId;
+        const row = (
+          <>
+            <div className="flex items-baseline justify-between gap-2">
+              <Typography variant="h4" as="h3">
+                {start.label}
+              </Typography>
+              {active && (
+                <Typography variant="caption" color="muted">
+                  {onChoose === null ? 'This seed' : 'Chosen'}
+                </Typography>
+              )}
+            </div>
+            <Typography variant="body" color="muted" className="text-pretty">
+              {start.blurb}
+            </Typography>
+          </>
+        );
+
+        // One class string for all six, in both modes: the marker is the word
+        // above and the ring, and the ring is a selection cue rather than an
+        // endorsement.
+        const className = cn(
+          'w-full space-y-1 rounded-xl border bg-card p-4 text-left',
+          active && 'ring-2 ring-ring',
+        );
+
+        return (
+          <li key={start.id}>
+            {onChoose === null ? (
+              <div className={className} aria-current={active ? 'true' : undefined}>
+                {row}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={className}
+                aria-pressed={active}
+                onClick={() => onChoose(start.id)}
+              >
+                {row}
+              </button>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/**
  * The new-run screen.
  *
  * A longer run is not a harder one and an older start is not a worse one; the
@@ -72,6 +149,9 @@ export function NewRunPanel({ onBegin }: { onBegin: (setup: RunSetup) => void })
   const [setup, setSetup] = useState<RunSetup>(() => defaultSetup(randomSeed()));
 
   const seedIsUsable = isValidSeed(setup.seed);
+  // Re-derived on every keystroke, so a rerolled seed deals a different life
+  // in front of the player rather than after Begin.
+  const dealtStartId = seedIsUsable ? assignedStartId(setup.seed) : STARTS[0].id;
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-background">
@@ -174,6 +254,51 @@ export function NewRunPanel({ onBegin }: { onBegin: (setup: RunSetup) => void })
                 </div>
               </Field>
             </FieldGroup>
+          </Card>
+
+          <Card className="space-y-4 p-4 sm:p-6">
+            <div className="space-y-1">
+              <Typography variant="h3" as="h2">
+                Where you start
+              </Typography>
+              <Typography variant="body" color="muted" className="text-pretty">
+                {setup.chosenStartId === null
+                  ? 'Dealt by the seed. Reroll above and you are dealt another.'
+                  : 'Set by hand. This run began where you put it, not where the seed did.'}
+              </Typography>
+            </div>
+
+            <Starts
+              dealtId={dealtStartId}
+              chosenId={setup.chosenStartId}
+              onChoose={
+                setup.chosenStartId === null
+                  ? null
+                  : (chosenStartId) => setSetup({ ...setup, chosenStartId })
+              }
+            />
+
+            <Field>
+              <FieldTitle>Who decides</FieldTitle>
+              {/* The same segmented rail as run length, rather than a switch:
+                  one 44px control, and neither half of it is the default. */}
+              <Segmented
+                label="Who decides the starting position"
+                options={[
+                  { value: 'seed', label: 'The seed' },
+                  { value: 'me', label: 'I choose' },
+                ]}
+                value={setup.chosenStartId === null ? 'seed' : 'me'}
+                onChange={(who) =>
+                  setSetup({ ...setup, chosenStartId: who === 'me' ? dealtStartId : null })
+                }
+              />
+              <FieldDescription>
+                {setup.chosenStartId === null
+                  ? 'Anyone else running this seed begins exactly where you do.'
+                  : 'Two people running this seed would no longer live the same life, so the run is not comparable to a shared one.'}
+              </FieldDescription>
+            </Field>
           </Card>
         </div>
       </main>
