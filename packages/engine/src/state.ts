@@ -101,7 +101,7 @@ export interface AnnualSnapshot {
   readonly netWorthCents: number;
   readonly incomeCents: number;
   readonly taxPaidCents: number;
-  readonly interestPaidCents: number;
+  readonly interestChargedCents: number;
   readonly retirementContributedCents: number;
   readonly employerMatchedCents: number;
   /** What the match would have added had the player contributed the full 4%. */
@@ -164,8 +164,14 @@ export interface RunState {
   readonly lastRaisePct: number;
   readonly netWorthHistory: readonly number[];
   readonly annualSnapshots: readonly AnnualSnapshot[];
-  /** Interest paid across the current year, for the review's debt trajectory. */
-  readonly interestPaidThisYearCents: number;
+  /**
+   * Interest **charged** across the current year, for the review's debt
+   * trajectory. Charged, not paid: a missed month's interest is added to the
+   * balance and counts here, because it is a real cost whether or not any money
+   * moved. The field was called `paid` and the review copy said "You paid",
+   * which was a lie the moment a mortgage could miss a payment.
+   */
+  readonly interestChargedThisYearCents: number;
   readonly employerMatchedThisYearCents: number;
 
   /** Set once a discharge happens, and never quietly forgiven (§13). */

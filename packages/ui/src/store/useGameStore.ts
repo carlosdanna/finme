@@ -202,13 +202,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     //
     // The engine still decides whether the search may begin; gates, cooldown and
     // "already looking" all live there, not here.
-    set({ run: { ...run, state: beginChain(run.world, run.streams, run.state, chainId, target ?? null) } });
+    const result = beginChain(run.world, run.streams, run.state, chainId, target ?? null);
+    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
   },
 
   abandonChain: (chainId) => {
     const { run, pendingEvent, pendingChainStep } = get();
     if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
-    set({ run: { ...run, state: abandonChain(run.world, run.streams, run.state, chainId) } });
+    // A floor crossed by the action is reported here; the next tick's
+    // edge-trigger would see it as already below and say nothing.
+    const result = abandonChain(run.world, run.streams, run.state, chainId);
+    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
   },
 
   resolveChainStep: (choiceId) => {

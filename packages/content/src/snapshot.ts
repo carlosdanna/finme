@@ -120,7 +120,7 @@ export function serializeState(state: RunState): Record<string, unknown> {
       ...snapshot,
       cpi: round(snapshot.cpi),
     })),
-    interestPaidThisYearCents: state.interestPaidThisYearCents,
+    interestChargedThisYearCents: state.interestChargedThisYearCents,
     employerMatchedThisYearCents: state.employerMatchedThisYearCents,
 
     dire: state.dire,

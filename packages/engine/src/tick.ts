@@ -443,7 +443,16 @@ export function chainFormulaContext(
  * The Logbook entry is emitted here rather than queued, so the action is
  * complete when it returns. `flavor` is the only stream touched, which is the
  * §2.2 guarantee.
+ *
+ * Both return interrupts alongside the state. `evaluateInterrupts` is
+ * edge-triggered on the previous value, so a floor crossed by an action would
+ * otherwise be swallowed: abandoning at mood 27 costs 3, lands at 24, and the
+ * next tick sees a `previous.mood` already below the floor and reports nothing.
  */
+export interface ChainActionResult {
+  readonly state: RunState;
+  readonly interrupts: readonly Interrupt[];
+}
 function chainActionState(
   world: RunWorld,
   streams: RunStreams,
@@ -484,7 +493,7 @@ export function beginChain(
   state: RunState,
   chainId: string,
   target: string | null = null,
-): RunState {
+): ChainActionResult {
   const definition = chainById(world.chainDefs, chainId);
   const blocked = startBlockedReason(
     world.chainDefs,
@@ -493,21 +502,24 @@ export function beginChain(
     chainId,
     eventStateFrom(state, world),
   );
-  if (definition === undefined || blocked !== null) return state;
+  if (definition === undefined || blocked !== null) return { state, interrupts: [] };
 
   const opened = startChain(definition, state.weekIndex, target);
-  if (opened === null) return state;
+  if (opened === null) return { state, interrupts: [] };
 
   const outcome = applyEffects(definition.startEffects, formulaContextFrom(state, world));
   const next = chainActionState(world, streams, state, outcome, definition.logbookKeyStart);
 
   return {
-    ...next,
-    chains: withChain(next.chains, definition.id, opened),
-    decisionLog: [
-      ...next.decisionLog,
-      { w: state.weekIndex, t: 'chainStart', k: definition.id, g: target ?? undefined },
-    ],
+    state: {
+      ...next,
+      chains: withChain(next.chains, definition.id, opened),
+      decisionLog: [
+        ...next.decisionLog,
+        { w: state.weekIndex, t: 'chainStart', k: definition.id, g: target ?? undefined },
+      ],
+    },
+    interrupts: evaluateInterrupts(next, state),
   };
 }
 
@@ -517,19 +529,22 @@ export function abandonChain(
   streams: RunStreams,
   state: RunState,
   chainId: string,
-): RunState {
+): ChainActionResult {
   const leaving = state.chains.find((entry) => entry.chainId === chainId);
   const definition = chainById(world.chainDefs, chainId);
-  if (leaving === undefined || definition === undefined) return state;
+  if (leaving === undefined || definition === undefined) return { state, interrupts: [] };
 
   const outcome = applyEffects(definition.abandonEffects, formulaContextFrom(state, world));
   const next = chainActionState(world, streams, state, outcome, definition.logbookKeyAbandon);
 
   return {
-    ...next,
-    chains: withChain(next.chains, chainId, null),
-    chainHistory: recordChainEnd(next.chainHistory, chainId, state.weekIndex),
-    decisionLog: [...next.decisionLog, { w: state.weekIndex, t: 'chainAbandon', k: chainId }],
+    state: {
+      ...next,
+      chains: withChain(next.chains, chainId, null),
+      chainHistory: recordChainEnd(next.chainHistory, chainId, state.weekIndex),
+      decisionLog: [...next.decisionLog, { w: state.weekIndex, t: 'chainAbandon', k: chainId }],
+    },
+    interrupts: evaluateInterrupts(next, state),
   };
 }
 
@@ -661,7 +676,7 @@ export function tick(
       ...state,
       debts: serviced.debts,
       cashCents: state.cashCents - serviced.paidCents,
-      interestPaidThisYearCents: state.interestPaidThisYearCents + serviced.interestCents,
+      interestChargedThisYearCents: state.interestChargedThisYearCents + serviced.interestCents,
     };
 
     // 6d. Credit score recompute.
@@ -1323,7 +1338,7 @@ function settleYear(state: RunState, world: RunWorld, cpi: number, netWorth: num
     netWorthCents: netWorth,
     incomeCents: state.ytd.employmentGrossCents + state.ytd.sideHustleGrossCents,
     taxPaidCents: settlement.totalOwedCents,
-    interestPaidCents: state.interestPaidThisYearCents,
+    interestChargedCents: state.interestChargedThisYearCents,
     retirementContributedCents: state.ytd.retirementContributionsCents,
     employerMatchedCents: state.employerMatchedThisYearCents,
     matchForgoneCents,
@@ -1343,7 +1358,7 @@ function settleYear(state: RunState, world: RunWorld, cpi: number, netWorth: num
         : { ...state.job, weeklyGrossCents: applyRaiseCents(state.job.weeklyGrossCents, raise) },
     lastRaisePct: raise,
     annualSnapshots: [...state.annualSnapshots, snapshot],
-    interestPaidThisYearCents: 0,
+    interestChargedThisYearCents: 0,
     employerMatchedThisYearCents: 0,
   };
 }

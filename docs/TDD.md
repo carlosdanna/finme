@@ -336,6 +336,12 @@ principalPortion = monthlyPayment − interestPortion
 balance         -= principalPortion
 ```
 
+**Debt service is paid in open order against the cash available [T].** With a
+finite pot, the instrument opened first is paid first and a later one is missed
+— so open order, not balance, rate or consequence, decides which debt takes the
+credit-score hit in a tight month. Never sorted by balance, which would make
+payment order depend on how the market moved.
+
 **A missed payment accrues, it does not vanish.** When the scheduled payment
 cannot be met from cash on hand, the month's interest is added to the balance and
 `monthsPaid` does not advance — a missed month is not a month of the term served,
@@ -930,8 +936,11 @@ resolved that week's event with its first-listed option, unseen. Only a chain
 **Replay.** `DecisionRecord` gains `chainStart`, `chainStep` and `chainAbandon`.
 A save is the seed plus the decision log (§14), so a search in flight replays
 from those three records and nothing else. `chainStart` and `chainAbandon` carry
-the week the action was taken and are applied before that week's tick;
-`chainStep` is answered by the tick of its own week.
+the week the action was taken — the action reads `weekIndex` *after* the tick
+that produced week N, so a replay applies them **after** week N's tick, not
+before it. Applying one before would put `dueWeek` a week early and file the
+record against the wrong week. `chainStep` is answered by the tick of its own
+week.
 
 ---
 

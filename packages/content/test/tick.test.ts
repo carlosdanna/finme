@@ -363,7 +363,7 @@ describe('effects that reach the balance sheet', () => {
     expect(serviced.monthsPaid).toBeGreaterThan(opened.monthsPaid);
     expect(serviced.balanceCents).toBeLessThan(opened.balanceCents);
     // Interest reached the annual total, so the payment split is real.
-    expect(run.state.interestPaidThisYearCents).toBeGreaterThan(0);
+    expect(run.state.interestChargedThisYearCents).toBeGreaterThan(0);
   });
 
   it('puts the player in the job a `jobOffer` effect names, and interrupts on it', () => {
@@ -426,7 +426,7 @@ describe('chains, end to end', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = { ...run, state: { ...run.state, job: null, weeksUnemployed: 10 } };
 
-    const started = beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate');
+    const started = beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate').state;
     expect(started.chains).toHaveLength(1);
     expect(started.chains[0].target).toBe('retail-associate');
     // Starting a search does not advance time: it is a decision inside the
@@ -459,7 +459,7 @@ describe('chains, end to end', () => {
       let current = { ...run, state: { ...run.state, weekIndex: run.state.weekIndex + attempt } };
       current = {
         ...current,
-        state: beginChain(current.world, current.streams, current.state, 'JOB_SEARCH', 'retail-associate'),
+        state: beginChain(current.world, current.streams, current.state, 'JOB_SEARCH', 'retail-associate').state,
       };
       const done = driveChain(current, (stepId, choiceIds) =>
         stepId === 'offer' ? 'accept' : choiceIds[0],
@@ -477,10 +477,10 @@ describe('chains, end to end', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = {
       ...run,
-      state: beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate'),
+      state: beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate').state,
     };
 
-    const again = beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'barista');
+    const again = beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'barista').state;
     expect(again.chains).toHaveLength(1);
     expect(again.chains[0].target).toBe('retail-associate');
   });
@@ -489,11 +489,11 @@ describe('chains, end to end', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = {
       ...run,
-      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2'),
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2').state,
     };
     expect(run.state.chains).toHaveLength(1);
 
-    const left = { state: abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH') };
+    const left = { state: abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH').state };
     expect(left.state.chains).toEqual([]);
     expect(left.state.chainHistory.HOME_SEARCH).toHaveLength(1);
     expect(left.state.deferredEffects).toEqual([]);
@@ -507,7 +507,7 @@ describe('chains, end to end', () => {
 
     run = {
       ...run,
-      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-3'),
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-3').state,
     };
     run = { ...run, state: { ...run.state, cashCents: 50_000_00 } };
 
@@ -556,7 +556,7 @@ describe('chains, end to end', () => {
     for (let attempt = 0; attempt < 10 && !bought; attempt++) {
       let current = {
         ...run,
-        state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'buy-2'),
+        state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'buy-2').state,
       };
       current = driveChain(current, (stepId, choiceIds) => {
         if (stepId === 'brief') return 'agent';
@@ -603,7 +603,7 @@ describe('chains, end to end', () => {
     }
     run = {
       ...run,
-      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2'),
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2').state,
     };
     expect(run.state.chains[0].dueWeek).toBe(slotWeek);
 
@@ -639,7 +639,7 @@ describe('chain draw accounting', () => {
     let base = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     base = {
       ...base,
-      state: beginChain(base.world, base.streams, base.state, 'HOME_SEARCH', 'rent-2'),
+      state: beginChain(base.world, base.streams, base.state, 'HOME_SEARCH', 'rent-2').state,
     };
 
     const { run, draws } = counted(base, 'chain');
@@ -682,7 +682,7 @@ describe('chain draw accounting', () => {
       let base = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
       base = {
         ...base,
-        state: beginChain(base.world, base.streams, base.state, 'HOME_SEARCH', 'rent-2'),
+        state: beginChain(base.world, base.streams, base.state, 'HOME_SEARCH', 'rent-2').state,
       };
       return counted(base, 'chain');
     };
@@ -732,7 +732,7 @@ describe('chain draw accounting', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = {
       ...run,
-      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-3'),
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-3').state,
     };
     for (let i = 0; i < 6; i++) {
       run = {
@@ -788,7 +788,7 @@ describe('chain actions do not disturb the week they are taken in', () => {
     }
     expect(run.state.weekIndex).toBe(slotWeek - 1);
 
-    const after = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2');
+    const after = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2').state;
 
     expect(after.weekIndex).toBe(slotWeek - 1);
     expect(after.eventHistory).toEqual(run.state.eventHistory);
@@ -806,14 +806,14 @@ describe('chain actions do not disturb the week they are taken in', () => {
 
   it('does not answer a chain step that is due the same week', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
-    run = { ...run, state: beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate') };
+    run = { ...run, state: beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate').state };
     // `prepare` is due next week; walk onto it without answering.
     const due = run.state.chains[0].dueWeek;
     while (run.state.weekIndex < due - 1) {
       run = { ...run, state: tick(run.world, run.streams, run.state, scripted()).state };
     }
 
-    const after = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2');
+    const after = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2').state;
 
     expect(after.decisionLog.filter((entry) => entry.t === 'chainStep')).toEqual([]);
     expect(after.chains.map((c) => c.chainId).sort()).toEqual(['HOME_SEARCH', 'JOB_SEARCH']);
@@ -823,11 +823,11 @@ describe('chain actions do not disturb the week they are taken in', () => {
 
   it('leaves the state untouched when the engine refuses the start', () => {
     const run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
-    expect(beginChain(run.world, run.streams, run.state, 'NO_SUCH_CHAIN', null)).toBe(run.state);
-    const started = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2');
+    expect(beginChain(run.world, run.streams, run.state, 'NO_SUCH_CHAIN', null).state).toBe(run.state);
+    const started = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2').state;
     // Already running: refused, and the first search is untouched.
-    expect(beginChain(run.world, run.streams, started, 'HOME_SEARCH', 'rent-3')).toBe(started);
-    expect(abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH')).toBe(run.state);
+    expect(beginChain(run.world, run.streams, started, 'HOME_SEARCH', 'rent-3').state).toBe(started);
+    expect(abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH').state).toBe(run.state);
   });
 });
 
@@ -862,7 +862,7 @@ describe('a missed amortizing payment (TDD §5.2)', () => {
     const loan = state.debts[0] as AmortizingLoan;
 
     expect(loan.balanceCents).toBeGreaterThan(24_600_000);
-    expect(state.interestPaidThisYearCents).toBeGreaterThan(0);
+    expect(state.interestChargedThisYearCents).toBeGreaterThan(0);
     // Roughly one month's interest per month boundary crossed, compounding.
     expect(loan.balanceCents - 24_600_000).toBeGreaterThanOrEqual(
       Math.round(24_600_000 * monthlyRate(0.075)),
@@ -909,5 +909,37 @@ describe('a missed amortizing payment (TDD §5.2)', () => {
     expect(loan.monthsPaid).toBeGreaterThan(0);
     expect(loan.balanceCents).toBeLessThan(24_600_000);
     expect(run.state.cashCents).toBeGreaterThanOrEqual(0);
+  });
+});
+
+describe('interrupts a chain action causes (GDD §2.1)', () => {
+  it('reports a mood floor crossed by abandoning a search', () => {
+    // `evaluateInterrupts` is edge-triggered on the previous value, so without
+    // the action reporting it the next tick would see a mood already below the
+    // floor and say nothing at all.
+    let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    run = { ...run, state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2').state };
+    // Two above the floor; abandoning costs three.
+    run = { ...run, state: { ...run.state, mood: MOOD_INTERRUPT_FLOOR + 2 } };
+
+    const left = abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH');
+
+    expect(left.state.mood).toBeLessThan(MOOD_INTERRUPT_FLOOR);
+    expect(left.interrupts.map((i) => i.reason)).toContain('mood-floor');
+  });
+
+  it('reports nothing when no floor is crossed', () => {
+    let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    run = { ...run, state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2').state };
+    const left = abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH');
+
+    expect(left.state.mood).toBeGreaterThanOrEqual(MOOD_INTERRUPT_FLOOR);
+    expect(left.interrupts).toEqual([]);
+  });
+
+  it('reports nothing for an action the engine refused', () => {
+    const run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    expect(beginChain(run.world, run.streams, run.state, 'NO_SUCH_CHAIN', null).interrupts).toEqual([]);
+    expect(abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH').interrupts).toEqual([]);
   });
 });

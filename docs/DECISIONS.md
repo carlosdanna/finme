@@ -1618,3 +1618,50 @@ exactly one month's $1,537.50 per month boundary crossed.
    bankruptcy is no more exploitable than before. **An event with a cash cost
    can still take cash negative through `applyOutcome`** — pre-existing, not
    debt-service, and not addressed here.
+
+## 2026-09-08 — Interest is charged, not paid, and the field now says so
+**Context:** review noted that `interestPaidThisYearCents` accumulates
+`serviced.interestCents`, which since the missed-payment fix includes accrued but
+unpaid mortgage interest — while the Annual Review rendered *"You paid X in
+interest this year"*. For a missed month that money never left the account. The
+mismatch was pre-existing for credit cards, where `closeStatement` charges
+interest regardless of payment, but a card's interest is tens of dollars and a
+mortgage's is ~$1,537 a month.
+**Decision:** the field is renamed to `interestChargedThisYearCents`
+(`AnnualSnapshot.interestChargedCents`) and the review copy now reads "Interest
+charged this year came to …".
+**Consequences:**
+1. The number was always right; the label was wrong. Charged interest is a real
+   cost whether or not money moved — that is the point of the missed-payment
+   change, and calling it "paid" hid exactly the lesson §5.2 is teaching.
+2. The golden fixture moves by a pure key rename: four lines, values identical,
+   no simulated value touched. Verified key-by-key before regenerating.
+3. Naming the field for what it holds is what stops the label drifting again.
+
+## 2026-09-08 — Chain actions report the interrupts they cause
+**Context:** `evaluateInterrupts` is edge-triggered on the previous value, so a
+floor crossed by an action outside the tick is swallowed: abandoning at mood 27
+costs 3, lands at 24, and the next tick sees a `previous.mood` already below the
+floor and reports nothing. Narrow today — `abandonEffects` at −3 mood is the only
+non-empty one, and both chains ship with empty `startEffects` — but it is a hole
+that widens with every chain written.
+**Decision:** `beginChain` and `abandonChain` return `{ state, interrupts }`,
+evaluating against the pre-action state. The store surfaces them the way it does
+a tick's.
+**Consequences:** an action is now a first-class thing that can halt the advance
+control, which is what GDD §2.1 asks of anything that crosses a floor. The cost
+is that the actions no longer return a bare `RunState`.
+
+## 2026-09-08 — Debt service is first-come-first-served against available cash
+**Context:** capping debt service at the cash present (2026-09-08 entry above)
+makes the instruments compete. `remaining` is consumed in `state.debts` order, so
+a card opened before a mortgage takes its minimum and the mortgage is the one
+missed.
+**Decision:** keep open order. It is stable, it is already the rule the comment
+in `serviceDebts` gives for never sorting by balance, and any smarter policy
+(largest first, highest rate first) is a strategy the player should be choosing,
+not one the engine should be applying silently.
+**Consequences:** open order — not size, rate or consequence — decides which debt
+takes the credit-score hit in a tight month. Previously a card minimum was paid
+unless the whole month was short, full stop. Recorded here because it is a real
+behavioural change that no test would otherwise explain.

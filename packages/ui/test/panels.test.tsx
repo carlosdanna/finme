@@ -283,7 +283,7 @@ describe('the Jobs panel', () => {
 
   it('shows the search in progress once one is running', () => {
     const base = run();
-    const started = beginChain(base.world, base.streams, base.state, 'JOB_SEARCH', 'retail-associate');
+    const started = beginChain(base.world, base.streams, base.state, 'JOB_SEARCH', 'retail-associate').state;
 
     render(
       <JobsPanel

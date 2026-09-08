@@ -147,7 +147,7 @@ export function createRun(config: RunConfig): Run {
     lastRaisePct: 0,
     netWorthHistory: [],
     annualSnapshots: [],
-    interestPaidThisYearCents: 0,
+    interestChargedThisYearCents: 0,
     employerMatchedThisYearCents: 0,
 
     dire: null,
