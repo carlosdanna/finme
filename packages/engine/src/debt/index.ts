@@ -1,6 +1,9 @@
 /** Debt instruments — TDD §5.1-5.4. One file per instrument, one shared shape. */
-export type { Debt, DebtKind } from './types.ts';
-export { monthlyRate, totalLiabilitiesCents, creditQuality } from './types.ts';
+export type { Debt, DebtKind, DebtInstrument } from './types.ts';
+export { DEBT_INSTRUMENTS, monthlyRate, totalLiabilitiesCents, creditQuality } from './types.ts';
+
+export { openDebtFromInstrument } from './open.ts';
+export type { OpenDebtOptions, OpenDebtResult } from './open.ts';
 
 export { payoffMonths, totalPaidCents } from './payoff.ts';
 
@@ -27,6 +30,7 @@ export {
   MORTGAGE_BASE_APR,
   MORTGAGE_MIN_DOWN_PAYMENT_PCT,
   MORTGAGE_MIN_CREDIT_SCORE,
+  DEFAULT_LOAN_TERM_MONTHS,
   loanApr,
   monthlyPaymentCents,
   openAmortizingLoan,

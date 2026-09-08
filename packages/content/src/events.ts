@@ -9,6 +9,7 @@
 import {
   BASE_WEIGHT_COMMON,
   CREDIT_EVENT_KINDS,
+  DEBT_INSTRUMENTS,
   BASE_WEIGHT_UNCOMMON,
   EVENT_CATEGORIES,
   type EventDef,
@@ -82,7 +83,7 @@ const effectSchema = z.discriminatedUnion('k', [
   z.object({ k: z.literal('performance'), delta: magnitudeSchema }),
   z.object({
     k: z.literal('debt'),
-    instrument: z.enum(['CREDIT_CARD', 'PERSONAL_LOAN', 'AUTO_LOAN', 'BNPL', 'PAYDAY']),
+    instrument: z.enum(DEBT_INSTRUMENTS),
     principalCents: magnitudeSchema,
   }),
   z.object({ k: z.literal('asset'), assetId: z.string().min(1), sharesDelta: magnitudeSchema }),
@@ -95,8 +96,27 @@ const effectSchema = z.discriminatedUnion('k', [
   z
     .object({ k: z.literal('flag'), add: z.string().min(1).optional(), remove: z.string().min(1).optional() })
     .refine((e) => e.add !== undefined || e.remove !== undefined, 'a flag effect must add or remove something'),
-  z.object({ k: z.literal('jobOffer'), jobId: z.string().min(1) }),
+  // An omitted `jobId` means "the chain's target" — a static card cannot name
+  // a job the player picked in the panel. Inert outside a chain.
+  z.object({ k: z.literal('jobOffer'), jobId: z.string().min(1).optional() }),
   z.object({ k: z.literal('creditEvent'), kind: z.enum(CREDIT_EVENT_KINDS) }),
+  z.object({ k: z.literal('chain'), goto: z.string().min(1) }),
+  z.object({
+    k: z.literal('chainStart'),
+    chainId: z.string().min(1),
+    target: z.string().min(1).optional(),
+  }),
+  z.object({ k: z.literal('housing'), tier: magnitudeSchema }),
+  z
+    .object({
+      k: z.literal('home'),
+      action: z.enum(['buy', 'sell']),
+      priceCents: magnitudeSchema.optional(),
+    })
+    .refine(
+      (effect) => effect.action !== 'buy' || effect.priceCents !== undefined,
+      'buying a home needs a priceCents; a sale is priced by the market',
+    ),
 ]);
 
 const deferredSchema = z.object({

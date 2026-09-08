@@ -8,6 +8,29 @@
 
 export type DebtKind = 'credit-card' | 'amortizing' | 'bnpl' | 'payday' | 'collections';
 
+/**
+ * The instruments an event or chain may name when it opens a debt.
+ *
+ * Declared once, here, with the type derived from it and the content Zod enum
+ * deriving from the same array — the `CREDIT_EVENT_KINDS` pattern. Spelled out
+ * separately in three places, adding one type-checked in two of them and was
+ * rejected at content load by the third.
+ *
+ * This is the *product* vocabulary, not `DebtKind`'s *mechanics* vocabulary:
+ * a personal loan and a mortgage are both `kind: 'amortizing'` and amortize
+ * identically, but they are not the same product and do not price the same.
+ */
+export const DEBT_INSTRUMENTS = [
+  'CREDIT_CARD',
+  'PERSONAL_LOAN',
+  'AUTO_LOAN',
+  'MORTGAGE',
+  'BNPL',
+  'PAYDAY',
+] as const;
+
+export type DebtInstrument = (typeof DEBT_INSTRUMENTS)[number];
+
 export interface Debt {
   readonly id: string;
   readonly kind: DebtKind;

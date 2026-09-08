@@ -20,7 +20,6 @@ export type {
   DeferredEffect,
   OutcomeRoll,
   OutcomeBranch,
-  DebtInstrument,
 } from './schema.ts';
 
 export {

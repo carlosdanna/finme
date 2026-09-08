@@ -9,6 +9,7 @@
  * rename silently changes what every existing seed produces.
  */
 import type { CreditEventKind } from '../credit.ts';
+import type { DebtInstrument } from '../debt/types.ts';
 import type { Magnitude } from './formula.ts';
 
 /** GDD §5.2. */
@@ -65,7 +66,11 @@ export interface Multiplier {
   readonly factor: number;
 }
 
-export type DebtInstrument = 'CREDIT_CARD' | 'PERSONAL_LOAN' | 'AUTO_LOAN' | 'BNPL' | 'PAYDAY';
+/**
+ * Re-exported for content, which reaches the event vocabulary through this
+ * file. The single declaration is `DEBT_INSTRUMENTS` in `debt/types.ts`.
+ */
+export type { DebtInstrument };
 
 export type Effect =
   | { readonly k: 'cash'; readonly cents: Magnitude }
@@ -81,8 +86,41 @@ export type Effect =
       readonly recurring?: boolean;
     }
   | { readonly k: 'flag'; readonly add?: string; readonly remove?: string }
-  | { readonly k: 'jobOffer'; readonly jobId: string }
-  | { readonly k: 'creditEvent'; readonly kind: CreditEventKind };
+  /**
+   * Put the player in a job. Omitting `jobId` means "the job this chain is
+   * for", which is how a chain step offers the role the player chose in the
+   * panel — a static card cannot name a target the player picked. Inert
+   * outside a chain, where there is no target to mean.
+   */
+  | { readonly k: 'jobOffer'; readonly jobId?: string }
+  | { readonly k: 'creditEvent'; readonly kind: CreditEventKind }
+  /**
+   * Move the chain this card belongs to. `goto` is a step id in the same chain
+   * or `'end'`. Inert on an ordinary slot event — a card outside a chain has no
+   * chain to move.
+   */
+  | { readonly k: 'chain'; readonly goto: string }
+  /**
+   * Open a chain. This is GDD §5.4's "declining one may open a follow-up
+   * later": a landlord selling up starts a home search the player did not ask
+   * for.
+   */
+  | { readonly k: 'chainStart'; readonly chainId: string; readonly target?: string }
+  /** Move between housing tiers. */
+  | { readonly k: 'housing'; readonly tier: Magnitude }
+  /**
+   * Buy or sell a home (§8.2).
+   *
+   * `priceCents` is required to buy and ignored to sell: a sale is priced by
+   * the home market, not by the card. An event that could name its own sale
+   * price would be injecting a return the market model never produced, which is
+   * the same rule §9.4 puts on market events.
+   */
+  | {
+      readonly k: 'home';
+      readonly action: 'buy' | 'sell';
+      readonly priceCents?: Magnitude;
+    };
 
 export interface DeferredEffect {
   readonly afterWeeks: number;
