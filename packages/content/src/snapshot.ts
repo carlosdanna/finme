@@ -16,6 +16,10 @@ const round = (value: number): number => Number(value.toFixed(12));
 export function serializeState(state: RunState): Record<string, unknown> {
   return {
     seed: state.seed,
+    // Carried for completeness, never as a guard: this key cannot move, because
+    // the name never reaches simulation. What proves that is the paired-run
+    // assertion in `engine/test/scaffold.test.ts`, not this line.
+    playerName: state.playerName,
     rulesetVersion: state.rulesetVersion,
     weekIndex: state.weekIndex,
     startAge: state.startAge,

@@ -30,6 +30,27 @@ import { abandonChain, beginChain, chainById, stepById } from '@finme/engine';
 import { create } from 'zustand';
 import { chainDisplayVars, eventDisplayVars } from '@/lib/eventVars';
 
+/**
+ * Everything the player settles before week 0.
+ *
+ * Kept as one object rather than four arguments because it is one decision —
+ * the new-run screen fills it in and hands it over whole, and a save has to
+ * carry all of it to rebuild the same run.
+ */
+export interface RunSetup {
+  readonly seed: string;
+  /** Cosmetic only. Empty is legitimate: not everyone names themselves. */
+  readonly playerName: string;
+  /** TDD §4.1's run lengths: 10, 30, 40 or 50. */
+  readonly runLengthYears: number;
+  readonly startAge: number;
+}
+
+/** [T] What the new-run screen opens on, and what a test that only cares about the seed can pass. */
+export function defaultSetup(seed: string): RunSetup {
+  return { seed, playerName: '', runLengthYears: 30, startAge: 22 };
+}
+
 /** The four primary destinations in the bottom tab bar. */
 export type Tab = 'dashboard' | 'money' | 'life' | 'logbook';
 
@@ -86,7 +107,7 @@ interface GameStore {
   /** §14's non-blocking ruleset-mismatch banner, or null when versions match. */
   rulesetBanner: string | null;
 
-  start: (seed: string) => void;
+  start: (setup: RunSetup) => void;
   setTab: (tab: Tab) => void;
   openPanel: (panel: Panel) => void;
   setGranularity: (granularity: Granularity) => void;
@@ -111,8 +132,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
   pendingChainStep: null,
   rulesetBanner: null,
 
-  start: (seed) => {
-    const run = createScenarioRun({ seed, runLengthYears: 30 });
+  start: (setup) => {
+    const run = createScenarioRun({
+      seed: setup.seed,
+      playerName: setup.playerName,
+      runLengthYears: setup.runLengthYears,
+      startAge: setup.startAge,
+    });
     set({
       run,
       interrupts: [],

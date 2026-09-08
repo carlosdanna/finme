@@ -332,5 +332,12 @@ export * from './persistence.ts';
 export { clamp, median } from './math.ts';
 
 // Seed format (TDD §2.3).
-export { isValidSeed, formatSeedString, parseSeedString, isCurrentRuleset } from './seed.ts';
+export {
+  SEED_ALPHABET,
+  SEED_LENGTH,
+  isValidSeed,
+  formatSeedString,
+  parseSeedString,
+  isCurrentRuleset,
+} from './seed.ts';
 export type { ParsedSeed } from './seed.ts';

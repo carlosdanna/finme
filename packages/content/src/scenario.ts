@@ -22,6 +22,8 @@ export interface ScenarioOptions {
   readonly seed: string;
   readonly runLengthYears?: number;
   readonly startAge?: number;
+  /** Cosmetic only, and defaulted to empty so the scripted runs stay nameless. */
+  readonly playerName?: string;
   readonly startingJobId?: string;
   readonly startingCashCents?: number;
 }
@@ -32,6 +34,7 @@ export function scenarioConfig(options: ScenarioOptions): RunConfig {
     seed: options.seed,
     runLengthYears: options.runLengthYears ?? 30,
     startAge: options.startAge ?? 22,
+    playerName: options.playerName ?? '',
     jobs: JOBS,
     eventDefs: EVENTS,
     chainDefs: CHAINS,

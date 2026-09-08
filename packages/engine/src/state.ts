@@ -112,6 +112,13 @@ export interface AnnualSnapshot {
 
 export interface RunState {
   readonly seed: string;
+  /**
+   * Cosmetic, and only ever cosmetic: it must never reach a formula, a gate or
+   * an RNG call. The paired-run assertion in `content/test/tick.test.ts` pins
+   * that for every simulated value — not for Logbook prose, which
+   * `serializeState` excludes on purpose. Empty if the run was built without one.
+   */
+  readonly playerName: string;
   readonly rulesetVersion: string;
   readonly weekIndex: number;
   readonly startAge: number;

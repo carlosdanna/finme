@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { beginRun } from './support/run.ts';
 
 /**
  * The PWA — BUILD-PLAN prompt 18.
@@ -57,7 +58,10 @@ test('loads with the network offline', async ({ page, context }) => {
   await context.setOffline(true);
   await page.reload();
 
-  await expect(page.getByRole('navigation', { name: 'Primary' })).toBeVisible();
+  // A run lives in memory, so a reload lands on the new-run screen — which is
+  // itself part of what has to work offline: a player with no signal must still
+  // be able to start a game, not just resume a cached one.
+  await beginRun(page);
   await expect(page.getByText('net worth')).toBeVisible();
 
   // Not just the shell: the game is playable.

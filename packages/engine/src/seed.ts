@@ -9,8 +9,17 @@
  */
 import { RULESET_VERSION } from './version.ts';
 
-/** Crockford base32: no I, L, O or U, so a seed can be read aloud unambiguously. */
-const SEED_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+/**
+ * Crockford base32: no I, L, O or U, so a seed can be read aloud unambiguously.
+ *
+ * Exported so a seed *generator* cannot drift from this validator. The engine
+ * cannot generate one itself — `Math.random` is banned here (TDD §2) — so the
+ * UI draws the characters and this states which characters they are.
+ */
+export const SEED_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+/** [F] The length `randomSeed` produces. Any length parses; this is what we mint. */
+export const SEED_LENGTH = 8;
 
 const SEED_PATTERN = new RegExp(`^[${SEED_ALPHABET}]+$`);
 

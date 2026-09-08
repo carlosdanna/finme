@@ -9,7 +9,7 @@
 import { WEEKS_PER_YEAR, chainById, interpolate, pendingChainContext, resolveMagnitude } from '@finme/engine';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { formatCents } from '../src/lib/format.ts';
-import { useGameStore } from '../src/store/useGameStore.ts';
+import { defaultSetup, useGameStore } from '../src/store/useGameStore.ts';
 
 /** Start a search and advance until its first card is waiting. */
 function advanceToChainCard(chainId: string, target: string, maxSteps = 60): boolean {
@@ -31,7 +31,7 @@ function advanceToChainCard(chainId: string, target: string, maxSteps = 60): boo
 
 describe('starting and stopping a search', () => {
   beforeEach(() => {
-    useGameStore.getState().start('4F2A9C1B');
+    useGameStore.getState().start(defaultSetup('4F2A9C1B'));
   });
 
   it('opens a chain the engine accepts, and records it for replay', () => {
@@ -69,7 +69,7 @@ describe('starting and stopping a search', () => {
 
 describe('resolving a chain step from the modal', () => {
   beforeEach(() => {
-    useGameStore.getState().start('4F2A9C1B');
+    useGameStore.getState().start(defaultSetup('4F2A9C1B'));
   });
 
   it('presents the step as a card with its choices', () => {
@@ -134,7 +134,7 @@ describe('resolving a chain step from the modal', () => {
   it('renders every placeholder — no step card shows raw {{mustache}}', () => {
     let cards = 0;
     for (const target of ['rent-3', 'buy-2']) {
-      useGameStore.getState().start('4F2A9C1B');
+      useGameStore.getState().start(defaultSetup('4F2A9C1B'));
       for (let step = 0; step < 30 && cards < 20; step++) {
         if (useGameStore.getState().run!.state.chains.length === 0) {
           useGameStore.getState().startChain('HOME_SEARCH', target);
@@ -164,7 +164,7 @@ describe('resolving a chain step from the modal', () => {
     let checked = 0;
 
     for (const target of ['rent-3', 'buy-2']) {
-      useGameStore.getState().start('4F2A9C1B');
+      useGameStore.getState().start(defaultSetup('4F2A9C1B'));
       for (let step = 0; step < 40; step++) {
         if (useGameStore.getState().run!.state.chains.length === 0) {
           useGameStore.getState().startChain('HOME_SEARCH', target);
@@ -213,7 +213,7 @@ describe('resolving a chain step from the modal', () => {
  */
 describe('panel actions on a week that is holding a card', () => {
   beforeEach(() => {
-    useGameStore.getState().start('4F2A9C1B');
+    useGameStore.getState().start(defaultSetup('4F2A9C1B'));
   });
 
   /**

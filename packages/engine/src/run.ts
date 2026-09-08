@@ -33,6 +33,8 @@ export interface RunConfig {
   readonly seed: string;
   readonly runLengthYears: number;
   readonly startAge?: number;
+  /** Cosmetic only — see `RunState.playerName`. Defaults to empty. */
+  readonly playerName?: string;
   readonly jobs: readonly JobDef[];
   readonly eventDefs: readonly EventDef[];
   readonly chainDefs?: readonly ChainDef[];
@@ -91,6 +93,7 @@ export function createRun(config: RunConfig): Run {
 
   const state: RunState = {
     seed: config.seed,
+    playerName: config.playerName ?? '',
     rulesetVersion: RULESET_VERSION,
     weekIndex: 0,
     startAge: config.startAge ?? 18,

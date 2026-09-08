@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { beginRun } from './support/run.ts';
 
 /**
  * The wide breakpoint.
@@ -9,6 +10,7 @@ import { expect, test } from '@playwright/test';
  */
 test('the Debts panel becomes a table above md:', async ({ page }) => {
   await page.goto('/');
+  await beginRun(page);
   await page.getByRole('tab', { name: 'Money' }).click();
   await page.getByRole('button', { name: 'Debts' }).click();
 
@@ -31,6 +33,7 @@ test('the Debts panel becomes a table above md:', async ({ page }) => {
 
 test('the event modal is a centred dialog above md:, not a full-width sheet', async ({ page }) => {
   await page.goto('/');
+  await beginRun(page);
   const advance = page.getByRole('button', { name: 'Advance', exact: true });
 
   for (let i = 0; i < 12; i++) {
