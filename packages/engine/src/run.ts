@@ -7,6 +7,7 @@
  * the availability schedule, and `eventSlots` + `eventSelection` for the event
  * schedule. Adding a draw to any of them shifts every seed.
  */
+import type { ChainDef } from './chains/index.ts';
 import { drawEntryScore, emptyCreditState } from './credit.ts';
 import { generateEventSchedule } from './events/index.ts';
 import type { EventDef } from './events/index.ts';
@@ -20,6 +21,7 @@ import {
   type RunStreams,
   type RunWorld,
   defaultStandingOrders,
+  emptyExperienceWeeks,
   emptyHoldings,
   emptyYearToDate,
 } from './state.ts';
@@ -33,6 +35,7 @@ export interface RunConfig {
   readonly startAge?: number;
   readonly jobs: readonly JobDef[];
   readonly eventDefs: readonly EventDef[];
+  readonly chainDefs?: readonly ChainDef[];
   readonly templates: TemplatePools;
   /** Drawn from `startingDraw` by the caller, so content owns the name pools. */
   readonly drawNames: (rng: () => number) => RunNames;
@@ -72,6 +75,7 @@ export function createRun(config: RunConfig): Run {
     entryCreditScore,
     jobs: config.jobs,
     eventDefs: config.eventDefs,
+    chainDefs: config.chainDefs ?? [],
     templates: config.templates,
   };
 
@@ -80,6 +84,7 @@ export function createRun(config: RunConfig): Run {
     jobApplication: stream(config.seed, 'jobApplication'),
     flavor: stream(config.seed, 'flavor'),
     eventMagnitude: stream(config.seed, 'eventMagnitude'),
+    chain: stream(config.seed, 'chain'),
   };
 
   const startingJob = config.jobs.find((job) => job.id === config.startingJobId);
@@ -116,6 +121,7 @@ export function createRun(config: RunConfig): Run {
     performance: 60,
     weeksUnemployed: 0,
     consecutiveOvertimeWeeks: 0,
+    experienceWeeks: emptyExperienceWeeks(),
     energy: 80,
     mood: 60,
     consecutiveLowMoodWeeks: 0,
@@ -133,6 +139,8 @@ export function createRun(config: RunConfig): Run {
     standingOrders: defaultStandingOrders(),
     eventHistory: {},
     deferredEffects: [],
+    chains: [],
+    chainHistory: {},
     flags: [],
 
     ytd: emptyYearToDate(),
@@ -182,6 +190,12 @@ export interface AdvanceResult {
    * sits at the start of that week; pass this back as `TickInput.eventRoll`.
    */
   readonly eventRoll: number | null;
+  /**
+   * Set when the run stopped on a chain step the caller declined to answer.
+   * Mutually exclusive with `eventRoll` — a week presents at most one card.
+   */
+  readonly awaitingChainStep: { readonly chainId: string; readonly stepId: string } | null;
+  readonly chainRoll: number | null;
 }
 
 /**
@@ -204,25 +218,53 @@ export function advance(
   for (let step = 0; step < budget; step++) {
     const result: TickResult = tick(current.world, current.streams, current.state, inputFor(current.state));
     if (result.interrupts.some((i) => i.reason === 'run-complete')) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: null };
+      return {
+        run: current,
+        interrupts: result.interrupts,
+        weeksAdvanced,
+        eventRoll: null,
+        awaitingChainStep: null,
+        chainRoll: null,
+      };
     }
 
     // No week is applied, but the `eventMagnitude` draw *was* taken and comes
     // back as `eventRoll`. Feed it to the re-tick rather than calling `advance`
     // again, which burns a second draw.
-    if (result.awaitingEventChoice !== null) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: result.eventRoll };
+    if (result.awaitingEventChoice !== null || result.awaitingChainStep !== null) {
+      return {
+        run: current,
+        interrupts: result.interrupts,
+        weeksAdvanced,
+        eventRoll: result.eventRoll,
+        awaitingChainStep: result.awaitingChainStep,
+        chainRoll: result.chainRoll,
+      };
     }
 
     current = { ...current, state: result.state };
     weeksAdvanced++;
 
     if (result.interrupts.length > 0) {
-      return { run: current, interrupts: result.interrupts, weeksAdvanced, eventRoll: null };
+      return {
+        run: current,
+        interrupts: result.interrupts,
+        weeksAdvanced,
+        eventRoll: null,
+        awaitingChainStep: null,
+        chainRoll: null,
+      };
     }
   }
 
-  return { run: current, interrupts: [], weeksAdvanced, eventRoll: null };
+  return {
+    run: current,
+    interrupts: [],
+    weeksAdvanced,
+    eventRoll: null,
+    awaitingChainStep: null,
+    chainRoll: null,
+  };
 }
 
 /** Run `weeks` ticks regardless of interrupts. Used by the harness and fixtures. */

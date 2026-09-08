@@ -31,6 +31,10 @@ export const IN_PLAY_STREAMS = [
   'jobApplication',
   'flavor',
   'eventMagnitude',
+  // [F] Appended, never inserted. Streams derive from `fnv1a(seed::name)`, so a
+  // new name at the end leaves every existing stream bit-identical — which the
+  // unchanged market golden fixture is the proof of.
+  'chain',
 ] as const;
 
 /** [F] The fixed stream set from TDD §2.2. Adding one is a ruleset change. */

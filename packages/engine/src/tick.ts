@@ -11,10 +11,38 @@
  * constrain *that* week's allocation, not the next one's.
  * ============================================================================
  */
-import { carValueCents, homeCarryingCostWeeklyCents, homeValueCents } from './assets.ts';
+import {
+  HOME_PRICE_TO_RENT,
+  carValueCents,
+  homeCarryingCostWeeklyCents,
+  homeSaleProceedsCents,
+  homeValueCents,
+} from './assets.ts';
+import {
+  type ActiveChain,
+  advanceChain,
+  chainById,
+  dueChain,
+  recordChainEnd,
+  slipChain,
+  startBlockedReason,
+  startChain,
+  stepById,
+  withChain,
+} from './chains/index.ts';
 import { type CreditState, applyCreditEvent, decayWeek, recordMissedPayment, recordOnTimePayment, updateMonthly } from './credit.ts';
 import { closeStatement, minimumPaymentCents } from './debt/creditCard.ts';
+import { type AmortizingLoan, payMonth } from './debt/amortizing.ts';
+import { openDebtFromInstrument } from './debt/open.ts';
 import { type Debt, totalLiabilitiesCents } from './debt/types.ts';
+import {
+  JOB_TIERS,
+  type JobTier,
+  applicationProbability,
+  availableJobIds,
+  tierRank,
+  weeklyGrossCents,
+} from './jobs.ts';
 import {
   type EffectOutcome,
   type EventState,
@@ -47,6 +75,7 @@ import {
   tierRentCents,
   BASE_MONTHLY_EXPENSES_CENTS,
   DISCRETIONARY_BASELINE_CENTS,
+  HOUSING_TIER_RENT_CENTS,
 } from './state.ts';
 import { settleAnnualTax, unpaidBillPenaltyCents, weeklyWithholdingCents } from './tax.ts';
 import { WEEKS_PER_YEAR, isMonthBoundary, isYearBoundary, yearIndex } from './time.ts';
@@ -73,6 +102,9 @@ export type InterruptReason =
   | 'life-stage'
   | 'bankruptcy'
   | 'run-complete';
+
+/** [T] What the home-search chain puts down. §5.2's floor is 10%. */
+export const HOME_SEARCH_DOWN_PAYMENT_PCT = 0.2;
 
 /** [T] Floors below which the game stops and hands control back. */
 export const ENERGY_INTERRUPT_FLOOR = 20;
@@ -103,6 +135,22 @@ export interface TickInput {
    * charged the price the card quoted.
    */
   readonly eventRoll?: number;
+  /**
+   * Begin a chain this week (§9.6). Refused, silently, if the chain is unknown,
+   * already running, gated out or still cooling down — the engine owns that
+   * rule so the UI cannot start something the simulation would not.
+   */
+  readonly startChain?: { readonly chainId: string; readonly target?: string };
+  /** Walk away from a chain in flight, paying its `abandonEffects`. */
+  readonly abandonChain?: string;
+  /** As `chooseEvent`, for a chain step. `null` means "not answered yet". */
+  readonly chooseChainStep?: (
+    chainId: string,
+    stepId: string,
+    choiceIds: readonly string[],
+  ) => string | null;
+  /** The roll from a previous `tick` that returned `awaitingChainStep`. */
+  readonly chainRoll?: number;
 }
 
 export interface TickResult {
@@ -120,6 +168,16 @@ export interface TickResult {
   readonly awaitingEventChoice: string | null;
   /** The roll drawn for the awaited event. Pass it back as `TickInput.eventRoll`. */
   readonly eventRoll: number | null;
+  /**
+   * The chain step whose choice the caller declined to make, or `null`. Carried
+   * alongside `awaitingEventChoice` rather than replacing it: the two can never
+   * both be set, because a week presents at most one card.
+   */
+  readonly awaitingChainStep: { readonly chainId: string; readonly stepId: string } | null;
+  /** The roll drawn for the awaited chain step. Pass back as `TickInput.chainRoll`. */
+  readonly chainRoll: number | null;
+  /** The chain step that resolved this week, or `null`. */
+  readonly firedChainStep: { readonly chainId: string; readonly stepId: string } | null;
 }
 
 // --- helpers ----------------------------------------------------------------
@@ -163,6 +221,9 @@ export function eventStateFrom(state: RunState, world: RunWorld): EventState {
       inflationThisYear: world.market.inflation.annualRate[Math.min(yearIndex(week), state.runLengthYears - 1)],
       cryptoPriceChange52w: priceChange52w(world, 'CRYP', week),
       monthlyIncome,
+      // A thin file reads as 0 rather than absent, so a `>=` gate on it fails
+      // rather than silently not applying.
+      creditScore: state.credit.score ?? 0,
     },
   };
 }
@@ -224,9 +285,153 @@ export function pendingEventContext(state: RunState, world: RunWorld, roll: numb
   return formulaContextFrom({ ...state, weekIndex: state.weekIndex + 1 }, world, roll);
 }
 
+/**
+ * The context the *next* `tick` will evaluate a pending chain card in.
+ *
+ * The `+ 1` is the same fact about the pipeline that `pendingEventContext`
+ * carries: step 1 increments `weekIndex` before anything reads it, so a caller
+ * holding the pre-tick state is one week behind.
+ */
+export function pendingChainContext(
+  state: RunState,
+  world: RunWorld,
+  chain: ActiveChain,
+  roll: number,
+) {
+  return chainFormulaContext({ ...state, weekIndex: state.weekIndex + 1 }, world, chain, roll);
+}
+
 /** The week a pending event will fire in, given the state before its tick. */
 export function pendingEventWeek(state: RunState): number {
   return state.weekIndex + 1;
+}
+
+// --- chains (§9.6) ----------------------------------------------------------
+
+/**
+ * Years of experience relevant to a role: time spent at its tier **or a higher
+ * one**. Higher-tier work subsumes lower — a former specialist applying to an
+ * entry role is not inexperienced — while time at a lower tier does not count
+ * towards a role above it.
+ */
+export function relevantExperienceYears(
+  experienceWeeks: Readonly<Record<JobTier, number>>,
+  tier: JobTier,
+): number {
+  const floor = tierRank(tier);
+  return (
+    JOB_TIERS.filter((candidate) => tierRank(candidate) >= floor).reduce(
+      (sum, candidate) => sum + experienceWeeks[candidate],
+      0,
+    ) / WEEKS_PER_YEAR
+  );
+}
+
+const HOUSING_TARGET = /^(rent|buy)-(\d)$/;
+
+/** A `rent-N` / `buy-N` target's tier, or `null` for anything else. */
+function housingTargetTier(target: string | null): number | null {
+  const match = target === null ? null : HOUSING_TARGET.exec(target);
+  return match === null ? null : Number(match[2]);
+}
+
+/**
+ * The gate state a chain step sees: the ordinary event state plus the two facts
+ * only a chain has — whether what it is chasing is still there, and how long it
+ * has been chasing it.
+ */
+export function chainEventStateFrom(
+  state: RunState,
+  world: RunWorld,
+  chain: ActiveChain,
+): EventState {
+  const base = eventStateFrom(state, world);
+  const vars = chainFormulaContext(state, world, chain, 0.5).vars;
+
+  return {
+    ...base,
+    stats: {
+      ...base.stats,
+      targetOpen: vars.targetOpen,
+      weeksSearching: vars.weeksSearching,
+      targetTier: vars.targetTier,
+      targetIsBuy: vars.targetIsBuy,
+      targetRentCents: vars.targetRentCents,
+      homePriceCents: vars.homePriceCents,
+      downPaymentCents: vars.downPaymentCents,
+      applicationOdds: vars.applicationOdds,
+    },
+  };
+}
+
+/**
+ * The formula context a chain step's magnitudes are evaluated against.
+ *
+ * `applicationOdds` is computed here rather than written in content: GDD §3.1's
+ * formula reads experience, networking and time out of work, none of which a
+ * content formula can see, and restating the constants in JSON would let the
+ * two drift.
+ */
+export function chainFormulaContext(
+  state: RunState,
+  world: RunWorld,
+  chain: ActiveChain,
+  roll: number,
+) {
+  const base = formulaContextFrom(state, world, roll);
+  const week = state.weekIndex;
+  const cpi = world.market.inflation.cpi[Math.min(yearIndex(week), state.runLengthYears)];
+
+  const targetJob = world.jobs.find((job) => job.id === chain.target);
+  const targetTier = housingTargetTier(chain.target) ?? state.housingTier;
+  /**
+   * Whether what the chain is chasing is still there. A job posting closes on
+   * its own schedule (`OPENING_WEEKS_MIN..MAX`), so a slow search can arrive to
+   * find nothing — which is the point. A housing target is always "open".
+   */
+  const targetOpen =
+    targetJob === undefined || availableJobIds(world.jobTimeline, world.jobs, week).includes(targetJob.id)
+      ? 1
+      : 0;
+  /**
+   * [F] Derived from the rent, never set independently. TDD §8.2: the
+   * buy-vs-rent comparison only teaches the right thing if the home price and
+   * the rent tiers are the same number seen two ways.
+   */
+  const homePriceCents = Math.round(tierRentCents(targetTier) * cpi * 12 * HOME_PRICE_TO_RENT);
+
+  const odds =
+    targetJob === undefined
+      ? 0
+      : applicationProbability({
+          relevantExperienceYears: relevantExperienceYears(state.experienceWeeks, targetJob.tier),
+          hasNetworkingContact: state.flags.includes(`networking_${targetJob.employer}`),
+          weeksUnemployed: state.weeksUnemployed,
+        });
+
+  return {
+    ...base,
+    vars: {
+      ...base.vars,
+      applicationOdds: odds,
+      targetOpen,
+      creditScore: state.credit.score ?? 0,
+      weeksSearching: week - chain.startedWeek,
+      targetTier,
+      targetIsBuy: chain.target?.startsWith('buy-') === true ? 1 : 0,
+      targetRentCents: Math.round(tierRentCents(targetTier) * cpi),
+      currentRentCents: Math.round(tierRentCents(state.housingTier) * cpi),
+      homePriceCents,
+      /** [T] §5.2 requires at least 10% down; the chain asks for a conventional 20%. */
+      downPaymentCents: Math.round(homePriceCents * HOME_SEARCH_DOWN_PAYMENT_PCT),
+      /**
+       * The pay of the role being chased, so a card can size a signing bonus
+       * against the job applied for rather than the one being left.
+       */
+      targetMonthlyIncomeCents:
+        targetJob === undefined ? 0 : Math.round(weeklyGrossCents(targetJob) * (WEEKS_PER_YEAR / 12)),
+    },
+  };
 }
 
 // --- the pipeline -----------------------------------------------------------
@@ -257,6 +462,9 @@ export function tick(
       firedEventId: null,
       awaitingEventChoice: null,
       eventRoll: null,
+      awaitingChainStep: null,
+      chainRoll: null,
+      firedChainStep: null,
     };
   }
 
@@ -419,6 +627,9 @@ export function tick(
           firedEventId: selected.id,
           awaitingEventChoice: selected.id,
           eventRoll: roll,
+          awaitingChainStep: null,
+          chainRoll: null,
+          firedChainStep: null,
         };
       }
 
@@ -433,13 +644,160 @@ export function tick(
           ],
         };
         const outcome = resolveChoice(choice, formulaContextFrom(state, world, roll), week, streams.eventOutcome);
-        state = applyOutcome(state, outcome, priceAt, week);
+        state = applyOutcome(state, outcome, priceAt, week, world);
         state = { ...state, eventHistory: recordFiring(state.eventHistory, selected.id, week) };
         for (const key of outcome.logbookKeys) {
           pending.push({ trigger: { k: 'event', eventId: selected.id, choiceId: choice.id }, key });
         }
+        for (const jobId of outcome.jobOffers) {
+          // A slot event has no chain behind it, so an offer that named no job
+          // has nothing to mean and is inert.
+          if (jobId !== null) interrupts.push({ reason: 'job-offer', weekIndex: week, detail: jobId });
+        }
       }
       interrupts.push({ reason: 'event', weekIndex: week, detail: selected.id });
+    }
+  }
+
+  // ---- 7b. Chain check (§9.6)
+  //
+  // After 7 for the same reason 7 sits before 9: a chain step that costs energy
+  // must constrain *this* week's allocation. Before 8 so a step can schedule an
+  // ordinary deferred effect.
+  let firedChainStep: { chainId: string; stepId: string } | null = null;
+
+  if (input.abandonChain !== undefined) {
+    const leaving = state.chains.find((entry) => entry.chainId === input.abandonChain);
+    const definition = leaving === undefined ? undefined : chainById(world.chainDefs, leaving.chainId);
+    if (leaving !== undefined && definition !== undefined) {
+      const outcome = applyEffects(definition.abandonEffects, formulaContextFrom(state, world));
+      state = applyOutcome(state, outcome, priceAt, week, world);
+      state = {
+        ...state,
+        chains: withChain(state.chains, leaving.chainId, null),
+        chainHistory: recordChainEnd(state.chainHistory, leaving.chainId, week),
+        decisionLog: [...state.decisionLog, { w: week, t: 'chainAbandon', k: leaving.chainId }],
+      };
+      pending.push({ trigger: { k: 'firstTime', action: 'chain' }, key: definition.logbookKeyAbandon });
+    }
+  }
+
+  if (input.startChain !== undefined) {
+    const request = input.startChain;
+    const definition = chainById(world.chainDefs, request.chainId);
+    const blocked = startBlockedReason(
+      world.chainDefs,
+      state.chains,
+      state.chainHistory,
+      request.chainId,
+      eventStateFrom(state, world),
+    );
+    if (definition !== undefined && blocked === null) {
+      const opened = startChain(definition, week, request.target ?? null);
+      if (opened !== null) {
+        const outcome = applyEffects(definition.startEffects, formulaContextFrom(state, world));
+        state = applyOutcome(state, outcome, priceAt, week, world);
+        state = {
+          ...state,
+          chains: withChain(state.chains, definition.id, opened),
+          decisionLog: [
+            ...state.decisionLog,
+            { w: week, t: 'chainStart', k: definition.id, g: request.target },
+          ],
+        };
+        pending.push({ trigger: { k: 'firstTime', action: 'chain' }, key: definition.logbookKeyStart });
+      }
+    }
+  }
+
+  const dueEntry = dueChain(state.chains, week);
+  if (dueEntry !== null) {
+    const definition = chainById(world.chainDefs, dueEntry.chainId);
+    const step = definition === undefined ? undefined : stepById(definition, dueEntry.stepId);
+
+    if (definition === undefined || step === undefined) {
+      // Content lost the chain out from under an in-flight run. Ending it is
+      // the only option that cannot strand the player mid-search.
+      state = { ...state, chains: withChain(state.chains, dueEntry.chainId, null) };
+    } else if (firedEventId !== null) {
+      // [F] One card a week. The slot schedule is the seeded world and never
+      // yields; the player-initiated chain is the thing that waits.
+      state = { ...state, chains: withChain(state.chains, dueEntry.chainId, slipChain(dueEntry, week)) };
+    } else if (
+      step.card.choices.filter((choice) =>
+        (choice.requires ?? []).every((gate) =>
+          passesGate(gate, chainEventStateFrom(state, world, dueEntry)),
+        ),
+      ).length === 0
+    ) {
+      // Every choice gated out. Ending is the only safe answer: the step is
+      // due, so leaving it in place would present the same empty card every
+      // week for the rest of the run.
+      state = {
+        ...state,
+        chains: withChain(state.chains, dueEntry.chainId, null),
+        chainHistory: recordChainEnd(state.chainHistory, dueEntry.chainId, week),
+      };
+    } else {
+      const chainState = chainEventStateFrom(state, world, dueEntry);
+      const available = step.card.choices.filter((choice) =>
+        (choice.requires ?? []).every((gate) => passesGate(gate, chainState)),
+      );
+
+      // One draw per presented chain card, on the chain's own stream.
+      const roll = input.chainRoll ?? streams[definition.stream]();
+      const pick = input.chooseChainStep?.(definition.id, step.id, available.map((c) => c.id));
+
+      if (pick === null) {
+        return {
+          state: previous,
+          interrupts: [{ reason: 'event', weekIndex: week, detail: `${definition.id}/${step.id}` }],
+          firedEventId,
+          awaitingEventChoice: null,
+          eventRoll: null,
+          awaitingChainStep: { chainId: definition.id, stepId: step.id },
+          chainRoll: roll,
+          firedChainStep: null,
+        };
+      }
+
+      const choice = available.find((c) => c.id === pick) ?? available[0];
+      if (choice !== undefined) {
+        firedChainStep = { chainId: definition.id, stepId: step.id };
+        state = {
+          ...state,
+          decisionLog: [
+            ...state.decisionLog,
+            { w: week, t: 'chainStep', k: definition.id, s: step.id, c: choice.id },
+          ],
+        };
+
+        const outcome = resolveChoice(
+          choice,
+          chainFormulaContext(state, world, dueEntry, roll),
+          week,
+          streams[definition.stream],
+        );
+        state = applyOutcome(state, outcome, priceAt, week, world, dueEntry.target);
+
+        const next = advanceChain(definition, dueEntry, outcome.chainGoto, week);
+        state = { ...state, chains: withChain(state.chains, definition.id, next) };
+        if (next === null) {
+          state = { ...state, chainHistory: recordChainEnd(state.chainHistory, definition.id, week) };
+        }
+
+        for (const key of outcome.logbookKeys) {
+          pending.push({ trigger: { k: 'event', eventId: step.card.id, choiceId: choice.id }, key });
+        }
+        for (const offered of outcome.jobOffers) {
+          interrupts.push({
+            reason: 'job-offer',
+            weekIndex: week,
+            detail: offered ?? dueEntry.target ?? '',
+          });
+        }
+        interrupts.push({ reason: 'event', weekIndex: week, detail: `${definition.id}/${step.id}` });
+      }
     }
   }
 
@@ -450,7 +808,7 @@ export function tick(
     for (const deferred of due) {
       if (deferred.condition !== undefined && !passesGate(deferred.condition, eventState)) continue;
       const outcome = applyEffects(deferred.effects, formulaContextFrom(state, world, deferred.roll));
-      state = applyOutcome(state, outcome, priceAt, week);
+      state = applyOutcome(state, outcome, priceAt, week, world);
       if (deferred.logbookKey !== undefined) {
         pending.push({ trigger: { k: 'firstTime', action: 'deferred' }, key: deferred.logbookKey });
       }
@@ -476,11 +834,20 @@ export function tick(
     consecutiveOvertimeWeeks,
   });
 
+  // Experience accrues only for a week actually worked, at the tier of the job
+  // held — which is what an application's "relevant experience" then reads.
+  const workedTier =
+    workedThisWeek ? world.jobs.find((job) => job.id === state.job!.jobId)?.tier : undefined;
+
   state = {
     ...state,
     energy,
     mood,
     performance,
+    experienceWeeks:
+      workedTier === undefined
+        ? state.experienceWeeks
+        : { ...state.experienceWeeks, [workedTier]: state.experienceWeeks[workedTier] + 1 },
     consecutiveOvertimeWeeks,
     consecutiveLowMoodWeeks: mood < REACH_OUT_MOOD_THRESHOLD ? state.consecutiveLowMoodWeeks + 1 : 0,
     weeksUnemployed: state.job === null ? state.weeksUnemployed + 1 : 0,
@@ -559,7 +926,16 @@ export function tick(
   // ---- 15. Evaluate interrupt conditions
   interrupts.push(...evaluateInterrupts(state, previous));
 
-  return { state, interrupts, firedEventId, awaitingEventChoice: null, eventRoll: null };
+  return {
+    state,
+    interrupts,
+    firedEventId,
+    awaitingEventChoice: null,
+    eventRoll: null,
+    awaitingChainStep: null,
+    chainRoll: null,
+    firedChainStep,
+  };
 }
 
 // --- step helpers -----------------------------------------------------------
@@ -638,6 +1014,30 @@ function serviceDebts(
   // Iterate in the order the debts were opened — stable, and never sorted by
   // balance, which would make payment order depend on market movement.
   for (const debt of state.debts) {
+    // An amortizing loan takes its scheduled payment: interest first, the rest
+    // against principal. Without this a mortgage would sit at its opening
+    // balance for thirty years, which is the opposite of §5.2's lesson.
+    if (debt.kind === 'amortizing') {
+      const loan = debt as AmortizingLoan;
+      if (loan.balanceCents <= 0 || loan.monthsPaid >= loan.termMonths) {
+        debts.push(loan);
+        continue;
+      }
+      if (broke) {
+        // No cash for the payment. The balance stands and the miss is recorded;
+        // the interest is not silently forgiven, it arrives next month on the
+        // same balance.
+        missedAny = true;
+        debts.push(loan);
+        continue;
+      }
+      const result = payMonth(loan);
+      paidCents += result.entry.paymentCents;
+      interestCents += result.entry.interestCents;
+      debts.push(result.loan);
+      continue;
+    }
+
     if (debt.kind !== 'credit-card') {
       debts.push(debt);
       continue;
@@ -659,6 +1059,8 @@ function applyOutcome(
   outcome: EffectOutcome,
   priceAt: (assetId: AssetId) => number,
   week: number,
+  world: RunWorld,
+  chainTarget: string | null = null,
 ): RunState {
   let holdings = state.holdings;
   for (const trade of outcome.assetTrades) {
@@ -681,18 +1083,96 @@ function applyOutcome(
   for (const flag of outcome.flagsAdded) flags = addFlag(flags, flag);
   for (const flag of outcome.flagsRemoved) flags = removeFlag(flags, flag);
 
+  // A `debt` effect computes a principal and must actually open the line. The
+  // list is walked in declared order so two debts opened by one choice get
+  // stable ids, and `sequence` disambiguates them within the week.
+  let debts = state.debts;
+  let unabsorbedCents = 0;
+  outcome.debtsOpened.forEach((opened, sequence) => {
+    const result = openDebtFromInstrument(debts, opened.instrument, opened.principalCents, {
+      weekIndex: week,
+      creditScore: state.credit.score,
+      sequence,
+    });
+    debts = result.debts;
+    unabsorbedCents += result.unabsorbedCents;
+  });
+
+  // A `jobOffer` effect *is* the acceptance — content only emits it from a
+  // choice the player took. Pay is read from the definition, so it starts at
+  // the role's rate rather than carrying the old job's raises across.
+  let job = state.job;
+  for (const offered of outcome.jobOffers) {
+    const jobId = offered ?? chainTarget;
+    const definition = world.jobs.find((candidate) => candidate.id === jobId);
+    if (definition === undefined) continue;
+    job = {
+      jobId: definition.id,
+      startedWeek: week,
+      weeklyGrossCents: weeklyGrossCents(definition),
+      workMode: definition.workMode,
+      // A new employer has not seen the last one's warnings.
+      track: { standing: 'clear', terminationWeek: null },
+    };
+  }
+
+  // Buying records ownership only: the deposit is a `cash` effect and the
+  // mortgage a `debt` effect, so each shows up on the balance sheet as itself.
+  // Selling is priced by the market and clears the mortgage with the proceeds.
+  let home = state.home;
+  let saleProceedsCents = 0;
+  for (const trade of outcome.homeTrades) {
+    if (trade.action === 'buy') {
+      home = { purchasePriceCents: trade.priceCents, purchasedWeek: week };
+      continue;
+    }
+    if (home === null) continue;
+    const valueCents = homeValueCents(home, world.market.homeValuePath, week);
+    const mortgages = debts.filter(isMortgage);
+    saleProceedsCents += homeSaleProceedsCents(
+      valueCents,
+      mortgages.reduce((sum, loan) => sum + loan.balanceCents, 0),
+    );
+    debts = debts.filter((debt) => !isMortgage(debt));
+    home = null;
+  }
+
+  // Chains an event opened — GDD §5.4's follow-up. A chain already in flight is
+  // left alone rather than restarted from the top.
+  let chains = state.chains;
+  for (const start of outcome.chainStarts) {
+    if (chains.some((entry) => entry.chainId === start.chainId)) continue;
+    const definition = chainById(world.chainDefs, start.chainId);
+    if (definition === undefined) continue;
+    const opened = startChain(definition, week, start.target);
+    if (opened !== null) chains = withChain(chains, start.chainId, opened);
+  }
+
   return {
     ...state,
-    cashCents: state.cashCents + outcome.cashDeltaCents,
+    cashCents: state.cashCents + outcome.cashDeltaCents + saleProceedsCents,
     mood: clamp(state.mood + outcome.moodDelta, 0, 100),
     energy: clamp(state.energy + outcome.energyDelta, 0, 100),
     performance: clamp(state.performance + outcome.performanceDelta, 0, 100),
     holdings,
     flags,
+    job,
+    debts,
+    home,
+    chains,
+    housingTier:
+      outcome.housingTier === null
+        ? state.housingTier
+        : clamp(outcome.housingTier, 0, HOUSING_TIER_RENT_CENTS.length - 1),
+    accruedUnpaidBillsCents: state.accruedUnpaidBillsCents + unabsorbedCents,
     recurringExpenses: mergeRecurring(state.recurringExpenses, outcome.expenses),
     deferredEffects: [...state.deferredEffects, ...outcome.deferred],
     credit: outcome.creditEvents.reduce<CreditState>(applyCreditEvent, state.credit),
   };
+}
+
+function isMortgage(debt: Debt): debt is AmortizingLoan {
+  return debt.kind === 'amortizing' && (debt as AmortizingLoan).loanType === 'mortgage';
 }
 
 /**

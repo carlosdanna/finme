@@ -1,6 +1,6 @@
 {
   "seed": "4F2A9C1B",
-  "rulesetVersion": "0.4.0",
+  "rulesetVersion": "0.5.0",
   "weekIndex": 200,
   "startAge": 22,
   "runLengthYears": 30,
@@ -64,6 +64,12 @@
   "performance": 100,
   "weeksUnemployed": 0,
   "consecutiveOvertimeWeeks": 0,
+  "experienceWeeks": {
+    "entry": 200,
+    "professional": 0,
+    "skilled": 0,
+    "specialist": 0
+  },
   "energy": 100,
   "mood": 100,
   "consecutiveLowMoodWeeks": 0,
@@ -123,6 +129,8 @@
     ]
   },
   "deferredEffects": [],
+  "chains": [],
+  "chainHistory": {},
   "flags": [
     "refund_saved"
   ],

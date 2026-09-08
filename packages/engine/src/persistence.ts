@@ -34,7 +34,19 @@ export type DecisionRecord =
   | { readonly w: number; readonly t: 'alloc'; readonly v: readonly number[] }
   | { readonly w: number; readonly t: 'event'; readonly e: string; readonly c: string }
   | { readonly w: number; readonly t: 'orders'; readonly v: StandingOrders }
-  | { readonly w: number; readonly t: 'bankruptcy'; readonly c: string };
+  | { readonly w: number; readonly t: 'bankruptcy'; readonly c: string }
+  // Chains (§9.6). A save is the seed plus this log, so a search in flight
+  // replays from these three records and nothing else — `k` is the chain id,
+  // `g` its target, `s` the step, `c` the choice.
+  | { readonly w: number; readonly t: 'chainStart'; readonly k: string; readonly g?: string }
+  | {
+      readonly w: number;
+      readonly t: 'chainStep';
+      readonly k: string;
+      readonly s: string;
+      readonly c: string;
+    }
+  | { readonly w: number; readonly t: 'chainAbandon'; readonly k: string };
 
 /** The allocation encoding used by `alloc` records: work mode plus six counts. */
 export const ALLOC_WORK_MODES = ['none', 'part-time', 'full-time'] as const;
