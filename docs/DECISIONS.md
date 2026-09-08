@@ -1461,3 +1461,106 @@ it costs 3/5 of full-time's mood for 3/5 of its time points. `MOOD_PART_TIME` is
 is unaffected: its scripted recovery strategy allocates rest and free social only,
 so no work mode enters it. Done before any balance test exercises time allocation,
 so nothing had to be re-run for it.
+
+## 2026-09-07 — Chains: multi-week, player-initiated processes
+**Context:** two of the game's most consequential decisions were unreachable.
+`applicationProbability`/`rollApplication` implemented GDD §3.1's odds exactly and
+**nothing called them**; `housingTier` was written once at init and never mutated,
+so `HOU_RENT_INCREASE`'s "Find somewhere cheaper" charged a moving cost and moved
+nobody. GDD §5.4's one line — "events may chain" — was the entire specification.
+**Decision:** a chain is a player-initiated state machine whose steps are ordinary
+`EventDef` cards, specified in TDD §9.6 and authored in `packages/content/chains`.
+`JOB_SEARCH` and `HOME_SEARCH` ship with it; `HOME_SEARCH` covers renting and
+buying.
+**Consequences:**
+1. Steps fire at their own `dueWeek`, **not** from §9.1's slots. Competing for
+   slots would stall a chain up to ten weeks per step and steal fires from §9.5's
+   category budget, breaking `EVENT-CATALOGUE.md`'s arithmetic. §7.4's
+   `SOC_REACH_OUT` is the precedent for an event that is not seed-placed; a chain
+   the player explicitly asked for is easier to justify than that one.
+2. **[F] One card a week.** A slot event wins the week and the chain step slips by
+   one. The slot schedule is the seeded world and never yields to a
+   player-initiated process. This also keeps the awaited-card state single-valued,
+   which the UI's decline/re-tick protocol depends on.
+3. **[F] `CHAIN_MAX_STEPS = 12`**, plus an end on an unrecognised `goto` and on a
+   step whose choices are all gated out. A search the player can never stop having
+   is both a hang and bad pedagogy. The content lint rejects a chain with no
+   reachable terminal before any of those can fire.
+4. Chain steps are **excluded from §9.5's category budget** and from the
+   catalogue's fire counts, which now say so.
+5. Decisions only exist while a search is running, so §2.1's 150-250 budget is
+   unaffected for a player who never starts one — and the C-suite output is
+   byte-identical to `be70d52`, which is the evidence.
+
+## 2026-09-07 — The `chain` stream, appended
+**Context:** chain cards need a magnitude roll and chain branches need an outcome
+roll. Taking either from `eventMagnitude` would make its draw count depend on
+whether the player started a search, so starting one would shift the price of
+every later slot event.
+**Decision:** `chain` appended to `IN_PLAY_STREAMS`, following the `eventMagnitude`
+precedent (2026-09-06). `JOB_SEARCH` declares `jobApplication` instead, which is
+what TDD §2.2's table always reserved that stream for and what finally makes the
+entry mean something.
+**Consequences:**
+1. Appending is safe where inserting is not: streams derive from
+   `fnv1a(seed::name)`, so the existing nine are bit-identical. The unchanged
+   `market-4F2A9C1B-30y.json` fixture is the proof.
+2. The stream is declared **per chain, not per step**, so `resolveChoice` keeps
+   its single `Rng` parameter and the "no draws for a choice without an
+   outcomeRoll" invariant holds unchanged.
+3. §2.2's table was also two entries stale — `eventMagnitude` was never added when
+   it shipped. Both are in it now.
+
+## 2026-09-07 — `applyOutcome` dropped every debt and job offer it was given
+**Context:** `{k:'debt'}` and `{k:'jobOffer'}` folded correctly into
+`EffectOutcome` and were then silently discarded by `applyOutcome`. Two shipped
+events (`EMG_CAR_BREAKDOWN/bnpl`, `HLT_UNEXPECTED_DENTAL/payment_plan`) computed a
+principal and opened nothing. `InterruptReason` reserved `'job-offer'` and nothing
+emitted it. Latent rather than live, because nothing else opened a debt either.
+**Decision:** both are applied. A `debt` effect opens the named instrument through
+`openDebtFromInstrument`, priced against the player's actual credit score; a
+`jobOffer` puts the player in the job and raises the interrupt.
+**Consequences:**
+1. `serviceDebts` only ever serviced credit cards, so an amortizing loan would
+   have sat at its opening balance forever — fixed in the same change, or a
+   mortgage would be free money. **BNPL and payday are still unserviced**; that is
+   a separate change and is not in scope here.
+2. A card charge no card can absorb becomes an accrued unpaid bill rather than
+   vanishing. A declined card does not make the cost go away.
+3. `DEBT_INSTRUMENTS` now lives once in `debt/types.ts` with the Zod enum derived
+   from it — the `CREDIT_EVENT_KINDS` pattern — because adding `MORTGAGE` to three
+   separate spellings is exactly the failure that entry describes.
+4. `DEFAULT_LOAN_TERM_MONTHS` **[T]** is new: §5.2 gives ranges (personal 24-60,
+   mortgage 180/360) and content names a product, not a schedule.
+5. The golden run fixture did **not** move: the scripted strategy owns no car and
+   never takes the dental payment plan, so no `debt` effect fires in it.
+
+## 2026-09-07 — The home price is derived from the rent, not set beside it
+**Context:** TDD §8.2 warns that the buy-versus-rent lesson only holds if rent is
+priced at about `homePrice / 16` per year, and that "the housing tiers must be set
+against the home price range, never independently of it". They were independent:
+`HOUSING_TIER_RENT_CENTS` and the sim probe's implied $1,667/month were unrelated
+numbers that happened to be close.
+**Decision:** the chain's `homePriceCents` is computed as
+`tierRentCents(tier) · cpi · 12 · HOME_PRICE_TO_RENT`. There is no second number
+to keep in step.
+**Consequences:** tier 2 ($1,600/month) prices at $307,200, which is the probe's
+$320,000 household to within 4%, so the buy path sits on the case
+`pnpm -F @finme/sim housing` actually models. Changing a rent tier now moves the
+purchase price with it automatically. The probe itself is unchanged and its
+assertions still pass.
+
+## 2026-09-07 — Experience finally has a source
+**Context:** `ApplicationContext.relevantExperienceYears` is the strongest term in
+GDD §3.1's formula and had nothing behind it. TDD §4.1 specified
+`experienceWeeks: Record<JobTier, number>` and it was never built; `study` was an
+allocation slot that cost energy and accumulated nothing.
+**Decision:** `experienceWeeks` accrues in tick step 9 for a week actually worked,
+at the tier of the job held. "Relevant" experience for a role is time at its tier
+**or any higher one** — a former specialist applying to an entry role is not
+inexperienced, while time at a lower tier does not count towards a role above it.
+**Consequences:** additive to `RunState`; the golden fixture gained the field
+showing 200 weeks at `entry`, with no other value moved. `study` still accumulates
+nothing — education remains unmodelled and `Applicant.educationYears` is still
+hardcoded to 0 at the one call site. That gap is now visible rather than hidden
+behind an unused function.

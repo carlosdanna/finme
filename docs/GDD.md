@@ -77,7 +77,8 @@ The design goal: **the number of decisions in a run should be roughly constant r
 - Player starts unemployed or with a starter job, depending on starting scenario (§3.7). A no-requirements starter job (barista, warehouse, retail) is always available to avoid a dead early game.
 - Jobs have tiers: **Entry-level → Skilled → Professional → Specialist**, gated by education/experience.
 - Each job has: wage or salary, hours/week (in time points), stress impact, skill requirements, and optional prerequisites (see below).
-- **[Rev 2] Job applications are not automatic.** Meeting the stated requirements makes a job *applicable*, not *granted*. Application success is rolled: base 35%, +15% per year of relevant experience (cap +45%), +20% if a networking event has fired for that employer, −20% if currently unemployed longer than 6 months. Failed applications cost a time point and a small mood hit. This keeps a job change tense rather than turning the career track into a checklist.
+- **[Rev 2] Job applications are not automatic.** Meeting the stated requirements makes a job *applicable*, not *granted*. Application success is rolled: base 35%, +15% per year of relevant experience (cap +45%), +20% if a networking event has fired for that employer, −20% if currently unemployed longer than 6 months. This keeps a job change tense rather than turning the career track into a checklist.
+  - **[Rev 3] The application is a chain (§5.5), not a button.** Preparing, interviewing and answering an offer are separate decisions a week or two apart, each with its own cost; the roll above decides the interview. Rev 2's "failed applications cost a time point" is superseded: the cost is the weeks the search takes and the energy and mood each step spends, not a line in §3.6's time-point table. Relevant experience is measured from weeks actually worked at the role's tier or above.
 - **[Rev 2] Car prerequisite made explicit.** Certain jobs (delivery, trades, some suburban roles) list *vehicle required*. This was referenced only in the debt table in Rev 1 and is now a first-class job attribute, creating a real "spend on a depreciating asset to unlock income" decision.
 - **Firing.** Performance is a hidden 0–100 stat. It drops when energy is below 25 at a work week, when overtime is sustained beyond 6 consecutive weeks, or on certain events. Below 40 → written warning (visible, and a Logbook beat). Below 20 → fired, with 2 weeks' notice.
 - **[Rev 2] Wage growth and career arc.** Over a 30-year run, wages must not be static. Each job has a within-role annual raise (0–3%, weighted by performance) and promotion opportunities that fire as career events. Career trajectory flattens after roughly age 45 unless the player has invested in skills — a real and rarely-taught fact.
@@ -316,12 +317,35 @@ Rev 1's arithmetic didn't work: 8–10 events firing every 1–3 weeks over a ru
 - Choices may have delayed consequences that resolve weeks or years later — the scam that seems fine for six months, the certification that pays off in year 8.
 - Events may chain: declining one may open a follow-up later.
 
+### 5.5 Chains — the things that take weeks **[Rev 3]**
+
+Some decisions are not one card. Looking for a job and looking for somewhere to
+live are *processes*: several decisions spread over weeks, each costing mood,
+energy and money, with outcomes rolled against what the player has actually
+built. Pressing one button and being handed a job would make the career track
+the checklist §3.1 says it must not be.
+
+- A chain is **player-initiated** from the Work or Where-you-live panel, so its
+  steps are decisions the player asked for. They add to §2.1's decision budget
+  only when a search is running.
+- **3-5 steps**, one to two weeks apart. The weeks are the main cost.
+- A chain can be **abandoned** at any point, at a small cost. Stopping looking is
+  a legitimate outcome, not a failure state.
+- Steps branch: an interview leads to an offer or a rejection, and a posting can
+  close while the search is still running.
+- An event may open one — a landlord selling up starts a search the player did
+  not ask for.
+- The no-correct-answer rule of §1 applies with more force here than anywhere
+  else: a chain is a sequence, so a nudge at one step steers every step after it.
+
+The engine specification is TDD §9.6.
+
 ---
 
 ## 6. UI / Screen Structure
 
 1. **Dashboard:** net worth graph, cash on hand, date and age, energy & mood, advance control (§2.1), quick-access panels, active alerts.
-2. **Job panel:** current job, listings, apply/quit, performance indicator.
+2. **Job panel:** current job, listings, apply, performance indicator. Applying opens a search (§5.5); the panel shows which step it has reached and offers "Stop looking".
 3. **Investing panel:** asset list with charts, buy/sell, portfolio breakdown, contribution and auto-invest standing orders.
 4. **Budget panel:** income/expense breakdown, savings, emergency fund with months-covered indicator.
 5. **Debts panel:** all debts side by side with balance, APR, minimum, projected payoff.
@@ -330,8 +354,9 @@ Rev 1's arithmetic didn't work: 8–10 events firing every 1–3 weeks over a ru
 8. **Standing orders panel:** all recurring behaviours in one place.
 9. **Event modal:** fires on random events, presents choices.
 10. **Logbook:** scrollable running diary (§12), always accessible; feeds the end-of-run recap. Annual reviews are pinned in it.
-11. **Annual review screen** (§4.2).
-12. **End-of-run screen and epilogue** (§4.4).
+11. **Where-you-live panel** **[Rev 3]**: current housing, the rent and purchase price of every tier side by side, and the control that starts a search (§5.5).
+12. **Annual review screen** (§4.2).
+13. **End-of-run screen and epilogue** (§4.4).
 
 ---
 
@@ -547,6 +572,10 @@ For the same catalogue sized against the engine — each MVP event's `category`,
 58. **Timeshare-style pitch** (R, age >30).
 
 ### Housing *(v2 unless marked)*
+
+**[Rev 3]** Moving is a chain (§5.5) rather than a tier selector, and it covers
+both renting and buying. The home price is derived from the rent it replaces, so
+the buy-versus-rent comparison stays honest (TDD §8.2).
 
 59. ★ **Landlord sells the building** (R, renting) — forced move.
 60. **Down payment threshold reached** (U, savings high) — the buy-vs-rent decision surfaces.

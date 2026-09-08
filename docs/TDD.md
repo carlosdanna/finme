@@ -87,7 +87,9 @@ const stream = (seed, name) => mulberry32(fnv1a(`${seed}::${name}`));
 | `eventSlots` | Week indices at which events fire | Run init only |
 | `eventSelection` | One uniform per slot, used to pick from the state-filtered pool | Run init only (values pre-drawn) |
 | `eventOutcome` | Rolls *inside* an event's resolution (repayment success, repair cost variance) | During play |
-| `jobApplication` | Application success rolls | During play |
+| `eventMagnitude` | One draw per fired event, feeding the `roll` formula variable (§9.3) | During play |
+| `jobApplication` | Application success rolls — consumed by the `JOB_SEARCH` chain (§9.6) | During play |
+| `chain` | Chain card magnitudes and chain outcome rolls, except `JOB_SEARCH`'s (§9.6) | During play |
 | `flavor` | Logbook variant selection, cosmetic text | During play |
 
 **Rule [F]:** streams pre-drawn at init (`startingDraw`, `market`, `jobTimeline`, `eventSlots`, `eventSelection`) must be fully consumed during initialization into materialized arrays. They are never touched again. This is what guarantees the GDD §13 promise that two runs share an identical world regardless of player behavior.
@@ -255,7 +257,7 @@ interface RunState {
 
   job: JobState | null;
   performance: number;           // 0..100, hidden
-  experienceWeeks: Record<JobTier, number>;
+  experienceWeeks: Record<JobTier, number>;   // weeks actually worked, by tier
   skills: Record<SkillId, number>;
 
   energy: number;                // 0..100
@@ -269,6 +271,8 @@ interface RunState {
 
   standingOrders: StandingOrders;
   eventHistory: Record<EventId, number[]>;   // weekIndices when fired
+  chains: ActiveChain[];                      // searches in flight (§9.6), sorted by chainId
+  chainHistory: Record<ChainId, number[]>;    // weekIndices when each chain ended
   flags: Set<string>;                         // narrative + gating flags
   decisionLog: DecisionRecord[];              // append-only, for replay/QA
 }
@@ -586,7 +590,7 @@ Ongoing: insurance (annual, scales with credit score and vehicle value), fuel/ma
 
 A financed car is the canonical **underwater** demonstration: at 60-month financing with a low down payment, `loanBalance > carValue` for roughly the first 30 months. The balance sheet shows this plainly.
 
-### 8.2 Home *(v2)*
+### 8.2 Home
 
 ```
 value(t)  = purchasePrice · exp(driftPath)         // drift 0.030/yr, σ 0.06 [T]
@@ -819,7 +823,7 @@ Note what this event does **not** do: there is no branch where the game evaluate
 
 ### 9.5 Category weight budget
 
-Target share of fired events over a full run **[T]**, enforced by tuning `baseWeight` and validated in Appendix-C5-style tests:
+Target share of **slot-fired** events over a full run **[T]**, enforced by tuning `baseWeight` and validated in Appendix-C5-style tests. Chain steps (§9.6) are not slot fires and do not count against this budget:
 
 | Category | Target share | Notes |
 |---|---|---|
@@ -831,6 +835,87 @@ Target share of fired events over a full run **[T]**, enforced by tuning `baseWe
 | Scam/temptation | 10% | Higher weight when income or mood suggest vulnerability |
 | Housing | 5% | v2 |
 | Health/family | 3% | v2, age-gated |
+
+---
+
+### 9.6 Chains **[F: mechanism, T: gaps and odds]**
+
+A **chain** is a player-initiated, multi-week process — looking for a job,
+looking for somewhere to live. Its steps are ordinary `EventDef` cards, and
+everything about them (gates, `requires`, formula magnitudes, `outcomeRoll`,
+`deferred`, `displayVars`, card variants, logbook keys) works exactly as §9.3
+specifies. Three things are new: a step is **scheduled** rather than drawn from a
+slot, the machine **advances** by an explicit `goto`, and the player **starts**
+it.
+
+This is what GDD §5.4's "events may chain" means in the engine, and what makes
+GDD §3.1's "job applications are not automatic" reachable at all.
+
+```ts
+interface ChainDef {
+  id: string;                       // stable forever, like an event id
+  stream: 'chain' | 'jobApplication';   // which in-play stream its rolls use
+  startGates: Gate[];
+  startEffects: Effect[];
+  firstStepId: string;
+  steps: { id: string; gapWeeks: number; card: EventDef }[];
+  cooldownWeeks: number;
+  abandonEffects: Effect[];
+  logbookKeyStart: string;
+  logbookKeyAbandon: string;
+}
+
+interface ActiveChain {
+  chainId: string;
+  stepId: string;
+  dueWeek: number;      // absolute weekIndex, never a countdown (§0)
+  startedWeek: number;
+  stepsTaken: number;
+  target: string | null;   // a jobId, or `rent-N` / `buy-N`
+}
+```
+
+Four effect kinds serve them, on top of §9.3's list:
+
+```ts
+| { k:'chain'; goto: string }                          // a step id, or 'end'
+| { k:'chainStart'; chainId: string; target?: string } // an event opens a chain
+| { k:'housing'; tier: number }                        // move between tiers
+| { k:'home'; action:'buy'|'sell'; priceCents?: number }
+```
+
+**Scheduling [F].** Chain steps do **not** compete for §9.1's slots. `eventSlots`
+and `eventSelection` are pre-drawn and untouchable, and a chain that waited for a
+slot would stall for up to ten weeks per step and steal fires from §9.5's
+category budget. The precedent is §7.4's `SOC_REACH_OUT`: an event that is not
+seed-placed, deliberately. **Chain steps are not slot fires and are excluded from
+the §9.5 budget** and from `docs/EVENT-CATALOGUE.md`'s arithmetic.
+
+**One card a week [F].** If a slot event already fired this week, the due chain
+step slips to `week + 1`. The slot schedule is the seeded world and never yields;
+the player-initiated chain is the thing that waits. This is also what keeps
+`tick`'s awaited-card state single-valued.
+
+**Termination [F].** `CHAIN_MAX_STEPS = 12` forces an end. A `goto` naming no
+step ends the chain rather than stalling it, and a step whose choices are all
+gated out ends it too — leaving it in place would present the same empty card
+every week for the rest of the run. The content lint rejects a chain with no
+reachable terminal before any of that can matter.
+
+**Odds the engine computes.** A content formula cannot see experience, credit or
+time out of work, and must not restate GDD §3.1's constants. The chain formula
+context therefore adds `applicationOdds`, `creditScore`, `targetOpen`,
+`targetTier`, `targetIsBuy`, `targetRentCents`, `homePriceCents`,
+`downPaymentCents`, `targetMonthlyIncomeCents` and `weeksSearching`. Content
+writes `"p": "applicationOdds"` and the branching stays in the data.
+
+`homePriceCents` is **derived from the rent tier** at §8.2's `HOME_PRICE_TO_RENT`
+ratio, never set independently — which is how §8.2's warning is satisfied by
+construction rather than by keeping two numbers in step by hand.
+
+**Replay.** `DecisionRecord` gains `chainStart`, `chainStep` and `chainAbandon`.
+A save is the seed plus the decision log (§14), so a search in flight replays
+from those three records and nothing else.
 
 ---
 
@@ -859,6 +944,8 @@ Any reordering changes outcomes for existing seeds. This sequence is part of the
       d. credit score recompute
       e. check bankruptcy trigger
 7.  Event check: if weekIndex ∈ slots → selectEvent() → present modal → apply effects
+7b. Chain check (§9.6): apply a requested start or abandon; then, if a chain step
+    is due and step 7 fired nothing, present it → apply effects → advance or end
 8.  Resolve any deferred effects scheduled for this week
 9.  Apply player's time allocation → energy, mood, performance, side hustle income
 10. Check firing / warning thresholds
@@ -869,7 +956,7 @@ Any reordering changes outcomes for existing seeds. This sequence is part of the
 15. Evaluate interrupt conditions → halt advance or continue
 ```
 
-**Step 7 before step 9** matters: an event that costs energy should constrain that week's allocation, not the next one's.
+**Step 7 before step 9** matters: an event that costs energy should constrain that week's allocation, not the next one's. **Step 7b sits after 7** for the same reason, and before 8 so a chain step can schedule an ordinary deferred effect.
 
 ---
 

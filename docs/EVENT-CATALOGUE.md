@@ -60,6 +60,14 @@ breaches C5's limit of 4 on its own** — see §5.
 
 ---
 
+**Chain steps are out of scope for every figure here.** A chain (TDD §9.6) fires
+its cards at its own `dueWeek` rather than at a slot, so a job search or a house
+hunt adds decisions without consuming a slot, without competing in the weighted
+pool, and without counting against §9.5's category budget. The arithmetic below
+covers slot-fired events only.
+
+---
+
 ## 2. How likelihood is derived
 
 1. TDD §9.1 pre-draws event **slots** at init:
