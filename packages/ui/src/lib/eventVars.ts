@@ -5,9 +5,12 @@
  * context and `roll`; this file decides how a number *reads*, not what it is.
  */
 import {
+  type ActiveChain,
   type EventDef,
+  type FormulaContext,
   type RunState,
   type RunWorld,
+  pendingChainContext,
   pendingEventContext,
   resolveMagnitude,
 } from '@finme/engine';
@@ -26,15 +29,31 @@ export function eventDisplayVars(
   roll: number,
 ): Record<string, string> {
   // `state` is the week before the event's own; the engine owns that offset.
-  const context = pendingEventContext(state, world, roll);
+  return renderVars(event, pendingEventContext(state, world, roll));
+}
+
+/**
+ * The same, for a chain step card. A chain card's formulas may also name the
+ * search's own numbers — the rent it is chasing, the deposit it would need —
+ * so it evaluates against the chain context rather than the event one.
+ */
+export function chainDisplayVars(
+  card: EventDef,
+  state: RunState,
+  world: RunWorld,
+  chain: ActiveChain,
+  roll: number,
+): Record<string, string> {
+  return renderVars(card, pendingChainContext(state, world, chain, roll));
+}
+
+function renderVars(card: EventDef, context: FormulaContext): Record<string, string> {
   const out: Record<string, string> = {};
 
-  for (const [key, spec] of Object.entries(event.displayVars ?? {})) {
+  for (const [key, spec] of Object.entries(card.displayVars ?? {})) {
     const value = resolveMagnitude(spec.value, context);
     out[key] =
-      spec.as === 'money'
-        ? formatCents(Math.round(value))
-        : value.toFixed(spec.precision ?? 0);
+      spec.as === 'money' ? formatCents(Math.round(value)) : value.toFixed(spec.precision ?? 0);
   }
 
   return out;

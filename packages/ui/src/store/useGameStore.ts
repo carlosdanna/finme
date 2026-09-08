@@ -25,9 +25,10 @@ import {
   yearIndex,
 } from '@finme/engine';
 import { createScenarioRun, DEFAULT_ALLOCATION } from '@finme/content';
-import type { Allocation, EventDef } from '@finme/engine';
+import type { ActiveChain, Allocation, EventDef } from '@finme/engine';
+import { chainById, stepById } from '@finme/engine';
 import { create } from 'zustand';
-import { eventDisplayVars } from '@/lib/eventVars';
+import { chainDisplayVars, eventDisplayVars } from '@/lib/eventVars';
 
 /** The four primary destinations in the bottom tab bar. */
 export type Tab = 'dashboard' | 'money' | 'life' | 'logbook';
@@ -41,6 +42,8 @@ export type Panel =
   | 'allocation'
   | 'annual-review'
   | 'epilogue'
+  | 'jobs'
+  | 'housing'
   | null;
 
 export interface PendingEvent {
@@ -55,6 +58,22 @@ export interface PendingEvent {
   readonly body: string;
 }
 
+/**
+ * A chain step waiting on the player. The same shape as `PendingEvent` plus
+ * which chain it belongs to, because a week presents at most one card and the
+ * modal renders either one identically.
+ */
+export interface PendingChainStep {
+  readonly chainId: string;
+  readonly stepId: string;
+  readonly event: EventDef;
+  readonly choiceIds: readonly string[];
+  readonly roll: number;
+  readonly vars: Readonly<Record<string, string>>;
+  readonly title: string;
+  readonly body: string;
+}
+
 interface GameStore {
   run: Run | null;
   tab: Tab;
@@ -63,6 +82,7 @@ interface GameStore {
   allocation: Allocation;
   interrupts: readonly Interrupt[];
   pendingEvent: PendingEvent | null;
+  pendingChainStep: PendingChainStep | null;
   /** §14's non-blocking ruleset-mismatch banner, or null when versions match. */
   rulesetBanner: string | null;
 
@@ -73,6 +93,9 @@ interface GameStore {
   setAllocation: (allocation: Allocation) => void;
   advanceTime: () => void;
   resolveEvent: (choiceId: string) => void;
+  startChain: (chainId: string, target?: string) => void;
+  abandonChain: (chainId: string) => void;
+  resolveChainStep: (choiceId: string) => void;
   loadSave: (raw: string) => void;
   dismissInterrupts: () => void;
 }
@@ -85,11 +108,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
   allocation: DEFAULT_ALLOCATION,
   interrupts: [],
   pendingEvent: null,
+  pendingChainStep: null,
   rulesetBanner: null,
 
   start: (seed) => {
     const run = createScenarioRun({ seed, runLengthYears: 30 });
-    set({ run, interrupts: [], pendingEvent: null, tab: 'dashboard', panel: null });
+    set({
+      run,
+      interrupts: [],
+      pendingEvent: null,
+      pendingChainStep: null,
+      tab: 'dashboard',
+      panel: null,
+    });
   },
 
   setTab: (tab) => set({ tab, panel: null }),
@@ -99,15 +130,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   dismissInterrupts: () => set({ interrupts: [] }),
 
   advanceTime: () => {
-    const { run, granularity, allocation, pendingEvent: awaiting } = get();
+    const { run, granularity, allocation, pendingEvent, pendingChainStep } = get();
     if (run === null) return;
-    // A second advance would take another `eventMagnitude` draw for an
-    // unresolved event. The control is disabled while a card is up; this guards
-    // every other way in.
-    if (awaiting !== null) return;
+    // A second advance would take another magnitude draw for an unresolved
+    // card. The control is disabled while one is up; this guards every other
+    // way in.
+    if (pendingEvent !== null || pendingChainStep !== null) return;
 
     let capturedEvent: EventDef | null = null;
     let capturedChoiceIds: readonly string[] = [];
+    let capturedChainChoiceIds: readonly string[] = [];
     let stateAtWeekStart: RunState = run.state;
 
     const result = advance(run, granularity, (state) => {
@@ -124,12 +156,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
           }
           return null;
         },
+        chooseChainStep: (_chainId, _stepId, choiceIds) => {
+          capturedChainChoiceIds = choiceIds;
+          return null;
+        },
       };
     });
 
     const event: EventDef | null = capturedEvent;
     const roll = result.eventRoll;
-    const pendingEvent: PendingEvent | null =
+    const nextEvent: PendingEvent | null =
       event === null || roll === null
         ? null
         : {
@@ -141,7 +177,55 @@ export const useGameStore = create<GameStore>((set, get) => ({
             ...cardVariant(event, pendingEventWeek(stateAtWeekStart)),
           };
 
-    set({ run: result.run, interrupts: result.interrupts, pendingEvent });
+    set({
+      run: result.run,
+      interrupts: result.interrupts,
+      pendingEvent: nextEvent,
+      pendingChainStep: buildPendingChainStep(
+        result.run,
+        stateAtWeekStart,
+        result.awaitingChainStep,
+        result.chainRoll,
+        capturedChainChoiceIds,
+      ),
+    });
+  },
+
+  startChain: (chainId, target) => {
+    const { run, allocation, pendingEvent, pendingChainStep } = get();
+    if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
+    // The engine decides whether the search may begin — gates, cooldown and
+    // "already looking" all live there, not here.
+    const result = tick(run.world, run.streams, run.state, {
+      allocation,
+      startChain: { chainId, target },
+    });
+    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+  },
+
+  abandonChain: (chainId) => {
+    const { run, allocation, pendingEvent, pendingChainStep } = get();
+    if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
+    const result = tick(run.world, run.streams, run.state, { allocation, abandonChain: chainId });
+    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+  },
+
+  resolveChainStep: (choiceId) => {
+    const { run, allocation } = get();
+    if (run === null) return;
+    // The week `advanceTime` left uncommitted, with the real choice and the
+    // roll the card quoted.
+    const pending = get().pendingChainStep;
+    const result = tick(run.world, run.streams, run.state, {
+      allocation,
+      chooseChainStep: () => choiceId,
+      chainRoll: pending?.roll,
+    });
+    set({
+      run: { ...run, state: result.state },
+      interrupts: result.interrupts,
+      pendingChainStep: null,
+    });
   },
 
   loadSave: (raw: string) => {
@@ -172,6 +256,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
   },
 }));
+
+/**
+ * Build the card for a declined chain step, or `null` when none is waiting.
+ *
+ * `state` is the week before the step's own, exactly as for an event — the
+ * engine owns that offset in `pendingChainContext`.
+ */
+function buildPendingChainStep(
+  run: Run,
+  state: RunState,
+  awaiting: { readonly chainId: string; readonly stepId: string } | null,
+  roll: number | null,
+  choiceIds: readonly string[],
+): PendingChainStep | null {
+  if (awaiting === null || roll === null) return null;
+
+  const chain = chainById(run.world.chainDefs, awaiting.chainId);
+  const step = chain === undefined ? undefined : stepById(chain, awaiting.stepId);
+  if (chain === undefined || step === undefined) return null;
+
+  const active = state.chains.find((entry) => entry.chainId === awaiting.chainId);
+  if (active === undefined) return null;
+
+  return {
+    chainId: chain.id,
+    stepId: step.id,
+    event: step.card,
+    choiceIds,
+    roll,
+    vars: chainDisplayVars(step.card, state, run.world, active, roll),
+    ...cardVariant(step.card, pendingEventWeek(state)),
+  };
+}
+
+/** The chain in flight for a given id, or `null`. */
+export function activeChain(state: RunState, chainId: string): ActiveChain | null {
+  return state.chains.find((entry) => entry.chainId === chainId) ?? null;
+}
 
 /** Derived helpers. Read-only views of engine state — never new logic. */
 export function selectYearsElapsed(state: RunState): number {

@@ -25,9 +25,12 @@ import { AnnualReviewPanel } from '@/panels/AnnualReviewPanel';
 import { DebtsPanel } from '@/panels/DebtsPanel';
 import { EpiloguePanel } from '@/panels/EpiloguePanel';
 import { EventModal } from '@/panels/EventModal';
+import { HousingPanel } from '@/panels/HousingPanel';
 import { InvestingPanel } from '@/panels/InvestingPanel';
+import { JobsPanel } from '@/panels/JobsPanel';
 import { LogbookPanel } from '@/panels/LogbookPanel';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { type Panel, type Tab, useGameStore } from '@/store/useGameStore';
 
@@ -45,6 +48,8 @@ const SECONDARY: readonly { readonly id: Exclude<Panel, null>; readonly label: s
   { id: 'investing', label: 'Investing' },
   { id: 'balance-sheet', label: 'Balance sheet' },
   { id: 'allocation', label: 'This week' },
+  { id: 'jobs', label: 'Work' },
+  { id: 'housing', label: 'Where you live' },
   { id: 'annual-review', label: 'Annual review' },
   { id: 'epilogue', label: 'If nothing else changed' },
 ];
@@ -64,9 +69,11 @@ const SECONDARY: readonly { readonly id: Exclude<Panel, null>; readonly label: s
  * inherent to an overlay.
  */
 export default function App() {
-  const { run, tab, panel, granularity, allocation, pendingEvent, rulesetBanner } = useGameStore();
+  const { run, tab, panel, granularity, allocation, pendingEvent, pendingChainStep, rulesetBanner } =
+    useGameStore();
   const { start, setTab, openPanel, setGranularity, setAllocation, advanceTime, resolveEvent } =
     useGameStore();
+  const { startChain, abandonChain, resolveChainStep } = useGameStore();
 
   useEffect(() => {
     if (run === null) start('4F2A9C1B');
@@ -77,8 +84,11 @@ export default function App() {
 
   // Event-computed values plus the two names the run drew at init. Event keys
   // are linted at load, so none can arrive here unresolved.
+  // A week presents at most one card, so these are never both set.
+  const card = pendingEvent ?? pendingChainStep;
+  const onChooseCard = pendingEvent !== null ? resolveEvent : resolveChainStep;
   const cardVars = {
-    ...(pendingEvent?.vars ?? {}),
+    ...(card?.vars ?? {}),
     friendName: world.names.friendName,
     advisorName: world.names.advisorName,
   };
@@ -146,12 +156,34 @@ export default function App() {
           )}
 
           {tab === 'life' && (
-            <AllocationPanel
-              allocation={allocation}
-              energy={state.energy}
-              mood={state.mood}
-              onChange={setAllocation}
-            />
+            <div className="space-y-4">
+              <AllocationPanel
+                allocation={allocation}
+                energy={state.energy}
+                mood={state.mood}
+                housingTier={state.housingTier}
+                onChange={setAllocation}
+              />
+              {/* `size="lg"` is 40px tall; every touch target clears 44px. */}
+              <div className="grid grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="min-h-11"
+                  onClick={() => openPanel('jobs')}
+                >
+                  Work
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="min-h-11"
+                  onClick={() => openPanel('housing')}
+                >
+                  Where you live
+                </Button>
+              </div>
+            </div>
           )}
 
           {tab === 'logbook' && (
@@ -186,6 +218,22 @@ export default function App() {
             )}
             {panel === 'investing' && <InvestingPanel state={state} world={world} />}
             {panel === 'balance-sheet' && <BalanceSheetPanel sheet={sheet} />}
+            {panel === 'jobs' && (
+              <JobsPanel
+                state={state}
+                world={world}
+                onApply={(jobId) => startChain('JOB_SEARCH', jobId)}
+                onStopLooking={() => abandonChain('JOB_SEARCH')}
+              />
+            )}
+            {panel === 'housing' && (
+              <HousingPanel
+                state={state}
+                world={world}
+                onLook={(target) => startChain('HOME_SEARCH', target)}
+                onStopLooking={() => abandonChain('HOME_SEARCH')}
+              />
+            )}
             {panel === 'annual-review' && <AnnualReviewPanel snapshots={state.annualSnapshots} />}
             {panel === 'epilogue' && <EpiloguePanel state={state} world={world} />}
           </div>
@@ -193,20 +241,18 @@ export default function App() {
       </Sheet>
 
       <EventModal
-        event={pendingEvent?.event ?? null}
-        choiceIds={pendingEvent?.choiceIds ?? []}
-        title={pendingEvent === null ? '' : interpolate(pendingEvent.title, cardVars)}
-        body={
-          pendingEvent === null ? '' : interpolate(pendingEvent.body, cardVars)
-        }
-        onChoose={resolveEvent}
+        event={card?.event ?? null}
+        choiceIds={card?.choiceIds ?? []}
+        title={card === null ? '' : interpolate(card.title, cardVars)}
+        body={card === null ? '' : interpolate(card.body, cardVars)}
+        onChoose={onChooseCard}
       />
 
       <AdvanceControl
         granularity={granularity}
         onAdvance={advanceTime}
         onCycleGranularity={() => setGranularity(nextGranularity(granularity))}
-        disabled={pendingEvent !== null}
+        disabled={card !== null}
       />
 
       <TabBar active={tab} onChange={setTab} />
