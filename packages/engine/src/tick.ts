@@ -34,7 +34,7 @@ import { type CreditState, applyCreditEvent, decayWeek, recordMissedPayment, rec
 import { closeStatement, minimumPaymentCents } from './debt/creditCard.ts';
 import { type AmortizingLoan, payMonth } from './debt/amortizing.ts';
 import { openDebtFromInstrument } from './debt/open.ts';
-import { type Debt, totalLiabilitiesCents } from './debt/types.ts';
+import { type Debt, monthlyRate, totalLiabilitiesCents } from './debt/types.ts';
 import {
   JOB_TIERS,
   type JobTier,
@@ -654,8 +654,9 @@ export function tick(
       interrupts.push({ reason: 'unpayable-bill', weekIndex: week, detail: `${shortfall} cents short` });
     }
 
-    // 6b-c. Debt interest, minimums and BNPL installments.
-    const serviced = serviceDebts(state, shortfall > 0);
+    // 6b-c. Debt interest, minimums and BNPL installments. Serviced against the
+    // cash left after the fixed bills, so debt service can never overdraw.
+    const serviced = serviceDebts(state, shortfall > 0, state.cashCents);
     state = {
       ...state,
       debts: serviced.debts,
@@ -1057,13 +1058,24 @@ function revolvingLimitCents(debts: readonly Debt[]): number {
     .reduce((sum, debt) => sum + (debt as { creditLimitCents?: number }).creditLimitCents!, 0);
 }
 
+/**
+ * One month of debt service.
+ *
+ * `availableCents` is a hard ceiling: an instrument that cannot be paid from the
+ * cash actually present is **missed**, not paid on credit. Without it the tick
+ * subtracted the scheduled payments unclamped and cash went silently negative —
+ * survivable at a card minimum of tens of dollars, not at a mortgage payment of
+ * thousands.
+ */
 function serviceDebts(
   state: RunState,
   broke: boolean,
+  availableCents: number,
 ): { debts: readonly Debt[]; paidCents: number; interestCents: number; missedAny: boolean } {
   let paidCents = 0;
   let interestCents = 0;
   let missedAny = false;
+  let remaining = availableCents;
   const debts: Debt[] = [];
 
   // Iterate in the order the debts were opened — stable, and never sorted by
@@ -1078,17 +1090,29 @@ function serviceDebts(
         debts.push(loan);
         continue;
       }
-      if (broke) {
-        // No cash for the payment. The balance stands and the miss is recorded;
-        // the interest is not silently forgiven, it arrives next month on the
-        // same balance.
+
+      const scheduled = Math.min(
+        loan.monthlyPaymentCents,
+        loan.balanceCents + Math.round(loan.balanceCents * monthlyRate(loan.aprAnnual)),
+      );
+      if (broke || scheduled > remaining) {
+        // The payment is missed. **The interest is not forgiven** — it accrues
+        // onto the balance, so a missed month makes the debt larger rather than
+        // free. Skipping it outright let a player who stayed broke ride a
+        // mortgage for thirty years without paying a cent of interest, which
+        // inverts §5.2's lesson on the one instrument the buy path rests on.
+        // `monthsPaid` does not advance: a missed month is not a month served.
+        const accrued = Math.round(loan.balanceCents * monthlyRate(loan.aprAnnual));
         missedAny = true;
-        debts.push(loan);
+        interestCents += accrued;
+        debts.push({ ...loan, balanceCents: loan.balanceCents + accrued });
         continue;
       }
+
       const result = payMonth(loan);
       paidCents += result.entry.paymentCents;
       interestCents += result.entry.interestCents;
+      remaining -= result.entry.paymentCents;
       debts.push(result.loan);
       continue;
     }
@@ -1098,11 +1122,13 @@ function serviceDebts(
       continue;
     }
     const card = debt as Parameters<typeof closeStatement>[0];
-    const due = broke ? 0 : minimumPaymentCents(card);
+    const minimum = minimumPaymentCents(card);
+    const due = broke || minimum > remaining ? 0 : minimum;
     if (due === 0 && card.balanceCents > 0) missedAny = true;
     const result = closeStatement(card, due);
     paidCents += result.paidCents;
     interestCents += result.interestChargedCents;
+    remaining -= result.paidCents;
     debts.push(result.card);
   }
 

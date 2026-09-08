@@ -1564,3 +1564,57 @@ showing 200 weeks at `entry`, with no other value moved. `study` still accumulat
 nothing — education remains unmodelled and `Applicant.educationYears` is still
 hardcoded to 0 at the one call site. That gap is now visible rather than hidden
 behind an unused function.
+
+## 2026-09-08 — Starting a search is an action, not a tick input
+**Context:** review of the chain PR found that `startChain`/`abandonChain` on
+`TickInput` made the store call `tick` with no `chooseEvent` or
+`chooseChainStep`. `tick` falls back to `available[0]` when nobody answers, so
+tapping Apply or Look on a week holding a card resolved that card with its
+first-listed choice and the player never saw it. Reproduced on seed 4F2A9C1B: a
+start at week 6 fired `HOU_RENT_INCREASE` and logged
+`{"w":7,"t":"event","e":"HOU_RENT_INCREASE","c":"absorb"}`, and a start while
+`JOB_SEARCH/prepare` was due logged `c:"rework"` — the costly branch.
+**Decision:** `beginChain` and `abandonChain` are engine actions that apply at
+the current `weekIndex` and do not advance time. Both are removed from
+`TickInput`. Only a chain *step* goes through the tick, because only a step is a
+card.
+**Consequences:**
+1. This was a GDD §1 failure as much as a correctness one: the game silently
+   picked the first-listed option, which is the exact signal the choice-ordering
+   rules exist to prevent.
+2. The `?? available[0]` fallback in `tick` stays — the headless harness relies
+   on it, and with the actions gone no interactive path reaches it unanswered.
+3. It also removes a latent hazard the review flagged separately: a declined
+   chain step returns `state: previous`, which would have rolled back a start
+   requested in the same tick. Structurally impossible now.
+4. A chain's first step lands one week earlier relative to the tap than before,
+   because the action applies at week N rather than at the tick's N+1. The panel
+   still reads "in 1 week", and no fixture moved.
+
+## 2026-09-08 — A missed amortizing payment accrues interest
+**Context:** the same review found `serviceDebts` pushing an unaffordable
+amortizing loan back untouched — balance unchanged, `monthsPaid` unchanged, no
+interest booked — directly under a comment claiming the interest was not
+forgiven. It was. The credit-card branch four lines down calls
+`closeStatement(card, 0)`, which charges interest regardless, so the two paths
+disagreed about what missing a payment meant. A player who stayed broke rode a
+mortgage for thirty years without paying a cent of interest.
+**Decision:** a missed month accrues that month's interest onto the balance and
+leaves `monthsPaid` where it is. Missing a payment makes the debt larger; it is
+never free. Verified: ten broke weeks on a $246,000 mortgage at 7.5% now add
+exactly one month's $1,537.50 per month boundary crossed.
+**Consequences:**
+1. §5.2's lesson holds on the one instrument the whole buy path rests on.
+   Inverting it there would have been the worst place to get this wrong.
+2. `serviceDebts` now takes the cash actually available and misses anything it
+   cannot cover, rather than subtracting scheduled payments unclamped. The
+   review noted cash could go silently to −$1,220 on a mortgage month; the shape
+   was pre-existing but a card minimum is tens of dollars and a mortgage payment
+   is thousands.
+3. `interestPaidThisYearCents` counts accrued-but-unpaid interest, matching what
+   the card path already did with `interestChargedCents`. The field is "charged",
+   not "paid".
+4. C2 still passes and the whole C-suite is byte-identical to `be70d52`, so
+   bankruptcy is no more exploitable than before. **An event with a cash cost
+   can still take cash negative through `applyOutcome`** — pre-existing, not
+   debt-service, and not addressed here.

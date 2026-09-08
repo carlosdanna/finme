@@ -18,6 +18,7 @@ import {
   defaultGranularity,
   emptyAllocation,
   lifeStageFor,
+  monthlyRate,
   housingMoodModifier,
   loanApr,
   tierRentCents,
@@ -827,5 +828,86 @@ describe('chain actions do not disturb the week they are taken in', () => {
     // Already running: refused, and the first search is untouched.
     expect(beginChain(run.world, run.streams, started, 'HOME_SEARCH', 'rent-3')).toBe(started);
     expect(abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH')).toBe(run.state);
+  });
+});
+
+describe('a missed amortizing payment (TDD §5.2)', () => {
+  const mortgage = (): AmortizingLoan => ({
+    id: 'm',
+    kind: 'amortizing',
+    loanType: 'mortgage',
+    balanceCents: 24_600_000,
+    originalPrincipalCents: 24_600_000,
+    aprAnnual: 0.075,
+    termMonths: 360,
+    monthlyPaymentCents: 172_000,
+    monthsPaid: 0,
+    openedWeek: 0,
+  });
+
+  function brokeFor(weeks: number) {
+    let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    run = { ...run, state: { ...run.state, debts: [mortgage()], cashCents: 0, job: null } };
+    for (let i = 0; i < weeks; i++) {
+      run = { ...run, state: tick(run.world, run.streams, run.state, scripted()).state };
+    }
+    return run.state;
+  }
+
+  it('accrues the interest onto the balance instead of forgiving it', () => {
+    // A player who stays broke used to ride a mortgage for thirty years without
+    // paying a cent of interest, which inverts §5.2's lesson on the one
+    // instrument the whole buy path rests on.
+    const state = brokeFor(10);
+    const loan = state.debts[0] as AmortizingLoan;
+
+    expect(loan.balanceCents).toBeGreaterThan(24_600_000);
+    expect(state.interestPaidThisYearCents).toBeGreaterThan(0);
+    // Roughly one month's interest per month boundary crossed, compounding.
+    expect(loan.balanceCents - 24_600_000).toBeGreaterThanOrEqual(
+      Math.round(24_600_000 * monthlyRate(0.075)),
+    );
+  });
+
+  it('does not count a missed month as a month of the term served', () => {
+    expect((brokeFor(10).debts[0] as AmortizingLoan).monthsPaid).toBe(0);
+  });
+
+  it('never lets debt service overdraw the account', () => {
+    // $1,720 a month against no income. Held to the weeks before this seed's
+    // first event slot, so the only thing moving cash is bills and debt service
+    // — an event with a cash cost can still take cash negative through
+    // `applyOutcome`, which is pre-existing and not what this pins.
+    for (const weeks of [2, 4, 6]) {
+      const state = brokeFor(weeks);
+      expect(state.cashCents, `week ${weeks}`).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('misses a payment the cash cannot cover rather than overdrawing for it', () => {
+    // Enough for the month's bills, nowhere near the $1,720 payment.
+    let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    run = { ...run, state: { ...run.state, debts: [mortgage()], cashCents: 300_000, job: null } };
+    for (let i = 0; i < 6; i++) {
+      run = { ...run, state: tick(run.world, run.streams, run.state, scripted()).state };
+    }
+    const loan = run.state.debts[0] as AmortizingLoan;
+
+    expect(loan.monthsPaid).toBe(0);
+    expect(loan.balanceCents).toBeGreaterThan(24_600_000);
+    expect(run.state.cashCents).toBeGreaterThanOrEqual(0);
+  });
+
+  it('pays and amortizes normally when the cash is there', () => {
+    let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    run = { ...run, state: { ...run.state, debts: [mortgage()], cashCents: 5_000_000 } };
+    for (let i = 0; i < 10; i++) {
+      run = { ...run, state: tick(run.world, run.streams, run.state, scripted()).state };
+    }
+    const loan = run.state.debts[0] as AmortizingLoan;
+
+    expect(loan.monthsPaid).toBeGreaterThan(0);
+    expect(loan.balanceCents).toBeLessThan(24_600_000);
+    expect(run.state.cashCents).toBeGreaterThanOrEqual(0);
   });
 });

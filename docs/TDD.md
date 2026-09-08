@@ -336,6 +336,12 @@ principalPortion = monthlyPayment − interestPortion
 balance         -= principalPortion
 ```
 
+**A missed payment accrues, it does not vanish.** When the scheduled payment
+cannot be met from cash on hand, the month's interest is added to the balance and
+`monthsPaid` does not advance — a missed month is not a month of the term served,
+and missing one makes the debt larger rather than free. Debt service is capped at
+the cash actually present, so it can never overdraw the account.
+
 The Debts panel shows the interest/principal split per payment. The share of the first payment that is interest is exactly `1 − (1 + r)^(−n)` — it has no principal term in it, so a $100k and a $900k mortgage front-load identically. At the rates in the table below, a 30-year mortgage's first payment is **81% interest at the best credit and 89% at the worst**, ~86% mid-range; a 15-year is ~63%. This is the amortization lesson and it needs no commentary.
 
 | Instrument | APR **[T]** | Term | Notes |
@@ -913,9 +919,19 @@ writes `"p": "applicationOdds"` and the branching stays in the data.
 ratio, never set independently — which is how §8.2's warning is satisfied by
 construction rather than by keeping two numbers in step by hand.
 
+**Starting and leaving are actions, not tick inputs [F].** `beginChain` and
+`abandonChain` apply at the current `weekIndex` and do not advance time.
+Deciding to look for a job happens *within* the week the player is already in,
+and must not touch the card that week is holding: a `tick` with no `chooseEvent`
+falls back to the first available choice, so routing a start through one
+resolved that week's event with its first-listed option, unseen. Only a chain
+*step* belongs to a week, because only a step is a card.
+
 **Replay.** `DecisionRecord` gains `chainStart`, `chainStep` and `chainAbandon`.
 A save is the seed plus the decision log (§14), so a search in flight replays
-from those three records and nothing else.
+from those three records and nothing else. `chainStart` and `chainAbandon` carry
+the week the action was taken and are applied before that week's tick;
+`chainStep` is answered by the tick of its own week.
 
 ---
 
@@ -944,8 +960,9 @@ Any reordering changes outcomes for existing seeds. This sequence is part of the
       d. credit score recompute
       e. check bankruptcy trigger
 7.  Event check: if weekIndex ∈ slots → selectEvent() → present modal → apply effects
-7b. Chain check (§9.6): apply a requested start or abandon; then, if a chain step
-    is due and step 7 fired nothing, present it → apply effects → advance or end
+7b. Chain check (§9.6): if a chain step is due and step 7 fired nothing, present
+    it → apply effects → advance or end. Starting and leaving a chain are
+    actions outside the tick and do not appear here.
 8.  Resolve any deferred effects scheduled for this week
 9.  Apply player's time allocation → energy, mood, performance, side hustle income
 10. Check firing / warning thresholds

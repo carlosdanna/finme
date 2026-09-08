@@ -1,6 +1,7 @@
 import {
   type ActiveChain,
   HOME_PRICE_TO_RENT,
+  HOME_SEARCH_DOWN_PAYMENT_PCT,
   HOUSING_TIER_RENT_CENTS,
   type RunState,
   type RunWorld,
@@ -165,7 +166,10 @@ export function HousingPanel({
                   <ItemTitle className="font-normal">{TIER_NAME[entry.tier]}</ItemTitle>
                   <ItemDescription className="text-xs">
                     <Money amountCents={entry.priceCents} className="text-xs" /> ·{' '}
-                    <Money amountCents={Math.round(entry.priceCents * 0.2)} className="text-xs" />{' '}
+                    <Money
+                      amountCents={Math.round(entry.priceCents * HOME_SEARCH_DOWN_PAYMENT_PCT)}
+                      className="text-xs"
+                    />{' '}
                     deposit
                   </ItemDescription>
                 </ItemContent>
