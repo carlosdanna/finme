@@ -10,10 +10,10 @@ import {
   chargeCard,
   closeStatement,
   openAmortizingLoan,
-  tick,
+  beginChain,
   tierRentCents,
 } from '@finme/engine';
-import { DEFAULT_ALLOCATION, createScenarioRun } from '@finme/content';
+import { createScenarioRun } from '@finme/content';
 import { formatCents } from '@/lib/format';
 import { DebtsPanel } from '@/panels/DebtsPanel';
 import { AllocationPanel } from '@/panels/AllocationPanel';
@@ -283,14 +283,11 @@ describe('the Jobs panel', () => {
 
   it('shows the search in progress once one is running', () => {
     const base = run();
-    const started = tick(base.world, base.streams, base.state, {
-      allocation: DEFAULT_ALLOCATION,
-      startChain: { chainId: 'JOB_SEARCH', target: 'retail-associate' },
-    });
+    const started = beginChain(base.world, base.streams, base.state, 'JOB_SEARCH', 'retail-associate');
 
     render(
       <JobsPanel
-        state={started.state}
+        state={started}
         world={base.world}
         onApply={() => {}}
         onStopLooking={() => {}}

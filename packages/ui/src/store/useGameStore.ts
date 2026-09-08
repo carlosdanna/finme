@@ -26,7 +26,7 @@ import {
 } from '@finme/engine';
 import { createScenarioRun, DEFAULT_ALLOCATION } from '@finme/content';
 import type { ActiveChain, Allocation, EventDef } from '@finme/engine';
-import { chainById, stepById } from '@finme/engine';
+import { abandonChain, beginChain, chainById, stepById } from '@finme/engine';
 import { create } from 'zustand';
 import { chainDisplayVars, eventDisplayVars } from '@/lib/eventVars';
 
@@ -192,22 +192,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   startChain: (chainId, target) => {
-    const { run, allocation, pendingEvent, pendingChainStep } = get();
+    const { run, pendingEvent, pendingChainStep } = get();
     if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
-    // The engine decides whether the search may begin — gates, cooldown and
+    // An engine *action*, not a tick. Starting a search happens inside the week
+    // the player is already in: it must not advance time, and it must not touch
+    // whatever card that week is holding. Routing this through `tick` did both —
+    // with no chooser supplied the tick fell back to the first available choice,
+    // so tapping Apply on a slot week resolved that week's event unseen.
+    //
+    // The engine still decides whether the search may begin; gates, cooldown and
     // "already looking" all live there, not here.
-    const result = tick(run.world, run.streams, run.state, {
-      allocation,
-      startChain: { chainId, target },
-    });
-    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+    set({ run: { ...run, state: beginChain(run.world, run.streams, run.state, chainId, target ?? null) } });
   },
 
   abandonChain: (chainId) => {
-    const { run, allocation, pendingEvent, pendingChainStep } = get();
+    const { run, pendingEvent, pendingChainStep } = get();
     if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
-    const result = tick(run.world, run.streams, run.state, { allocation, abandonChain: chainId });
-    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+    set({ run: { ...run, state: abandonChain(run.world, run.streams, run.state, chainId) } });
   },
 
   resolveChainStep: (choiceId) => {

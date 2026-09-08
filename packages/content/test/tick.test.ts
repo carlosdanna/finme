@@ -9,6 +9,8 @@ import {
   type Run,
   type RunState,
   advance,
+  abandonChain,
+  beginChain,
   buildSave,
   createRun,
   derogatoryScore,
@@ -423,13 +425,13 @@ describe('chains, end to end', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = { ...run, state: { ...run.state, job: null, weeksUnemployed: 10 } };
 
-    const started = tick(run.world, run.streams, run.state, {
-      allocation: DEFAULT_ALLOCATION,
-      startChain: { chainId: 'JOB_SEARCH', target: 'retail-associate' },
-    });
-    expect(started.state.chains).toHaveLength(1);
-    expect(started.state.chains[0].target).toBe('retail-associate');
-    run = { ...run, state: started.state };
+    const started = beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate');
+    expect(started.chains).toHaveLength(1);
+    expect(started.chains[0].target).toBe('retail-associate');
+    // Starting a search does not advance time: it is a decision inside the
+    // week the player is already in.
+    expect(started.weekIndex).toBe(run.state.weekIndex);
+    run = { ...run, state: started };
 
     // Take the interview, accept anything offered. Rejection is a legitimate
     // outcome, so assert on the shape of the journey, not on getting the job.
@@ -456,10 +458,7 @@ describe('chains, end to end', () => {
       let current = { ...run, state: { ...run.state, weekIndex: run.state.weekIndex + attempt } };
       current = {
         ...current,
-        state: tick(current.world, current.streams, current.state, {
-          allocation: DEFAULT_ALLOCATION,
-          startChain: { chainId: 'JOB_SEARCH', target: 'retail-associate' },
-        }).state,
+        state: beginChain(current.world, current.streams, current.state, 'JOB_SEARCH', 'retail-associate'),
       };
       const done = driveChain(current, (stepId, choiceIds) =>
         stepId === 'offer' ? 'accept' : choiceIds[0],
@@ -477,36 +476,23 @@ describe('chains, end to end', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = {
       ...run,
-      state: tick(run.world, run.streams, run.state, {
-        allocation: DEFAULT_ALLOCATION,
-        startChain: { chainId: 'JOB_SEARCH', target: 'retail-associate' },
-      }).state,
+      state: beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate'),
     };
 
-    const again = tick(run.world, run.streams, run.state, {
-      allocation: DEFAULT_ALLOCATION,
-      startChain: { chainId: 'JOB_SEARCH', target: 'barista' },
-    });
-    expect(again.state.chains).toHaveLength(1);
-    expect(again.state.chains[0].target).toBe('retail-associate');
+    const again = beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'barista');
+    expect(again.chains).toHaveLength(1);
+    expect(again.chains[0].target).toBe('retail-associate');
   });
 
   it('leaves no orphaned state when a search is abandoned', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = {
       ...run,
-      state: tick(run.world, run.streams, run.state, {
-        allocation: DEFAULT_ALLOCATION,
-        startChain: { chainId: 'HOME_SEARCH', target: 'rent-2' },
-      }).state,
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2'),
     };
     expect(run.state.chains).toHaveLength(1);
 
-    const left = tick(run.world, run.streams, run.state, {
-      allocation: DEFAULT_ALLOCATION,
-      abandonChain: 'HOME_SEARCH',
-    });
-
+    const left = { state: abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH') };
     expect(left.state.chains).toEqual([]);
     expect(left.state.chainHistory.HOME_SEARCH).toHaveLength(1);
     expect(left.state.deferredEffects).toEqual([]);
@@ -520,11 +506,7 @@ describe('chains, end to end', () => {
 
     run = {
       ...run,
-      state: tick(run.world, run.streams, run.state, {
-        allocation: DEFAULT_ALLOCATION,
-        // Plenty of cash, so the deposit is never the blocker.
-        startChain: { chainId: 'HOME_SEARCH', target: 'rent-3' },
-      }).state,
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-3'),
     };
     run = { ...run, state: { ...run.state, cashCents: 50_000_00 } };
 
@@ -573,10 +555,7 @@ describe('chains, end to end', () => {
     for (let attempt = 0; attempt < 10 && !bought; attempt++) {
       let current = {
         ...run,
-        state: tick(run.world, run.streams, run.state, {
-          allocation: DEFAULT_ALLOCATION,
-          startChain: { chainId: 'HOME_SEARCH', target: 'buy-2' },
-        }).state,
+        state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'buy-2'),
       };
       current = driveChain(current, (stepId, choiceIds) => {
         if (stepId === 'brief') return 'agent';
@@ -617,16 +596,13 @@ describe('chains, end to end', () => {
     const slotWeek = run.world.events.slots[0];
 
     // Walk to the week before the first slot, then start a chain whose first
-    // step would land exactly on it.
-    for (let i = 0; i < slotWeek - 2; i++) {
+    // step (gapWeeks 1) lands exactly on it.
+    for (let i = 0; i < slotWeek - 1; i++) {
       run = { ...run, state: tick(run.world, run.streams, run.state, scripted()).state };
     }
     run = {
       ...run,
-      state: tick(run.world, run.streams, run.state, {
-        allocation: DEFAULT_ALLOCATION,
-        startChain: { chainId: 'HOME_SEARCH', target: 'rent-2' },
-      }).state,
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2'),
     };
     expect(run.state.chains[0].dueWeek).toBe(slotWeek);
 
@@ -662,10 +638,7 @@ describe('chain draw accounting', () => {
     let base = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     base = {
       ...base,
-      state: tick(base.world, base.streams, base.state, {
-        allocation: DEFAULT_ALLOCATION,
-        startChain: { chainId: 'HOME_SEARCH', target: 'rent-2' },
-      }).state,
+      state: beginChain(base.world, base.streams, base.state, 'HOME_SEARCH', 'rent-2'),
     };
 
     const { run, draws } = counted(base, 'chain');
@@ -708,10 +681,7 @@ describe('chain draw accounting', () => {
       let base = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
       base = {
         ...base,
-        state: tick(base.world, base.streams, base.state, {
-          allocation: DEFAULT_ALLOCATION,
-          startChain: { chainId: 'HOME_SEARCH', target: 'rent-2' },
-        }).state,
+        state: beginChain(base.world, base.streams, base.state, 'HOME_SEARCH', 'rent-2'),
       };
       return counted(base, 'chain');
     };
@@ -761,10 +731,7 @@ describe('chain draw accounting', () => {
     let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
     run = {
       ...run,
-      state: tick(run.world, run.streams, run.state, {
-        allocation: DEFAULT_ALLOCATION,
-        startChain: { chainId: 'HOME_SEARCH', target: 'rent-3' },
-      }).state,
+      state: beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-3'),
     };
     for (let i = 0; i < 6; i++) {
       run = {
@@ -798,5 +765,67 @@ describe('chain draw accounting', () => {
       now: 0,
     });
     expect(checkpoint.checkpoint!.state.chains).toEqual(run.state.chains);
+  });
+});
+
+/**
+ * The seams the panels reach into.
+ *
+ * Both of these were shipped broken in the first pass of this feature and found
+ * in review: starting a search resolved whatever card the week was holding, and
+ * a missed amortizing payment forgave its interest.
+ */
+describe('chain actions do not disturb the week they are taken in', () => {
+  it('does not advance time, fire an event, or answer a card', () => {
+    // Week 7 is the first slot week for this seed. Under the old shape, a start
+    // requested here ticked, fired HOU_RENT_INCREASE and resolved it with its
+    // first-listed choice — a correctness bug and a GDD §1 one.
+    let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    const slotWeek = run.world.events.slots[0];
+    for (let i = 0; i < slotWeek - 1; i++) {
+      run = { ...run, state: tick(run.world, run.streams, run.state, scripted()).state };
+    }
+    expect(run.state.weekIndex).toBe(slotWeek - 1);
+
+    const after = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2');
+
+    expect(after.weekIndex).toBe(slotWeek - 1);
+    expect(after.eventHistory).toEqual(run.state.eventHistory);
+    expect(after.decisionLog.filter((entry) => entry.t === 'event')).toEqual(
+      run.state.decisionLog.filter((entry) => entry.t === 'event'),
+    );
+    expect(after.chains).toHaveLength(1);
+    // The slot event is still ahead of the player, unanswered.
+    const next = tick(run.world, run.streams, after, {
+      allocation: DEFAULT_ALLOCATION,
+      chooseEvent: () => null,
+    });
+    expect(next.awaitingEventChoice).toBe('HOU_RENT_INCREASE');
+  });
+
+  it('does not answer a chain step that is due the same week', () => {
+    let run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    run = { ...run, state: beginChain(run.world, run.streams, run.state, 'JOB_SEARCH', 'retail-associate') };
+    // `prepare` is due next week; walk onto it without answering.
+    const due = run.state.chains[0].dueWeek;
+    while (run.state.weekIndex < due - 1) {
+      run = { ...run, state: tick(run.world, run.streams, run.state, scripted()).state };
+    }
+
+    const after = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2');
+
+    expect(after.decisionLog.filter((entry) => entry.t === 'chainStep')).toEqual([]);
+    expect(after.chains.map((c) => c.chainId).sort()).toEqual(['HOME_SEARCH', 'JOB_SEARCH']);
+    // JOB_SEARCH is still sitting on `prepare`, unanswered.
+    expect(after.chains.find((c) => c.chainId === 'JOB_SEARCH')!.stepId).toBe('prepare');
+  });
+
+  it('leaves the state untouched when the engine refuses the start', () => {
+    const run = createScenarioRun({ seed: '4F2A9C1B', runLengthYears: 30 });
+    expect(beginChain(run.world, run.streams, run.state, 'NO_SUCH_CHAIN', null)).toBe(run.state);
+    const started = beginChain(run.world, run.streams, run.state, 'HOME_SEARCH', 'rent-2');
+    // Already running: refused, and the first search is untouched.
+    expect(beginChain(run.world, run.streams, started, 'HOME_SEARCH', 'rent-3')).toBe(started);
+    expect(abandonChain(run.world, run.streams, run.state, 'HOME_SEARCH')).toBe(run.state);
   });
 });

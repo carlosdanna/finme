@@ -202,3 +202,84 @@ describe('resolving a chain step from the modal', () => {
     expect(wrong).toEqual([]);
   });
 });
+
+/**
+ * The path the suite had no coverage on, and the one that shipped broken:
+ * tapping a panel control on a week that is holding a card.
+ *
+ * Both store actions used to call `tick` with no chooser, and `tick` falls back
+ * to `available[0]` when nobody answers — so the tap resolved that week's event
+ * or chain step with its first-listed choice and the player never saw it.
+ */
+describe('panel actions on a week that is holding a card', () => {
+  beforeEach(() => {
+    useGameStore.getState().start('4F2A9C1B');
+  });
+
+  /**
+   * Walk to the week before this seed's first event slot, a week at a time so
+   * we stop *short* of the card rather than with it already open. The store
+   * refuses to start a search while a card is up, so the bug's scenario is the
+   * tap that happens the week before one lands.
+   */
+  function walkToSlotEve(): number {
+    const slotWeek = useGameStore.getState().run!.world.events.slots[0];
+    useGameStore.getState().setGranularity('week');
+    while (useGameStore.getState().run!.state.weekIndex < slotWeek - 1) {
+      useGameStore.getState().advanceTime();
+      expect(useGameStore.getState().pendingEvent).toBeNull();
+    }
+    return slotWeek;
+  }
+
+  it('starting a search does not consume the slot event waiting that week', () => {
+    const slotWeek = walkToSlotEve();
+    const before = useGameStore.getState().run!.state;
+
+    useGameStore.getState().startChain('HOME_SEARCH', 'rent-2');
+    const after = useGameStore.getState().run!.state;
+
+    // No week passed, no event fired, nothing was answered on the player's behalf.
+    expect(after.weekIndex).toBe(before.weekIndex);
+    expect(after.eventHistory).toEqual(before.eventHistory);
+    expect(after.decisionLog.filter((e) => e.t === 'event')).toEqual(
+      before.decisionLog.filter((e) => e.t === 'event'),
+    );
+    expect(after.chains).toHaveLength(1);
+
+    // And the event is still ahead of the player: advancing presents it.
+    useGameStore.getState().advanceTime();
+    expect(useGameStore.getState().pendingEvent).not.toBeNull();
+    expect(useGameStore.getState().run!.state.weekIndex).toBe(slotWeek - 1);
+  });
+
+  it('starting a second search does not answer a step the first search has due', () => {
+    useGameStore.getState().setGranularity('week');
+    useGameStore.getState().startChain('JOB_SEARCH', 'retail-associate');
+    const due = useGameStore.getState().run!.state.chains[0].dueWeek;
+    while (useGameStore.getState().run!.state.weekIndex < due - 1) {
+      useGameStore.getState().advanceTime();
+    }
+
+    const before = useGameStore.getState().run!.state;
+    useGameStore.getState().startChain('HOME_SEARCH', 'rent-2');
+    const after = useGameStore.getState().run!.state;
+
+    expect(after.weekIndex).toBe(before.weekIndex);
+    expect(after.decisionLog.filter((e) => e.t === 'chainStep')).toEqual([]);
+    expect(after.chains.find((c) => c.chainId === 'JOB_SEARCH')!.stepId).toBe('prepare');
+  });
+
+  it('stopping a search does not consume the week either', () => {
+    walkToSlotEve();
+    useGameStore.getState().startChain('HOME_SEARCH', 'rent-2');
+    const before = useGameStore.getState().run!.state;
+
+    useGameStore.getState().abandonChain('HOME_SEARCH');
+    const after = useGameStore.getState().run!.state;
+
+    expect(after.weekIndex).toBe(before.weekIndex);
+    expect(after.chains).toEqual([]);
+    expect(after.eventHistory).toEqual(before.eventHistory);
+  });
+});

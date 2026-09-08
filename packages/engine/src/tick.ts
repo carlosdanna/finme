@@ -135,14 +135,6 @@ export interface TickInput {
    * charged the price the card quoted.
    */
   readonly eventRoll?: number;
-  /**
-   * Begin a chain this week (§9.6). Refused, silently, if the chain is unknown,
-   * already running, gated out or still cooling down — the engine owns that
-   * rule so the UI cannot start something the simulation would not.
-   */
-  readonly startChain?: { readonly chainId: string; readonly target?: string };
-  /** Walk away from a chain in flight, paying its `abandonEffects`. */
-  readonly abandonChain?: string;
   /** As `chooseEvent`, for a chain step. `null` means "not answered yet". */
   readonly chooseChainStep?: (
     chainId: string,
@@ -434,6 +426,113 @@ export function chainFormulaContext(
   };
 }
 
+// --- chain actions (§9.6) ---------------------------------------------------
+
+/**
+ * Begin a chain, or leave one.
+ *
+ * **These are actions, not tick inputs.** Deciding to look for a job happens
+ * *within* the week the player is already in; it does not advance time and it
+ * must not touch the card that week is holding. Routing them through `tick` did
+ * both: a tick with no `chooseEvent` falls back to the first available choice,
+ * so tapping Apply on a slot week resolved that week's event with its
+ * first-listed option and the player never saw the card. That is a correctness
+ * bug and a GDD §1 one — the first-listed option is exactly the signal the
+ * ordering rules exist to avoid.
+ *
+ * The Logbook entry is emitted here rather than queued, so the action is
+ * complete when it returns. `flavor` is the only stream touched, which is the
+ * §2.2 guarantee.
+ */
+function chainActionState(
+  world: RunWorld,
+  streams: RunStreams,
+  state: RunState,
+  outcome: EffectOutcome,
+  logbookKey: string,
+): RunState {
+  const week = state.weekIndex;
+  const priceAt = (assetId: AssetId): number => world.market.series[assetId].priceCents[week];
+  const next = applyOutcome(state, outcome, priceAt, week, world);
+
+  const emitted = emitEntries(
+    [{ trigger: { k: 'firstTime', action: 'chain' }, key: logbookKey }],
+    week,
+    world.templates,
+    templateVarsFor(next, world, next.netWorthHistory[next.netWorthHistory.length - 1] ?? 0),
+    streams.flavor,
+    next.logbook,
+  );
+
+  return {
+    ...next,
+    logbook: emitted.state,
+    logbookEntries: [...next.logbookEntries, ...emitted.entries],
+  };
+}
+
+/**
+ * Open a chain at the current week.
+ *
+ * Refused, silently, if the chain is unknown, already running, gated out or
+ * still cooling down — the engine owns that rule, so no caller can start
+ * something the simulation would not. Returns the state unchanged in that case.
+ */
+export function beginChain(
+  world: RunWorld,
+  streams: RunStreams,
+  state: RunState,
+  chainId: string,
+  target: string | null = null,
+): RunState {
+  const definition = chainById(world.chainDefs, chainId);
+  const blocked = startBlockedReason(
+    world.chainDefs,
+    state.chains,
+    state.chainHistory,
+    chainId,
+    eventStateFrom(state, world),
+  );
+  if (definition === undefined || blocked !== null) return state;
+
+  const opened = startChain(definition, state.weekIndex, target);
+  if (opened === null) return state;
+
+  const outcome = applyEffects(definition.startEffects, formulaContextFrom(state, world));
+  const next = chainActionState(world, streams, state, outcome, definition.logbookKeyStart);
+
+  return {
+    ...next,
+    chains: withChain(next.chains, definition.id, opened),
+    decisionLog: [
+      ...next.decisionLog,
+      { w: state.weekIndex, t: 'chainStart', k: definition.id, g: target ?? undefined },
+    ],
+  };
+}
+
+/** Walk away from a chain in flight, paying its `abandonEffects`. */
+export function abandonChain(
+  world: RunWorld,
+  streams: RunStreams,
+  state: RunState,
+  chainId: string,
+): RunState {
+  const leaving = state.chains.find((entry) => entry.chainId === chainId);
+  const definition = chainById(world.chainDefs, chainId);
+  if (leaving === undefined || definition === undefined) return state;
+
+  const outcome = applyEffects(definition.abandonEffects, formulaContextFrom(state, world));
+  const next = chainActionState(world, streams, state, outcome, definition.logbookKeyAbandon);
+
+  return {
+    ...next,
+    chains: withChain(next.chains, chainId, null),
+    chainHistory: recordChainEnd(next.chainHistory, chainId, state.weekIndex),
+    decisionLog: [...next.decisionLog, { w: state.weekIndex, t: 'chainAbandon', k: chainId }],
+  };
+}
+
 // --- the pipeline -----------------------------------------------------------
 
 /**
@@ -665,50 +764,6 @@ export function tick(
   // must constrain *this* week's allocation. Before 8 so a step can schedule an
   // ordinary deferred effect.
   let firedChainStep: { chainId: string; stepId: string } | null = null;
-
-  if (input.abandonChain !== undefined) {
-    const leaving = state.chains.find((entry) => entry.chainId === input.abandonChain);
-    const definition = leaving === undefined ? undefined : chainById(world.chainDefs, leaving.chainId);
-    if (leaving !== undefined && definition !== undefined) {
-      const outcome = applyEffects(definition.abandonEffects, formulaContextFrom(state, world));
-      state = applyOutcome(state, outcome, priceAt, week, world);
-      state = {
-        ...state,
-        chains: withChain(state.chains, leaving.chainId, null),
-        chainHistory: recordChainEnd(state.chainHistory, leaving.chainId, week),
-        decisionLog: [...state.decisionLog, { w: week, t: 'chainAbandon', k: leaving.chainId }],
-      };
-      pending.push({ trigger: { k: 'firstTime', action: 'chain' }, key: definition.logbookKeyAbandon });
-    }
-  }
-
-  if (input.startChain !== undefined) {
-    const request = input.startChain;
-    const definition = chainById(world.chainDefs, request.chainId);
-    const blocked = startBlockedReason(
-      world.chainDefs,
-      state.chains,
-      state.chainHistory,
-      request.chainId,
-      eventStateFrom(state, world),
-    );
-    if (definition !== undefined && blocked === null) {
-      const opened = startChain(definition, week, request.target ?? null);
-      if (opened !== null) {
-        const outcome = applyEffects(definition.startEffects, formulaContextFrom(state, world));
-        state = applyOutcome(state, outcome, priceAt, week, world);
-        state = {
-          ...state,
-          chains: withChain(state.chains, definition.id, opened),
-          decisionLog: [
-            ...state.decisionLog,
-            { w: week, t: 'chainStart', k: definition.id, g: request.target },
-          ],
-        };
-        pending.push({ trigger: { k: 'firstTime', action: 'chain' }, key: definition.logbookKeyStart });
-      }
-    }
-  }
 
   const dueEntry = dueChain(state.chains, week);
   if (dueEntry !== null) {
