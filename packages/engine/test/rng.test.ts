@@ -89,9 +89,10 @@ describe('stream derivation (TDD §2.2)', () => {
       // Appending is safe where reordering or renaming is not: streams derive
       // from `fnv1a(seed::name)`, so the existing five are unaffected.
       'eventMagnitude',
+      'chain',
     ]);
-    expect(STREAM_NAMES).toHaveLength(9);
-    expect(new Set(STREAM_NAMES).size).toBe(9);
+    expect(STREAM_NAMES).toHaveLength(10);
+    expect(new Set(STREAM_NAMES).size).toBe(10);
   });
 
   it('produces identical sequences for the same seed and stream name', () => {

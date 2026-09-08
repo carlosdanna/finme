@@ -1,0 +1,1173 @@
+{
+  "chains": [
+    {
+      "id": "JOB_SEARCH",
+      "stream": "jobApplication",
+      "startGates": [],
+      "startEffects": [],
+      "firstStepId": "prepare",
+      "steps": [
+        {
+          "id": "prepare",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_JOB_PREPARE",
+            "category": "career",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "The application is open in a tab",
+            "body": "It has been open for two days. There is a box for a covering letter and a box for why you want this, and both of them are still empty.",
+            "choices": [
+              {
+                "id": "rework",
+                "label": "Spend the evenings on it",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -10
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -3
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "interview_prepared"
+                  }
+                ],
+                "logbookKey": "job_prepare_rework"
+              },
+              {
+                "id": "contact",
+                "label": "Ask someone who works there",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -5
+                  },
+                  {
+                    "k": "energy",
+                    "delta": -3
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "interview_prepared"
+                  }
+                ],
+                "logbookKey": "job_prepare_contact"
+              },
+              {
+                "id": "send",
+                "label": "Send what you have",
+                "effects": [
+                  {
+                    "k": "chain",
+                    "goto": "interview"
+                  }
+                ],
+                "logbookKey": "job_prepare_send"
+              }
+            ]
+          }
+        },
+        {
+          "id": "interview",
+          "gapWeeks": 2,
+          "card": {
+            "id": "CHN_JOB_INTERVIEW",
+            "category": "career",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "They want to talk on Thursday",
+            "body": "Thursday, half past two, forty minutes. You look up how long the journey takes and then look it up again an hour later.",
+            "choices": [
+              {
+                "id": "attend",
+                "label": "Go",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -6
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": "applicationOdds * targetOpen",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "offer"
+                        }
+                      ],
+                      "logbookKey": "job_interview_through"
+                    },
+                    {
+                      "p": "1 - targetOpen",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "gone"
+                        }
+                      ],
+                      "logbookKey": "job_interview_vanished"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "rejected"
+                        }
+                      ],
+                      "logbookKey": "job_interview_no"
+                    }
+                  ]
+                },
+                "logbookKey": "job_interview_attend"
+              },
+              {
+                "id": "withdraw",
+                "label": "Let it go",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "job_withdrew"
+              }
+            ]
+          }
+        },
+        {
+          "id": "interview_prepared",
+          "gapWeeks": 2,
+          "card": {
+            "id": "CHN_JOB_INTERVIEW_READY",
+            "category": "career",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "They want to talk on Thursday",
+            "body": "Thursday, half past two. You have read the thing you wrote about yourself enough times that it has stopped sounding like words, which is either preparation or its opposite.",
+            "choices": [
+              {
+                "id": "attend",
+                "label": "Go",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -6
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": "clamp(applicationOdds + 0.15, 0.05, 0.95) * targetOpen",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "offer"
+                        }
+                      ],
+                      "logbookKey": "job_interview_through"
+                    },
+                    {
+                      "p": "1 - targetOpen",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "gone"
+                        }
+                      ],
+                      "logbookKey": "job_interview_vanished"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "rejected"
+                        }
+                      ],
+                      "logbookKey": "job_interview_no"
+                    }
+                  ]
+                },
+                "logbookKey": "job_interview_attend"
+              },
+              {
+                "id": "withdraw",
+                "label": "Let it go",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "job_withdrew"
+              }
+            ]
+          }
+        },
+        {
+          "id": "offer",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_JOB_OFFER",
+            "category": "career",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "The offer is in writing",
+            "body": "It arrived at ten past nine with a start date and a number on it. They would like to know by Friday.",
+            "choices": [
+              {
+                "id": "accept",
+                "label": "Take it",
+                "effects": [
+                  {
+                    "k": "jobOffer"
+                  },
+                  {
+                    "k": "mood",
+                    "delta": 4
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "job_offer_taken"
+              },
+              {
+                "id": "negotiate",
+                "label": "Ask for more first",
+                "effects": [],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": 0.45,
+                      "effects": [
+                        {
+                          "k": "jobOffer"
+                        },
+                        {
+                          "k": "cash",
+                          "cents": "0.5 * targetMonthlyIncomeCents"
+                        },
+                        {
+                          "k": "mood",
+                          "delta": 2
+                        },
+                        {
+                          "k": "chain",
+                          "goto": "end"
+                        }
+                      ],
+                      "logbookKey": "job_offer_negotiated"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "mood",
+                          "delta": -9
+                        },
+                        {
+                          "k": "chain",
+                          "goto": "end"
+                        }
+                      ],
+                      "logbookKey": "job_offer_withdrawn"
+                    }
+                  ]
+                },
+                "logbookKey": "job_offer_negotiate"
+              },
+              {
+                "id": "decline",
+                "label": "Say no",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "job_offer_declined"
+              }
+            ]
+          }
+        },
+        {
+          "id": "rejected",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_JOB_REJECTED",
+            "category": "career",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "A very polite email",
+            "body": "They went with someone whose experience was a closer match. It is four sentences long and one of them is about how many strong applications they received.",
+            "choices": [
+              {
+                "id": "absorb",
+                "label": "Close the tab",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -4
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "job_rejected_absorb"
+              },
+              {
+                "id": "feedback",
+                "label": "Write back and ask why",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -2
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": 0.4,
+                      "effects": [
+                        {
+                          "k": "mood",
+                          "delta": -1
+                        },
+                        {
+                          "k": "chain",
+                          "goto": "end"
+                        }
+                      ],
+                      "logbookKey": "job_rejected_answered"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "mood",
+                          "delta": -6
+                        },
+                        {
+                          "k": "chain",
+                          "goto": "end"
+                        }
+                      ],
+                      "logbookKey": "job_rejected_ignored"
+                    }
+                  ]
+                },
+                "logbookKey": "job_rejected_feedback"
+              }
+            ]
+          }
+        },
+        {
+          "id": "gone",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_JOB_GONE",
+            "category": "career",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "The posting has come down",
+            "body": "The link goes to a page that says the role is no longer accepting applications. There is no date on it, so there is no telling how long you have been applying to nothing.",
+            "choices": [
+              {
+                "id": "shrug",
+                "label": "Leave it",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -3
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "job_gone_shrug"
+              },
+              {
+                "id": "chase",
+                "label": "Email them anyway",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -2
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": 0.15,
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "interview"
+                        }
+                      ],
+                      "logbookKey": "job_gone_reopened"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "mood",
+                          "delta": -4
+                        },
+                        {
+                          "k": "chain",
+                          "goto": "end"
+                        }
+                      ],
+                      "logbookKey": "job_gone_silence"
+                    }
+                  ]
+                },
+                "logbookKey": "job_gone_chase"
+              }
+            ]
+          }
+        }
+      ],
+      "cooldownWeeks": 8,
+      "abandonEffects": [
+        {
+          "k": "mood",
+          "delta": -3
+        }
+      ],
+      "logbookKeyStart": "job_search_started",
+      "logbookKeyAbandon": "job_search_abandoned"
+    },
+    {
+      "id": "HOME_SEARCH",
+      "stream": "chain",
+      "startGates": [],
+      "startEffects": [],
+      "firstStepId": "brief",
+      "steps": [
+        {
+          "id": "brief",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_HOME_BRIEF",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "You have started looking",
+            "body": "Two tabs of listings and a saved search. The photographs are all taken with the same wide lens and every kitchen is the same kitchen. An agent would take {{fee}} and do the looking instead.",
+            "displayVars": {
+              "fee": {
+                "as": "money",
+                "value": "cpi * 45000"
+              }
+            },
+            "choices": [
+              {
+                "id": "agent",
+                "label": "Pay an agent to do the looking",
+                "effects": [
+                  {
+                    "k": "cash",
+                    "cents": "-cpi * 45000"
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "viewings_agent"
+                  }
+                ],
+                "logbookKey": "home_brief_agent"
+              },
+              {
+                "id": "weekends",
+                "label": "Give it your weekends",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -6
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "viewings"
+                  }
+                ],
+                "logbookKey": "home_brief_weekends"
+              }
+            ]
+          }
+        },
+        {
+          "id": "viewings",
+          "gapWeeks": 2,
+          "card": {
+            "id": "CHN_HOME_VIEWINGS",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "Three in one afternoon",
+            "body": "The first had a bathroom you could not stand up in. The second smelled of new paint over something older. You are still thinking about the third, which is not the same as liking it.",
+            "choices": [
+              {
+                "id": "look",
+                "label": "Go and see them",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -8
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "cash",
+                    "cents": "-cpi * 3000"
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": 0.4,
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "shortlist"
+                        }
+                      ],
+                      "logbookKey": "home_viewings_found"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "viewings"
+                        }
+                      ],
+                      "logbookKey": "home_viewings_none"
+                    }
+                  ]
+                },
+                "logbookKey": "home_viewings_go"
+              },
+              {
+                "id": "pause",
+                "label": "Stop looking for now",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_search_paused"
+              }
+            ]
+          }
+        },
+        {
+          "id": "viewings_agent",
+          "gapWeeks": 2,
+          "card": {
+            "id": "CHN_HOME_AGENT",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "She sends four a week",
+            "body": "Most of them are wrong in ways you would have spotted from the listing. One of them is not.",
+            "choices": [
+              {
+                "id": "review",
+                "label": "Go through what she sent",
+                "effects": [
+                  {
+                    "k": "energy",
+                    "delta": -3
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -1
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": 0.65,
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "shortlist"
+                        }
+                      ],
+                      "logbookKey": "home_viewings_found"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "viewings_agent"
+                        }
+                      ],
+                      "logbookKey": "home_viewings_none"
+                    }
+                  ]
+                },
+                "logbookKey": "home_agent_review"
+              },
+              {
+                "id": "pause",
+                "label": "Stop looking for now",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_search_paused"
+              }
+            ]
+          }
+        },
+        {
+          "id": "shortlist",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_HOME_SHORTLIST",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "You have been back twice",
+            "body": "Once on a Saturday and once on a Wednesday evening, to hear what the road sounds like at both. Rent on it would be {{targetRent}} a month.",
+            "displayVars": {
+              "targetRent": {
+                "as": "money",
+                "value": "targetRentCents"
+              }
+            },
+            "choices": [
+              {
+                "id": "apply",
+                "label": "Put in an application",
+                "requires": [
+                  {
+                    "type": "stat",
+                    "stat": "targetIsBuy",
+                    "op": "==",
+                    "value": 0
+                  }
+                ],
+                "effects": [
+                  {
+                    "k": "chain",
+                    "goto": "apply_rent"
+                  }
+                ],
+                "logbookKey": "home_shortlist_apply"
+              },
+              {
+                "id": "offer",
+                "label": "Put in an offer",
+                "requires": [
+                  {
+                    "type": "stat",
+                    "stat": "targetIsBuy",
+                    "op": "==",
+                    "value": 1
+                  }
+                ],
+                "effects": [
+                  {
+                    "k": "chain",
+                    "goto": "offer_buy"
+                  }
+                ],
+                "logbookKey": "home_shortlist_offer"
+              },
+              {
+                "id": "walk",
+                "label": "Neither, in the end",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -3
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_shortlist_walk"
+              }
+            ]
+          }
+        },
+        {
+          "id": "apply_rent",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_HOME_APPLY",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "References, payslips, and a holding fee",
+            "body": "The form wants three years of addresses and the name of someone who will say you are not difficult. The holding fee is {{fee}} and the wording about whether it comes back is not as clear as it could be.",
+            "displayVars": {
+              "fee": {
+                "as": "money",
+                "value": "targetRentCents * 0.5"
+              }
+            },
+            "choices": [
+              {
+                "id": "submit",
+                "label": "Send it all in",
+                "effects": [
+                  {
+                    "k": "cash",
+                    "cents": "-targetRentCents * 0.5"
+                  },
+                  {
+                    "k": "creditEvent",
+                    "kind": "inquiry"
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": "clamp(0.35 + creditScore / 1400, 0.25, 0.95)",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "move_in"
+                        }
+                      ],
+                      "logbookKey": "home_apply_accepted"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "declined"
+                        }
+                      ],
+                      "logbookKey": "home_apply_refused"
+                    }
+                  ]
+                },
+                "logbookKey": "home_apply_submit"
+              },
+              {
+                "id": "withdraw",
+                "label": "Change your mind",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_apply_withdrawn"
+              }
+            ]
+          }
+        },
+        {
+          "id": "offer_buy",
+          "gapWeeks": 2,
+          "card": {
+            "id": "CHN_HOME_OFFER",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "The number you would have to say out loud",
+            "body": "Asking is {{price}}. The deposit alone is {{deposit}}, and the survey and the solicitor want {{costs}} before anyone has agreed to anything.",
+            "displayVars": {
+              "price": {
+                "as": "money",
+                "value": "homePriceCents"
+              },
+              "deposit": {
+                "as": "money",
+                "value": "downPaymentCents"
+              },
+              "costs": {
+                "as": "money",
+                "value": "cpi * 90000"
+              }
+            },
+            "choices": [
+              {
+                "id": "offer",
+                "label": "Put in an offer",
+                "requires": [
+                  {
+                    "type": "stat",
+                    "stat": "creditScore",
+                    "op": ">=",
+                    "value": 620
+                  },
+                  {
+                    "type": "stat",
+                    "stat": "cashCents",
+                    "op": ">=",
+                    "value": "downPaymentCents"
+                  }
+                ],
+                "effects": [
+                  {
+                    "k": "cash",
+                    "cents": "-cpi * 90000"
+                  }
+                ],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": "clamp(0.3 + creditScore / 1500, 0.2, 0.9)",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "completion"
+                        }
+                      ],
+                      "logbookKey": "home_offer_accepted"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "chain",
+                          "goto": "declined"
+                        }
+                      ],
+                      "logbookKey": "home_offer_beaten"
+                    }
+                  ]
+                },
+                "logbookKey": "home_offer_made"
+              },
+              {
+                "id": "walk",
+                "label": "Not this one",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -2
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_offer_walked"
+              }
+            ]
+          }
+        },
+        {
+          "id": "move_in",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_HOME_MOVE",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "Keys on a Thursday",
+            "body": "A deposit of {{deposit}}, a van, and a friend who says it is fine and means it. Everything you own turns out to be either heavier or lighter than you remembered.",
+            "displayVars": {
+              "deposit": {
+                "as": "money",
+                "value": "targetRentCents * 2"
+              }
+            },
+            "choices": [
+              {
+                "id": "sign",
+                "label": "Sign it",
+                "effects": [
+                  {
+                    "k": "cash",
+                    "cents": "-(targetRentCents * 2 + cpi * 80000)"
+                  },
+                  {
+                    "k": "energy",
+                    "delta": -12
+                  },
+                  {
+                    "k": "housing",
+                    "tier": "targetTier"
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_moved_in"
+              },
+              {
+                "id": "back_out",
+                "label": "Back out",
+                "effects": [
+                  {
+                    "k": "cash",
+                    "cents": "-targetRentCents * 0.5"
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -6
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_move_backed_out"
+              }
+            ]
+          }
+        },
+        {
+          "id": "completion",
+          "gapWeeks": 2,
+          "card": {
+            "id": "CHN_HOME_COMPLETION",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "Everything is waiting on a signature",
+            "body": "{{deposit}} of your money and {{loan}} of theirs, over thirty years. The solicitor's letter uses the word 'completion' eleven times.",
+            "displayVars": {
+              "deposit": {
+                "as": "money",
+                "value": "downPaymentCents"
+              },
+              "loan": {
+                "as": "money",
+                "value": "homePriceCents - downPaymentCents"
+              }
+            },
+            "choices": [
+              {
+                "id": "complete",
+                "label": "Sign everything",
+                "requires": [
+                  {
+                    "type": "stat",
+                    "stat": "cashCents",
+                    "op": ">=",
+                    "value": "downPaymentCents"
+                  }
+                ],
+                "effects": [
+                  {
+                    "k": "cash",
+                    "cents": "-(downPaymentCents + cpi * 150000)"
+                  },
+                  {
+                    "k": "debt",
+                    "instrument": "MORTGAGE",
+                    "principalCents": "homePriceCents - downPaymentCents"
+                  },
+                  {
+                    "k": "home",
+                    "action": "buy",
+                    "priceCents": "homePriceCents"
+                  },
+                  {
+                    "k": "housing",
+                    "tier": "min(3, targetTier + 1)"
+                  },
+                  {
+                    "k": "energy",
+                    "delta": -12
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_completed"
+              },
+              {
+                "id": "pull_out",
+                "label": "Pull out",
+                "effects": [
+                  {
+                    "k": "cash",
+                    "cents": "-cpi * 90000"
+                  },
+                  {
+                    "k": "mood",
+                    "delta": -8
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_pulled_out"
+              }
+            ]
+          }
+        },
+        {
+          "id": "declined",
+          "gapWeeks": 1,
+          "card": {
+            "id": "CHN_HOME_DECLINED",
+            "category": "housing",
+            "baseWeight": 12,
+            "cooldownWeeks": 0,
+            "gates": [],
+            "multipliers": [],
+            "title": "It went to someone else",
+            "body": "No reason given, and none owed. The listing stays up for another week with the photographs you had started to think of as rooms.",
+            "choices": [
+              {
+                "id": "absorb",
+                "label": "Leave it there",
+                "effects": [
+                  {
+                    "k": "mood",
+                    "delta": -6
+                  },
+                  {
+                    "k": "chain",
+                    "goto": "end"
+                  }
+                ],
+                "logbookKey": "home_declined_absorb"
+              },
+              {
+                "id": "ask_why",
+                "label": "Ask why it went to someone else",
+                "effects": [],
+                "outcomeRoll": {
+                  "stream": "eventOutcome",
+                  "branches": [
+                    {
+                      "p": 0.5,
+                      "effects": [
+                        {
+                          "k": "mood",
+                          "delta": -2
+                        },
+                        {
+                          "k": "chain",
+                          "goto": "end"
+                        }
+                      ],
+                      "logbookKey": "home_declined_answered"
+                    },
+                    {
+                      "p": "rest",
+                      "effects": [
+                        {
+                          "k": "mood",
+                          "delta": -7
+                        },
+                        {
+                          "k": "chain",
+                          "goto": "end"
+                        }
+                      ],
+                      "logbookKey": "home_declined_silence"
+                    }
+                  ]
+                },
+                "logbookKey": "home_declined_ask"
+              }
+            ]
+          }
+        }
+      ],
+      "cooldownWeeks": 26,
+      "abandonEffects": [
+        {
+          "k": "mood",
+          "delta": -3
+        }
+      ],
+      "logbookKeyStart": "home_search_started",
+      "logbookKeyAbandon": "home_search_abandoned"
+    }
+  ]
+}

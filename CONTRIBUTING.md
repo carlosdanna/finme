@@ -164,6 +164,12 @@ check the test fails.** If it does not, the test is decoration.
 Every new event needs a golden test — fixed seed, fixed state, exact selected
 event and exact state delta.
 
+A new chain, or a new step in one, needs that **plus** a walk of the whole thing:
+the step sequence it produces, that abandoning it leaves no orphaned state, and
+that a step consumes exactly one magnitude draw (two when its choice rolls an
+outcome). A chain's failure modes are sequence-shaped and a single-step assertion
+will not see them.
+
 The anti-spiral property test (TDD §7.4) must never be marked skip.
 
 ### Where tests live

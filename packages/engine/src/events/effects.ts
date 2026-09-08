@@ -25,8 +25,21 @@ export interface EffectOutcome {
   }[];
   readonly flagsAdded: readonly string[];
   readonly flagsRemoved: readonly string[];
-  readonly jobOffers: readonly string[];
+  /** Job ids to hire into. `null` means the active chain's target. */
+  readonly jobOffers: readonly (string | null)[];
   readonly creditEvents: readonly CreditEventKind[];
+  /**
+   * Where the chain this card belongs to goes next, or `null` when the card
+   * said nothing about it. Last one wins — a choice that declares two `goto`s
+   * has one intent, and the later one is it.
+   */
+  readonly chainGoto: string | null;
+  /** Chains this resolution opens. */
+  readonly chainStarts: readonly { readonly chainId: string; readonly target: string | null }[];
+  /** The housing tier to move to, or `null`. Last one wins. */
+  readonly housingTier: number | null;
+  /** Home purchases and sales, in declared order. */
+  readonly homeTrades: readonly { readonly action: 'buy' | 'sell'; readonly priceCents: number }[];
   /** Logbook keys this resolution produced, in order. */
   readonly logbookKeys: readonly string[];
   /** Effects scheduled for a later week. */
@@ -60,6 +73,10 @@ export function emptyOutcome(): EffectOutcome {
     flagsRemoved: [],
     jobOffers: [],
     creditEvents: [],
+    chainGoto: null,
+    chainStarts: [],
+    housingTier: null,
+    homeTrades: [],
     logbookKeys: [],
     deferred: [],
   };
@@ -130,10 +147,39 @@ export function applyEffects(
         };
         break;
       case 'jobOffer':
-        out = { ...out, jobOffers: [...out.jobOffers, effect.jobId] };
+        out = { ...out, jobOffers: [...out.jobOffers, effect.jobId ?? null] };
         break;
       case 'creditEvent':
         out = { ...out, creditEvents: [...out.creditEvents, effect.kind] };
+        break;
+      case 'chain':
+        out = { ...out, chainGoto: effect.goto };
+        break;
+      case 'chainStart':
+        out = {
+          ...out,
+          chainStarts: [
+            ...out.chainStarts,
+            { chainId: effect.chainId, target: effect.target ?? null },
+          ],
+        };
+        break;
+      case 'housing':
+        // Rounded here rather than at the call site: a tier is an index, and a
+        // formula that lands on 2.4 means the third tier.
+        out = { ...out, housingTier: Math.round(resolveMagnitude(effect.tier, context)) };
+        break;
+      case 'home':
+        out = {
+          ...out,
+          homeTrades: [
+            ...out.homeTrades,
+            {
+              action: effect.action,
+              priceCents: effect.priceCents === undefined ? 0 : resolveCents(effect.priceCents, context),
+            },
+          ],
+        };
         break;
     }
   }

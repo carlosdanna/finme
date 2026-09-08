@@ -48,6 +48,8 @@ runtime.
 | `logbook/names.json` | friend and advisor name pools |
 | `jobs.json` | 13 jobs across all four tiers |
 | `glossary.json` | 26 terms, for the `<Term>` popover |
+| `chains/mvp.json` | 2 chains (`JOB_SEARCH`, `HOME_SEARCH`), 15 step cards |
+| `src/chains.ts` | the chain schema, the state-machine lint, and `CHAINS` |
 | `src/scenario.ts` | the scripted default run used by fixtures and the harness |
 | `src/snapshot.ts` | golden-run serialization |
 
@@ -71,9 +73,21 @@ What it enforces beyond types:
   done" is rejected. The Logbook narrates; it never approves (GDD §1). The
   glossary explains; it never advises.
 
+On top of all of that, a chain (TDD §9.6) is a state machine, so its schema also
+enforces:
+
+- Every `{"k":"chain","goto":...}` names a real step in the same chain, or
+  `"end"`.
+- Every choice routes somewhere — including `"end"`. A choice with no chain
+  effect ends the search silently, which is almost always an authoring slip.
+- Every step is reachable from `firstStepId`, and **some reachable path
+  finishes**. A chain that cannot terminate is a search the player can never stop
+  having.
+- Step ids are unique, and no two steps share a card id.
+
 Tests go further: every formula in the content is parsed against the evaluator's
 whitelist, and every choice label is scanned for words that would rank the
-options.
+options. Both run over chain step cards as well as events.
 
 ## Adding an event
 
@@ -83,12 +97,31 @@ options.
    event and the exact state delta.
 4. `pnpm test packages/content`.
 
+## Adding a chain, or a step to one
+
+1. Add it to `chains/mvp.json`. Each step is `{ id, gapWeeks, card }`, and the
+   card is a full `EventDef` held to every rule above.
+2. Give every choice a `{"k":"chain","goto":"..."}` — a step id or `"end"`. The
+   lint will not let you leave it implicit.
+3. `baseWeight` on a step card is inert: a chain card is *presented*, never
+   selected by weight. Write `12` so the shared variant floor asks for one
+   variant, and write more variants anyway for a step that can repeat.
+4. Add every `logbookKey` to `logbook/templates.json` — three variants minimum.
+5. **Write a golden test**, and one that walks the chain end to end: the step
+   sequence, and that abandoning it leaves no orphaned state.
+6. `pnpm test packages/content`.
+
+Chain and step ids are stable forever, for the same reason event ids are.
+
 ## Status
 
 **8 events against a target of 45 (MVP) or 120 (full).** That gap is the largest
 single item of debt in the project: with ~247 event slots in a 30-year run, each
 event fires 14–29 times, which fails three of the balance tests on its own. See
 [#5](https://github.com/carlosdanna/finme/issues/5).
+
+**2 chains, 15 step cards.** Both are MVP-complete; the catalogue has no further
+chains scoped yet.
 
 Logbook prose is placeholder — 3 variants per key against a ~280-entry target.
 See [#15](https://github.com/carlosdanna/finme/issues/15).

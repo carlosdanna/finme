@@ -18,4 +18,4 @@
  * Save files record the ruleset version they were created under. On mismatch the
  * game loads the run but marks it non-comparable (TDD §14).
  */
-export const RULESET_VERSION = '0.4.0';
+export const RULESET_VERSION = '0.5.0';

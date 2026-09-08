@@ -13,6 +13,7 @@ import type { RunNames, TemplatePools } from '@finme/engine';
 import { z } from 'zod';
 import names from '../logbook/names.json' with { type: 'json' };
 import templates from '../logbook/templates.json' with { type: 'json' };
+import { referencedChainLogbookKeys } from './chains.ts';
 import { referencedLogbookKeys } from './events.ts';
 
 /** [T] Minimum variants per key. Below this the Logbook repeats immediately. */
@@ -61,7 +62,9 @@ export function drawRunNames(rng: () => number): RunNames {
   };
 }
 
-/** Logbook keys the event content references but which have no prose yet. */
+/** Logbook keys the content references but which have no prose yet. */
 export function missingTemplateKeys(): string[] {
-  return referencedLogbookKeys().filter((key) => LOGBOOK_TEMPLATES[key] === undefined);
+  return [...referencedLogbookKeys(), ...referencedChainLogbookKeys()]
+    .filter((key) => LOGBOOK_TEMPLATES[key] === undefined)
+    .sort();
 }

@@ -12,7 +12,7 @@ const snapshot = (partial: Partial<AnnualSnapshot> & Pick<AnnualSnapshot, 'year'
   netWorthCents: 1_000_000,
   incomeCents: 3_900_000,
   taxPaidCents: 280_000,
-  interestPaidCents: 0,
+  interestChargedCents: 0,
   retirementContributedCents: 0,
   employerMatchedCents: 0,
   matchForgoneCents: 0,

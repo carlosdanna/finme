@@ -94,11 +94,14 @@ export function AllocationPanel({
   allocation,
   energy,
   mood,
+  housingTier,
   onChange,
 }: {
   allocation: Allocation;
   energy: number;
   mood: number;
+  /** The tier the player actually lives in — it feeds the projected mood. */
+  housingTier: number;
   onChange: (allocation: Allocation) => void;
 }) {
   const used = allocationPoints(allocation);
@@ -120,7 +123,7 @@ export function AllocationPanel({
   const projectedMood = nextMood(mood, allocation, {
     discretionarySpendCents: 0,
     discretionaryBaselineCents: 40_000,
-    housingTier: 1,
+    housingTier,
     unsecuredDebtCents: 0,
     annualGrossCents: 0,
   });

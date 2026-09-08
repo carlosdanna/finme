@@ -26,7 +26,7 @@ const ROWS = [
   { key: 'liabilitiesCents', label: 'Liabilities' },
   { key: 'incomeCents', label: 'Income' },
   { key: 'taxPaidCents', label: 'Tax paid' },
-  { key: 'interestPaidCents', label: 'Interest paid' },
+  { key: 'interestChargedCents', label: 'Interest charged' },
   { key: 'cashCents', label: 'Cash' },
 ] as const;
 
@@ -142,7 +142,7 @@ export function AnnualReviewPanel({
         <Stat label="Income" value={<Money amountCents={latest.incomeCents} />} />
         <Stat label="Savings rate" value={<Pct value={savingsRate} />} />
         <Stat label="Tax paid" value={<Money amountCents={latest.taxPaidCents} />} />
-        <Stat label="Interest paid" value={<Money amountCents={latest.interestPaidCents} />} />
+        <Stat label="Interest charged" value={<Money amountCents={latest.interestChargedCents} />} />
       </div>
 
       <Counterfactuals snapshot={latest} />
@@ -171,11 +171,13 @@ function Counterfactuals({ snapshot }: { snapshot: AnnualSnapshot }) {
     );
   }
 
-  if (snapshot.interestPaidCents > 0) {
+  if (snapshot.interestChargedCents > 0) {
     lines.push(
       <>
-        You paid <Money amountCents={snapshot.interestPaidCents} /> in interest this year. Your cash
-        balance at year end was <Money amountCents={snapshot.cashCents} />.
+        {/* "Charged", not "paid": a missed month's interest is added to the
+            balance and counts here, and no money left the account for it. */}
+        Interest charged this year came to <Money amountCents={snapshot.interestChargedCents} />.
+        Your cash balance at year end was <Money amountCents={snapshot.cashCents} />.
       </>,
     );
   }

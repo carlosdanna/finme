@@ -20,6 +20,15 @@ export {
 export type { EventsFile } from './events.ts';
 
 export {
+  CHAINS,
+  chainDefById,
+  chainSchema,
+  chainsFileSchema,
+  chainCards,
+  referencedChainLogbookKeys,
+} from './chains.ts';
+
+export {
   LOGBOOK_TEMPLATES,
   FRIEND_NAMES,
   ADVISOR_NAMES,

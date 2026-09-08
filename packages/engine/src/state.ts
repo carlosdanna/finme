@@ -11,11 +11,12 @@
  */
 import type { Car, Home } from './assets.ts';
 import type { DireState } from './bankruptcy.ts';
+import type { ActiveChain, ChainDef, ChainHistory } from './chains/index.ts';
 import type { DecisionRecord } from './persistence.ts';
 import type { CreditState } from './credit.ts';
 import type { Debt } from './debt/types.ts';
 import type { EventDef, EventHistory, EventSchedule, ScheduledEffect } from './events/index.ts';
-import type { JobDef, JobOpening } from './jobs.ts';
+import type { JobDef, JobOpening, JobTier } from './jobs.ts';
 import type { LogbookEntry, LogbookState, RunNames, TemplatePools } from './logbook/index.ts';
 import { ASSET_IDS, type AssetId, type MarketHistory } from './market.ts';
 import type { Rng } from './rng.ts';
@@ -100,7 +101,7 @@ export interface AnnualSnapshot {
   readonly netWorthCents: number;
   readonly incomeCents: number;
   readonly taxPaidCents: number;
-  readonly interestPaidCents: number;
+  readonly interestChargedCents: number;
   readonly retirementContributedCents: number;
   readonly employerMatchedCents: number;
   /** What the match would have added had the player contributed the full 4%. */
@@ -128,6 +129,12 @@ export interface RunState {
   readonly performance: number;
   readonly weeksUnemployed: number;
   readonly consecutiveOvertimeWeeks: number;
+  /**
+   * Weeks actually worked, by tier (TDD §4.1). This is what gives an
+   * application's "years of relevant experience" a source — before it existed,
+   * `applicationProbability` had nothing behind its strongest term.
+   */
+  readonly experienceWeeks: Readonly<Record<JobTier, number>>;
 
   readonly energy: number;
   readonly mood: number;
@@ -146,6 +153,10 @@ export interface RunState {
   readonly standingOrders: StandingOrders;
   readonly eventHistory: EventHistory;
   readonly deferredEffects: readonly ScheduledEffect[];
+  /** Chains in flight. Sorted by `chainId`, so serialization is stable. */
+  readonly chains: readonly ActiveChain[];
+  /** Weeks at which each chain last ended, for its cooldown. */
+  readonly chainHistory: ChainHistory;
   /** Sorted, so serialization is stable. */
   readonly flags: readonly string[];
 
@@ -153,8 +164,14 @@ export interface RunState {
   readonly lastRaisePct: number;
   readonly netWorthHistory: readonly number[];
   readonly annualSnapshots: readonly AnnualSnapshot[];
-  /** Interest paid across the current year, for the review's debt trajectory. */
-  readonly interestPaidThisYearCents: number;
+  /**
+   * Interest **charged** across the current year, for the review's debt
+   * trajectory. Charged, not paid: a missed month's interest is added to the
+   * balance and counts here, because it is a real cost whether or not any money
+   * moved. The field was called `paid` and the review copy said "You paid",
+   * which was a lie the moment a mortgage could miss a payment.
+   */
+  readonly interestChargedThisYearCents: number;
   readonly employerMatchedThisYearCents: number;
 
   /** Set once a discharge happens, and never quietly forgiven (§13). */
@@ -178,6 +195,7 @@ export interface RunWorld {
   readonly entryCreditScore: number;
   readonly jobs: readonly JobDef[];
   readonly eventDefs: readonly EventDef[];
+  readonly chainDefs: readonly ChainDef[];
   readonly templates: TemplatePools;
 }
 
@@ -194,6 +212,14 @@ export interface RunStreams {
    */
   readonly eventMagnitude: Rng;
   /**
+   * Chain card magnitudes and chain outcome rolls (TDD §9.6).
+   *
+   * [F] Its own stream. A chain is player-initiated, so its draw count varies
+   * with what the player does; taking those draws from `eventMagnitude` would
+   * let starting a search shift the price of every later slot event.
+   */
+  readonly chain: Rng;
+  /**
    * [F] The Logbook's only source of randomness. Passing anything else here
    * would break the §2.2 guarantee that flavor never influences simulation.
    */
@@ -204,6 +230,10 @@ export function emptyHoldings(): Record<AssetId, Holding> {
   const holdings = {} as Record<AssetId, Holding>;
   for (const id of ASSET_IDS) holdings[id] = { shares: 0, lots: [] };
   return holdings;
+}
+
+export function emptyExperienceWeeks(): Record<JobTier, number> {
+  return { entry: 0, skilled: 0, professional: 0, specialist: 0 };
 }
 
 export function defaultStandingOrders(): StandingOrders {

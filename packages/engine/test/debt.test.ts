@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  type AmortizingLoan,
   AUTO_LOAN_BASE_APR,
+  DEFAULT_LOAN_TERM_MONTHS,
   BNPL_FREEZE_WEEKS,
   BNPL_INSTALLMENTS,
   BNPL_LATE_FEE_CENTS,
@@ -18,6 +20,7 @@ import {
   chargeCard,
   closeStatement,
   creditQuality,
+  openDebtFromInstrument,
   feesAsShareOfPrincipal,
   installmentAmountCents,
   installmentDueWeeks,
@@ -467,5 +470,79 @@ describe('the shared Debt shape (TDD §5)', () => {
       expect(Number.isInteger(debt.balanceCents)).toBe(true);
       expect(debt.balanceCents).toBeGreaterThanOrEqual(0);
     }
+  });
+});
+
+describe('opening a debt from an instrument name (§5.2-5.4)', () => {
+  const options = { weekIndex: 100, creditScore: 700, sequence: 0 };
+
+  it('charges an existing card rather than opening a second one', () => {
+    const card = openCreditCard({ id: 'cc', creditLimitCents: 500_000, openedWeek: 0 });
+    const result = openDebtFromInstrument([card], 'CREDIT_CARD', 120_000, options);
+
+    expect(result.debts).toHaveLength(1);
+    expect(result.debts[0].balanceCents).toBe(120_000);
+    expect(result.unabsorbedCents).toBe(0);
+  });
+
+  it('books a charge no card can absorb as an unpaid bill rather than dropping it', () => {
+    // A declined card does not make the cost go away. Without this the event
+    // computed a price and then silently charged nobody.
+    const card = openCreditCard({ id: 'cc', creditLimitCents: 100_000, openedWeek: 0 });
+    const result = openDebtFromInstrument([card], 'CREDIT_CARD', 120_000, options);
+
+    expect(result.debts[0].balanceCents).toBe(0);
+    expect(result.unabsorbedCents).toBe(120_000);
+  });
+
+  it('picks the first card in open order with room, never the emptiest', () => {
+    // Payment and charge order must not depend on how the market moved.
+    const roomy = chargeCard(openCreditCard({ id: 'a', creditLimitCents: 900_000, openedWeek: 0 }), 400_000)!;
+    const emptier = openCreditCard({ id: 'b', creditLimitCents: 900_000, openedWeek: 1 });
+    const result = openDebtFromInstrument([roomy, emptier], 'CREDIT_CARD', 100_000, options);
+
+    expect(result.debts[0].balanceCents).toBe(500_000);
+    expect(result.debts[1].balanceCents).toBe(0);
+  });
+
+  it('prices an amortizing loan against the credit score the player has', () => {
+    const good = openDebtFromInstrument([], 'PERSONAL_LOAN', 500_000, options).debts[0];
+    const thin = openDebtFromInstrument([], 'PERSONAL_LOAN', 500_000, { ...options, creditScore: null }).debts[0];
+
+    expect(good.aprAnnual).toBe(loanApr('personal', 700));
+    expect(thin.aprAnnual).toBe(loanApr('personal', null));
+    expect(good.aprAnnual).toBeLessThan(thin.aprAnnual);
+  });
+
+  it('opens a mortgage on the 360-month default', () => {
+    const loan = openDebtFromInstrument([], 'MORTGAGE', 25_000_000, options).debts[0] as AmortizingLoan;
+
+    expect(loan.kind).toBe('amortizing');
+    expect(loan.loanType).toBe('mortgage');
+    expect(loan.termMonths).toBe(DEFAULT_LOAN_TERM_MONTHS.mortgage);
+    expect(loan.balanceCents).toBe(25_000_000);
+  });
+
+  it('opens BNPL and payday through their own constructors', () => {
+    const bnpl = openDebtFromInstrument([], 'BNPL', 40_000, options).debts[0];
+    const payday = openDebtFromInstrument([], 'PAYDAY', 30_000, options).debts[0];
+
+    expect(bnpl.kind).toBe('bnpl');
+    expect(payday.kind).toBe('payday');
+    // The payday balance is principal plus the fee, per §5.4.
+    expect(payday.balanceCents).toBe(34_500);
+  });
+
+  it('gives two debts opened in the same week distinct ids', () => {
+    const first = openDebtFromInstrument([], 'PERSONAL_LOAN', 100_000, options).debts;
+    const both = openDebtFromInstrument(first, 'PERSONAL_LOAN', 200_000, { ...options, sequence: 1 }).debts;
+
+    expect(both).toHaveLength(2);
+    expect(both[0].id).not.toBe(both[1].id);
+  });
+
+  it('opens nothing for a non-positive principal', () => {
+    expect(openDebtFromInstrument([], 'PERSONAL_LOAN', 0, options).debts).toEqual([]);
+    expect(openDebtFromInstrument([], 'PERSONAL_LOAN', -500, options).unabsorbedCents).toBe(0);
   });
 });

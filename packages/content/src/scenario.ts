@@ -5,6 +5,7 @@
  * no dependencies and cannot import events, jobs or templates itself.
  */
 import { type Allocation, type Run, type RunConfig, createRun, emptyAllocation } from '@finme/engine';
+import { CHAINS } from './chains.ts';
 import { EVENTS } from './events.ts';
 import { JOBS } from './jobs.ts';
 import { LOGBOOK_TEMPLATES, drawRunNames } from './logbook.ts';
@@ -33,6 +34,7 @@ export function scenarioConfig(options: ScenarioOptions): RunConfig {
     startAge: options.startAge ?? 22,
     jobs: JOBS,
     eventDefs: EVENTS,
+    chainDefs: CHAINS,
     templates: LOGBOOK_TEMPLATES,
     drawNames: drawRunNames,
     startingCashCents: options.startingCashCents ?? 200_000,

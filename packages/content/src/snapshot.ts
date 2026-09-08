@@ -61,6 +61,9 @@ export function serializeState(state: RunState): Record<string, unknown> {
     performance: round(state.performance),
     weeksUnemployed: state.weeksUnemployed,
     consecutiveOvertimeWeeks: state.consecutiveOvertimeWeeks,
+    experienceWeeks: Object.fromEntries(
+      Object.entries(state.experienceWeeks).sort(([a], [b]) => a.localeCompare(b)),
+    ),
 
     energy: round(state.energy),
     mood: round(state.mood),
@@ -95,6 +98,17 @@ export function serializeState(state: RunState): Record<string, unknown> {
       Object.entries(state.eventHistory).sort(([a], [b]) => a.localeCompare(b)),
     ),
     deferredEffects: state.deferredEffects.map((d) => ({ dueWeek: d.dueWeek, logbookKey: d.logbookKey ?? null })),
+    chains: state.chains.map((chain) => ({
+      chainId: chain.chainId,
+      stepId: chain.stepId,
+      dueWeek: chain.dueWeek,
+      startedWeek: chain.startedWeek,
+      stepsTaken: chain.stepsTaken,
+      target: chain.target,
+    })),
+    chainHistory: Object.fromEntries(
+      Object.entries(state.chainHistory).sort(([a], [b]) => a.localeCompare(b)),
+    ),
     flags: [...state.flags],
 
     ytd: Object.fromEntries(
@@ -106,7 +120,7 @@ export function serializeState(state: RunState): Record<string, unknown> {
       ...snapshot,
       cpi: round(snapshot.cpi),
     })),
-    interestPaidThisYearCents: state.interestPaidThisYearCents,
+    interestChargedThisYearCents: state.interestChargedThisYearCents,
     employerMatchedThisYearCents: state.employerMatchedThisYearCents,
 
     dire: state.dire,

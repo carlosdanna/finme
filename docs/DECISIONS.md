@@ -1461,3 +1461,207 @@ it costs 3/5 of full-time's mood for 3/5 of its time points. `MOOD_PART_TIME` is
 is unaffected: its scripted recovery strategy allocates rest and free social only,
 so no work mode enters it. Done before any balance test exercises time allocation,
 so nothing had to be re-run for it.
+
+## 2026-09-07 — Chains: multi-week, player-initiated processes
+**Context:** two of the game's most consequential decisions were unreachable.
+`applicationProbability`/`rollApplication` implemented GDD §3.1's odds exactly and
+**nothing called them**; `housingTier` was written once at init and never mutated,
+so `HOU_RENT_INCREASE`'s "Find somewhere cheaper" charged a moving cost and moved
+nobody. GDD §5.4's one line — "events may chain" — was the entire specification.
+**Decision:** a chain is a player-initiated state machine whose steps are ordinary
+`EventDef` cards, specified in TDD §9.6 and authored in `packages/content/chains`.
+`JOB_SEARCH` and `HOME_SEARCH` ship with it; `HOME_SEARCH` covers renting and
+buying.
+**Consequences:**
+1. Steps fire at their own `dueWeek`, **not** from §9.1's slots. Competing for
+   slots would stall a chain up to ten weeks per step and steal fires from §9.5's
+   category budget, breaking `EVENT-CATALOGUE.md`'s arithmetic. §7.4's
+   `SOC_REACH_OUT` is the precedent for an event that is not seed-placed; a chain
+   the player explicitly asked for is easier to justify than that one.
+2. **[F] One card a week.** A slot event wins the week and the chain step slips by
+   one. The slot schedule is the seeded world and never yields to a
+   player-initiated process. This also keeps the awaited-card state single-valued,
+   which the UI's decline/re-tick protocol depends on.
+3. **[F] `CHAIN_MAX_STEPS = 12`**, plus an end on an unrecognised `goto` and on a
+   step whose choices are all gated out. A search the player can never stop having
+   is both a hang and bad pedagogy. The content lint rejects a chain with no
+   reachable terminal before any of those can fire.
+4. Chain steps are **excluded from §9.5's category budget** and from the
+   catalogue's fire counts, which now say so.
+5. Decisions only exist while a search is running, so §2.1's 150-250 budget is
+   unaffected for a player who never starts one — and the C-suite output is
+   byte-identical to `be70d52`, which is the evidence.
+
+## 2026-09-07 — The `chain` stream, appended
+**Context:** chain cards need a magnitude roll and chain branches need an outcome
+roll. Taking either from `eventMagnitude` would make its draw count depend on
+whether the player started a search, so starting one would shift the price of
+every later slot event.
+**Decision:** `chain` appended to `IN_PLAY_STREAMS`, following the `eventMagnitude`
+precedent (2026-09-06). `JOB_SEARCH` declares `jobApplication` instead, which is
+what TDD §2.2's table always reserved that stream for and what finally makes the
+entry mean something.
+**Consequences:**
+1. Appending is safe where inserting is not: streams derive from
+   `fnv1a(seed::name)`, so the existing nine are bit-identical. The unchanged
+   `market-4F2A9C1B-30y.json` fixture is the proof.
+2. The stream is declared **per chain, not per step**, so `resolveChoice` keeps
+   its single `Rng` parameter and the "no draws for a choice without an
+   outcomeRoll" invariant holds unchanged.
+3. §2.2's table was also two entries stale — `eventMagnitude` was never added when
+   it shipped. Both are in it now.
+
+## 2026-09-07 — `applyOutcome` dropped every debt and job offer it was given
+**Context:** `{k:'debt'}` and `{k:'jobOffer'}` folded correctly into
+`EffectOutcome` and were then silently discarded by `applyOutcome`. Two shipped
+events (`EMG_CAR_BREAKDOWN/bnpl`, `HLT_UNEXPECTED_DENTAL/payment_plan`) computed a
+principal and opened nothing. `InterruptReason` reserved `'job-offer'` and nothing
+emitted it. Latent rather than live, because nothing else opened a debt either.
+**Decision:** both are applied. A `debt` effect opens the named instrument through
+`openDebtFromInstrument`, priced against the player's actual credit score; a
+`jobOffer` puts the player in the job and raises the interrupt.
+**Consequences:**
+1. `serviceDebts` only ever serviced credit cards, so an amortizing loan would
+   have sat at its opening balance forever — fixed in the same change, or a
+   mortgage would be free money. **BNPL and payday are still unserviced**; that is
+   a separate change and is not in scope here.
+2. A card charge no card can absorb becomes an accrued unpaid bill rather than
+   vanishing. A declined card does not make the cost go away.
+3. `DEBT_INSTRUMENTS` now lives once in `debt/types.ts` with the Zod enum derived
+   from it — the `CREDIT_EVENT_KINDS` pattern — because adding `MORTGAGE` to three
+   separate spellings is exactly the failure that entry describes.
+4. `DEFAULT_LOAN_TERM_MONTHS` **[T]** is new: §5.2 gives ranges (personal 24-60,
+   mortgage 180/360) and content names a product, not a schedule.
+5. The golden run fixture did **not** move: the scripted strategy owns no car and
+   never takes the dental payment plan, so no `debt` effect fires in it.
+
+## 2026-09-07 — The home price is derived from the rent, not set beside it
+**Context:** TDD §8.2 warns that the buy-versus-rent lesson only holds if rent is
+priced at about `homePrice / 16` per year, and that "the housing tiers must be set
+against the home price range, never independently of it". They were independent:
+`HOUSING_TIER_RENT_CENTS` and the sim probe's implied $1,667/month were unrelated
+numbers that happened to be close.
+**Decision:** the chain's `homePriceCents` is computed as
+`tierRentCents(tier) · cpi · 12 · HOME_PRICE_TO_RENT`. There is no second number
+to keep in step.
+**Consequences:** tier 2 ($1,600/month) prices at $307,200, which is the probe's
+$320,000 household to within 4%, so the buy path sits on the case
+`pnpm -F @finme/sim housing` actually models. Changing a rent tier now moves the
+purchase price with it automatically. The probe itself is unchanged and its
+assertions still pass.
+
+## 2026-09-07 — Experience finally has a source
+**Context:** `ApplicationContext.relevantExperienceYears` is the strongest term in
+GDD §3.1's formula and had nothing behind it. TDD §4.1 specified
+`experienceWeeks: Record<JobTier, number>` and it was never built; `study` was an
+allocation slot that cost energy and accumulated nothing.
+**Decision:** `experienceWeeks` accrues in tick step 9 for a week actually worked,
+at the tier of the job held. "Relevant" experience for a role is time at its tier
+**or any higher one** — a former specialist applying to an entry role is not
+inexperienced, while time at a lower tier does not count towards a role above it.
+**Consequences:** additive to `RunState`; the golden fixture gained the field
+showing 200 weeks at `entry`, with no other value moved. `study` still accumulates
+nothing — education remains unmodelled and `Applicant.educationYears` is still
+hardcoded to 0 at the one call site. That gap is now visible rather than hidden
+behind an unused function.
+
+## 2026-09-08 — Starting a search is an action, not a tick input
+**Context:** review of the chain PR found that `startChain`/`abandonChain` on
+`TickInput` made the store call `tick` with no `chooseEvent` or
+`chooseChainStep`. `tick` falls back to `available[0]` when nobody answers, so
+tapping Apply or Look on a week holding a card resolved that card with its
+first-listed choice and the player never saw it. Reproduced on seed 4F2A9C1B: a
+start at week 6 fired `HOU_RENT_INCREASE` and logged
+`{"w":7,"t":"event","e":"HOU_RENT_INCREASE","c":"absorb"}`, and a start while
+`JOB_SEARCH/prepare` was due logged `c:"rework"` — the costly branch.
+**Decision:** `beginChain` and `abandonChain` are engine actions that apply at
+the current `weekIndex` and do not advance time. Both are removed from
+`TickInput`. Only a chain *step* goes through the tick, because only a step is a
+card.
+**Consequences:**
+1. This was a GDD §1 failure as much as a correctness one: the game silently
+   picked the first-listed option, which is the exact signal the choice-ordering
+   rules exist to prevent.
+2. The `?? available[0]` fallback in `tick` stays — the headless harness relies
+   on it, and with the actions gone no interactive path reaches it unanswered.
+3. It also removes a latent hazard the review flagged separately: a declined
+   chain step returns `state: previous`, which would have rolled back a start
+   requested in the same tick. Structurally impossible now.
+4. A chain's first step lands one week earlier relative to the tap than before,
+   because the action applies at week N rather than at the tick's N+1. The panel
+   still reads "in 1 week", and no fixture moved.
+
+## 2026-09-08 — A missed amortizing payment accrues interest
+**Context:** the same review found `serviceDebts` pushing an unaffordable
+amortizing loan back untouched — balance unchanged, `monthsPaid` unchanged, no
+interest booked — directly under a comment claiming the interest was not
+forgiven. It was. The credit-card branch four lines down calls
+`closeStatement(card, 0)`, which charges interest regardless, so the two paths
+disagreed about what missing a payment meant. A player who stayed broke rode a
+mortgage for thirty years without paying a cent of interest.
+**Decision:** a missed month accrues that month's interest onto the balance and
+leaves `monthsPaid` where it is. Missing a payment makes the debt larger; it is
+never free. Verified: ten broke weeks on a $246,000 mortgage at 7.5% now add
+exactly one month's $1,537.50 per month boundary crossed.
+**Consequences:**
+1. §5.2's lesson holds on the one instrument the whole buy path rests on.
+   Inverting it there would have been the worst place to get this wrong.
+2. `serviceDebts` now takes the cash actually available and misses anything it
+   cannot cover, rather than subtracting scheduled payments unclamped. The
+   review noted cash could go silently to −$1,220 on a mortgage month; the shape
+   was pre-existing but a card minimum is tens of dollars and a mortgage payment
+   is thousands.
+3. `interestPaidThisYearCents` counts accrued-but-unpaid interest, matching what
+   the card path already did with `interestChargedCents`. The field is "charged",
+   not "paid".
+4. C2 still passes and the whole C-suite is byte-identical to `be70d52`, so
+   bankruptcy is no more exploitable than before. **An event with a cash cost
+   can still take cash negative through `applyOutcome`** — pre-existing, not
+   debt-service, and not addressed here.
+
+## 2026-09-08 — Interest is charged, not paid, and the field now says so
+**Context:** review noted that `interestPaidThisYearCents` accumulates
+`serviced.interestCents`, which since the missed-payment fix includes accrued but
+unpaid mortgage interest — while the Annual Review rendered *"You paid X in
+interest this year"*. For a missed month that money never left the account. The
+mismatch was pre-existing for credit cards, where `closeStatement` charges
+interest regardless of payment, but a card's interest is tens of dollars and a
+mortgage's is ~$1,537 a month.
+**Decision:** the field is renamed to `interestChargedThisYearCents`
+(`AnnualSnapshot.interestChargedCents`) and the review copy now reads "Interest
+charged this year came to …".
+**Consequences:**
+1. The number was always right; the label was wrong. Charged interest is a real
+   cost whether or not money moved — that is the point of the missed-payment
+   change, and calling it "paid" hid exactly the lesson §5.2 is teaching.
+2. The golden fixture moves by a pure key rename: four lines, values identical,
+   no simulated value touched. Verified key-by-key before regenerating.
+3. Naming the field for what it holds is what stops the label drifting again.
+
+## 2026-09-08 — Chain actions report the interrupts they cause
+**Context:** `evaluateInterrupts` is edge-triggered on the previous value, so a
+floor crossed by an action outside the tick is swallowed: abandoning at mood 27
+costs 3, lands at 24, and the next tick sees a `previous.mood` already below the
+floor and reports nothing. Narrow today — `abandonEffects` at −3 mood is the only
+non-empty one, and both chains ship with empty `startEffects` — but it is a hole
+that widens with every chain written.
+**Decision:** `beginChain` and `abandonChain` return `{ state, interrupts }`,
+evaluating against the pre-action state. The store surfaces them the way it does
+a tick's.
+**Consequences:** an action is now a first-class thing that can halt the advance
+control, which is what GDD §2.1 asks of anything that crosses a floor. The cost
+is that the actions no longer return a bare `RunState`.
+
+## 2026-09-08 — Debt service is first-come-first-served against available cash
+**Context:** capping debt service at the cash present (2026-09-08 entry above)
+makes the instruments compete. `remaining` is consumed in `state.debts` order, so
+a card opened before a mortgage takes its minimum and the mortgage is the one
+missed.
+**Decision:** keep open order. It is stable, it is already the rule the comment
+in `serviceDebts` gives for never sorting by balance, and any smarter policy
+(largest first, highest rate first) is a strategy the player should be choosing,
+not one the engine should be applying silently.
+**Consequences:** open order — not size, rate or consequence — decides which debt
+takes the credit-score hit in a tight month. Previously a card minimum was paid
+unless the whole month was short, full stop. Recorded here because it is a real
+behavioural change that no test would otherwise explain.

@@ -22,6 +22,20 @@ export const MORTGAGE_CREDIT_DISCOUNT = 0.02;
 export const MORTGAGE_MIN_DOWN_PAYMENT_PCT = 0.1;
 export const MORTGAGE_MIN_CREDIT_SCORE = 620;
 
+/**
+ * [T] The term used when an event or a chain opens a loan without naming one.
+ *
+ * §5.2 gives ranges rather than single values (personal 24–60, auto 36–60,
+ * mortgage 180/360). Content names a product, not a schedule, so one default
+ * per product lives here rather than being restated at every call site.
+ */
+export const DEFAULT_LOAN_TERM_MONTHS: Readonly<Record<LoanType, number>> = {
+  personal: 36,
+  auto: 60,
+  student: 120,
+  mortgage: 360,
+};
+
 export interface AmortizingLoan extends Debt {
   readonly kind: 'amortizing';
   readonly loanType: LoanType;

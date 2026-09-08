@@ -1,19 +1,14 @@
 {
   "templates": {
-    "quiet": [
-      "Nothing much. Rent, groceries, a Tuesday that felt like a Wednesday.",
-      "A week went by. You are {{age}}. The balance says {{cash}}.",
-      "No decisions worth the name. The month kept its own accounts."
+    "car_repair_carded": [
+      "The card took it. {{amount}} that will still be there next month, and the month after.",
+      "Swiped for {{amount}}. The car is fixed. The balance is not.",
+      "It went on the card. You did the arithmetic later, in the car park."
     ],
     "car_repair_paid": [
       "Paid the {{amount}}. The car makes a different noise now, which the mechanic says is the correct noise.",
       "{{amount}}, and the account felt it. It starts on the first turn again.",
       "You handed over {{amount}} and drove home the long way, listening."
-    ],
-    "car_repair_carded": [
-      "The card took it. {{amount}} that will still be there next month, and the month after.",
-      "Swiped for {{amount}}. The car is fixed. The balance is not.",
-      "It went on the card. You did the arithmetic later, in the car park."
     ],
     "car_scrapped": [
       "Let it go for {{amount}}. The bus takes fifty minutes.",
@@ -27,7 +22,7 @@
     ],
     "crypto_in_small": [
       "A small amount, {{amount}}, enough to have an opinion at lunch.",
-      "{{amount}} in — small enough to lose, large enough to check.",
+      "{{amount}} in \u2014 small enough to lose, large enough to check.",
       "You put in {{amount}}. Not nothing. Not a month's rent either."
     ],
     "crypto_passed": [
@@ -35,15 +30,15 @@
       "Passed. Dev sent a screenshot on Thursday. You did not open it.",
       "Not this time. The chart went on doing whatever charts do."
     ],
-    "dental_paid": [
-      "{{amount}} for a tooth you had never thought about until Tuesday.",
-      "Paid it there and then. {{amount}}, and a follow-up in six months.",
-      "The receptionist read out {{amount}} and you said yes in the same flat voice."
-    ],
     "dental_financed": [
       "Signed the payment plan. {{amount}} in instalments, at a rate printed small.",
       "Financed. The tooth is fixed and the paperwork is in a drawer.",
       "Twelve payments. The first one is next month and feels reasonable."
+    ],
+    "dental_paid": [
+      "{{amount}} for a tooth you had never thought about until Tuesday.",
+      "Paid it there and then. {{amount}}, and a follow-up in six months.",
+      "The receptionist read out {{amount}} and you said yes in the same flat voice."
     ],
     "dental_postponed": [
       "Booked it for later. Later is a place you have been before.",
@@ -52,8 +47,148 @@
     ],
     "dental_postponed_worse": [
       "The tooth came back, and it brought {{amount}} with it.",
-      "Autumn arrived. So did {{amount}} — more than the spring number.",
+      "Autumn arrived. So did {{amount}} \u2014 more than the spring number.",
       "It was a filling in March. In September it was {{amount}}."
+    ],
+    "home_agent_review": [
+      "Four came through. You opened all of them and closed three.",
+      "You went through what she had sent. Most of it was not close.",
+      "The shortlist arrived by email and got shorter."
+    ],
+    "home_apply_accepted": [
+      "Accepted. The tenancy agreement arrived as a PDF with your name spelled right.",
+      "They said yes. There is a date and a set of keys attached to it.",
+      "Through. The referencing came back clean."
+    ],
+    "home_apply_refused": [
+      "Refused. The reason was not given and was not owed.",
+      "They said no. The holding fee is a separate conversation.",
+      "Declined at referencing. That was the end of that one."
+    ],
+    "home_apply_submit": [
+      "References, payslips, and a holding fee whose return conditions were vague.",
+      "You sent the lot. The fee went with it.",
+      "Everything they asked for, in one email, at half past eleven."
+    ],
+    "home_apply_withdrawn": [
+      "You pulled the application. Something about it had stopped fitting.",
+      "You withdrew before it went any further.",
+      "You changed your mind, which you are allowed to do."
+    ],
+    "home_brief_agent": [
+      "You paid someone to do the looking. The fee went out the same afternoon.",
+      "An agent took the brief and the fee, in that order.",
+      "You handed it over to someone whose job it is."
+    ],
+    "home_brief_weekends": [
+      "You gave it your weekends. Both of them, for a while.",
+      "Saturdays became viewings. Sundays became thinking about viewings.",
+      "You did the looking yourself, in the hours that were left."
+    ],
+    "home_completed": [
+      "Completion. Thirty years of it, starting now, and a door that is yours to fix.",
+      "You signed everything. The solicitor's letter used the word eleven times and then it was done.",
+      "It completed on a Friday. You own a house and most of a mortgage."
+    ],
+    "home_declined_absorb": [
+      "It went to someone else. You left the listing where it was.",
+      "No, and no reason. You stopped refreshing the page eventually.",
+      "Someone else got it. The photographs stayed up for another week."
+    ],
+    "home_declined_answered": [
+      "They told you. It was a referencing threshold and a number you can name.",
+      "You got an answer. It was specific enough to be worth having.",
+      "She explained. It was not personal and it was not a mystery."
+    ],
+    "home_declined_ask": [
+      "You asked what had gone wrong.",
+      "You wrote and asked for the reason.",
+      "You sent one more email, asking why."
+    ],
+    "home_declined_silence": [
+      "Nothing came back at all.",
+      "No reply. The question stayed in the sent folder.",
+      "Silence, which answers a different question."
+    ],
+    "home_move_backed_out": [
+      "You backed out at the last moment. The holding fee stayed with them.",
+      "You did not sign. It cost you the deposit and a night's sleep.",
+      "You pulled out before the keys. The reasons were yours."
+    ],
+    "home_moved_in": [
+      "Keys on a Thursday. A van, a friend, and everything you own on a pavement.",
+      "You moved. The first night you could not find the kettle.",
+      "In. The deposit is gone and the boxes are not unpacked."
+    ],
+    "home_offer_accepted": [
+      "Accepted. Now everything waits on lawyers.",
+      "They took it. The agent rang rather than emailed, which felt significant.",
+      "Offer accepted, subject to the survey, the searches, and time."
+    ],
+    "home_offer_beaten": [
+      "Someone offered more. You found out on a Wednesday.",
+      "Beaten to it. The listing went to 'sold' while you were looking at it.",
+      "It went elsewhere. The survey fee does not come back."
+    ],
+    "home_offer_made": [
+      "The offer went in. The survey and the solicitor wanted paying first.",
+      "You offered, and paid for the privilege of finding out whether it was accepted.",
+      "An offer, a survey fee, and a lot of waiting."
+    ],
+    "home_offer_walked": [
+      "Not that one. The number had stopped making sense on the way home.",
+      "You walked. It was a good house and the wrong price.",
+      "You left it. The maths did not get better the longer you looked at it."
+    ],
+    "home_pulled_out": [
+      "You pulled out. The survey money and the legal fees stayed where they were.",
+      "You did not complete. It cost several thousand to not buy a house.",
+      "You walked away at the end. The costs were already spent."
+    ],
+    "home_search_abandoned": [
+      "You stopped looking. The alerts kept coming for a fortnight afterwards.",
+      "The search went quiet. The place you have is the place you have.",
+      "You let it go. The saved search is still sitting there, unopened."
+    ],
+    "home_search_paused": [
+      "You put it down for a while. Looking is its own kind of work.",
+      "Enough for now. The tabs stayed open and stopped being read.",
+      "You stopped for a bit. It was taking more evenings than you had."
+    ],
+    "home_search_started": [
+      "You started looking for somewhere else. Two tabs at first, then more.",
+      "A saved search with a maximum on it that you have already adjusted once.",
+      "You began looking. Every kitchen in every photograph is the same kitchen."
+    ],
+    "home_shortlist_apply": [
+      "You put in an application. Three years of addresses and a referee.",
+      "You applied. The form wanted things you had to go and look up.",
+      "In it went, with the payslips attached."
+    ],
+    "home_shortlist_offer": [
+      "You made an offer. Saying the number out loud was the hard part.",
+      "An offer went in, subject to everything that offers are subject to.",
+      "You offered. The agent said she would put it forward and said nothing else."
+    ],
+    "home_shortlist_walk": [
+      "Neither, in the end. You had been back twice and it was still a no.",
+      "You walked away from it. The second viewing had answered the question.",
+      "Not that one. You closed the tab yourself this time."
+    ],
+    "home_viewings_found": [
+      "One of them stayed with you. You went back past it on the way home.",
+      "There was one. You are still thinking about it, which is not the same as liking it.",
+      "Something worth a second look, finally."
+    ],
+    "home_viewings_go": [
+      "Three in one afternoon, in the rain, with a printed list.",
+      "You went round them all. Two were wrong from the doorway.",
+      "An afternoon of other people's hallways."
+    ],
+    "home_viewings_none": [
+      "Nothing. The same wide-angle photographs and the same disappointing hallways.",
+      "None of them. You have started recognising the same furniture in different flats.",
+      "Nothing this time either. The search continues on its own schedule."
     ],
     "inflation_absorbed": [
       "The same shop, the same list, {{amount}} more at the till.",
@@ -65,6 +200,126 @@
       "Cut back. The list is shorter and so is the receipt.",
       "You went through the statements line by line and found {{amount}}."
     ],
+    "job_gone_chase": [
+      "You emailed them anyway, on the basis that the worst case was nothing.",
+      "You wrote to the address at the bottom of the old posting.",
+      "You chased it. There was no particular reason to expect an answer."
+    ],
+    "job_gone_reopened": [
+      "It opened again. They had lost their first choice and remembered your name.",
+      "The role came back. Same posting, same number, three weeks later.",
+      "They wrote back and asked if you were still interested."
+    ],
+    "job_gone_shrug": [
+      "The role had gone. You took the alert off and made a coffee.",
+      "Closed before you got there. You left it where it was.",
+      "It was over before it was over. You noted the date and moved on."
+    ],
+    "job_gone_silence": [
+      "Nothing. The address may not have been read by anyone in months.",
+      "No answer, which was the likely answer.",
+      "The email went nowhere at all."
+    ],
+    "job_interview_attend": [
+      "Thursday, half past two. You arrived twenty minutes early and walked around the block twice.",
+      "Forty minutes and three people. One of them asked a question you had not thought about at all.",
+      "You went. Afterwards you replayed one answer the whole way home."
+    ],
+    "job_interview_no": [
+      "Not this time. The email came on a Tuesday and was four sentences long.",
+      "They went another way. You found out from an automated address.",
+      "No. It arrived while you were doing something else, which was probably better."
+    ],
+    "job_interview_through": [
+      "They want to take it further. You read the email twice to be sure that is what it said.",
+      "It went somewhere. There is a next stage, and a date for it.",
+      "Through to the next part. The relief was out of proportion to the news."
+    ],
+    "job_interview_vanished": [
+      "Nobody was on the other end. The role had gone before you ever got there.",
+      "You turned up to an empty process. The posting had come down days earlier.",
+      "The whole thing had closed without anyone telling you."
+    ],
+    "job_offer_declined": [
+      "You said no. The role was real and the answer was still no.",
+      "You turned it down. They were gracious and you were relieved and neither lasted all day.",
+      "Declined. The reasons made sense on paper and on paper is where they stayed."
+    ],
+    "job_offer_negotiate": [
+      "You asked for more. The pause on the other end of the line was four seconds long.",
+      "You said the number back to them with a question mark on it.",
+      "You asked. Your voice did the thing it does."
+    ],
+    "job_offer_negotiated": [
+      "They moved. Not all the way, but they moved, and there was a signing figure on top.",
+      "The number went up. It cost one uncomfortable phone call.",
+      "They came back better. You said yes before they could reconsider."
+    ],
+    "job_offer_taken": [
+      "You took it. A start date, a desk, and someone new to learn the names of.",
+      "Signed. The old badge went in a drawer rather than the bin.",
+      "You said yes on the Friday, as asked."
+    ],
+    "job_offer_withdrawn": [
+      "They took the offer away rather than raise it. The email was cooler than the last one.",
+      "The offer came off the table. You had not expected that to be one of the outcomes.",
+      "That was the end of it. There was no second version of the conversation."
+    ],
+    "job_prepare_contact": [
+      "You messaged someone you had not messaged in two years and asked them for something.",
+      "You called in the favour. They were nice about it, which did not make it easier to ask.",
+      "You asked someone on the inside. It took forty minutes to write six lines."
+    ],
+    "job_prepare_rework": [
+      "Three evenings on four paragraphs. You read them aloud once, which helped and was also humiliating.",
+      "You rewrote it properly. The version you sent has none of the first version left in it.",
+      "Two late nights and a lot of deleting. It says what you meant by the end."
+    ],
+    "job_prepare_send": [
+      "You sent what you had. The covering letter was the one you keep and change the name in.",
+      "Submitted at eleven at night, unedited. The confirmation email arrived instantly.",
+      "You hit send before you could think about it any longer."
+    ],
+    "job_rejected_absorb": [
+      "You closed the tab. The rest of the evening carried on around it.",
+      "Filed under no. There were other things to do that night.",
+      "You read it once and did not read it again."
+    ],
+    "job_rejected_answered": [
+      "They answered. Two specifics, both fair, both useful.",
+      "She wrote back properly. It was more helpful than the rejection had been.",
+      "You got a real reply, which almost never happens."
+    ],
+    "job_rejected_feedback": [
+      "You wrote back and asked what had been missing.",
+      "You asked for the reason. It took three drafts to sound casual.",
+      "You sent the follow-up. There is nothing to lose at that point, which is not the same as it being easy."
+    ],
+    "job_rejected_ignored": [
+      "Nothing came back. The thread ends with your message in it.",
+      "No reply. The question sat in the sent folder.",
+      "Silence, and then a week later still silence."
+    ],
+    "job_search_abandoned": [
+      "You let the search go quiet. The tabs closed themselves eventually, the way tabs do.",
+      "You stopped looking. The alert kept arriving on Tuesdays for a while afterwards.",
+      "That was that, for now. The saved search is still there if you want it."
+    ],
+    "job_search_started": [
+      "You started looking. Not seriously, you told yourself, opening the third tab.",
+      "A saved search and an alert set for weekday mornings. That is where it begins.",
+      "You updated the CV. The last entry on it was four years old and slightly untrue."
+    ],
+    "job_withdrew": [
+      "You took yourself out of it. The reasons were good and you still thought about it that night.",
+      "You withdrew. It was the right amount of effort to have spent and no more.",
+      "You stopped there. The application stays in a folder somewhere, unanswered."
+    ],
+    "quiet": [
+      "Nothing much. Rent, groceries, a Tuesday that felt like a Wednesday.",
+      "A week went by. You are {{age}}. The balance says {{cash}}.",
+      "No decisions worth the name. The month kept its own accounts."
+    ],
     "raise_accepted": [
       "{{pct}} percent. You said thank you, and meant most of it.",
       "The number was {{pct}} percent. Prices were not {{pct}} percent.",
@@ -75,15 +330,15 @@
       "You said the sentence you had practised in the car.",
       "You asked. It is a short question and it takes a long time to say."
     ],
-    "raise_negotiated_win": [
-      "They went away and came back with a better number.",
-      "It worked. Nobody said so out loud, but it worked.",
-      "A revised letter arrived on Friday. The figure had moved."
-    ],
     "raise_negotiated_loss": [
       "The answer was the budget, which is a way of saying no.",
       "No. Politely, and with a reference to the wider picture.",
       "They said they'd revisit it. The word 'revisit' did a lot of work."
+    ],
+    "raise_negotiated_win": [
+      "They went away and came back with a better number.",
+      "It worked. Nobody said so out loud, but it worked.",
+      "A revised letter arrived on Friday. The figure had moved."
     ],
     "refund_saved": [
       "The refund went straight into savings, where it is extremely boring.",
@@ -115,15 +370,15 @@
       "You asked them to hold it. It took four days to hear anything.",
       "You made the case in writing. It was a polite email."
     ],
-    "rent_negotiated_win": [
-      "They held it for another year. No reason given.",
-      "The increase quietly did not happen.",
-      "A one-line reply: same rent, twelve months."
-    ],
     "rent_negotiated_loss": [
       "They held firm. The increase stands from the first.",
       "No movement. The new figure starts next quarter.",
       "The reply mentioned market rates twice."
+    ],
+    "rent_negotiated_win": [
+      "They held it for another year. No reason given.",
+      "The increase quietly did not happen.",
+      "A one-line reply: same rent, twelve months."
     ],
     "wedding_attended": [
       "Two nights, a gift, and a suit that will be worn again, probably. {{amount}}.",
