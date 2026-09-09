@@ -21,6 +21,13 @@ import { serializeState } from '../src/snapshot.ts';
 
 const SEED = '4F2A9C1B';
 
+/**
+ * What `drawEntryScore` returns for `SEED` on the second draw of
+ * `startingDraw`. A literal on purpose: it is the only assertion in the repo
+ * that would notice a draw being inserted into that stream.
+ */
+const ENTRY_SCORE_FOR_SEED = 620;
+
 describe('starts.json', () => {
   it('defines GDD §3.7\'s six rows, in the table\'s order', () => {
     expect(STARTS.map((start) => start.id)).toEqual([
@@ -104,6 +111,21 @@ describe('the assignment is a hash, not a draw', () => {
     // about coverage, not about the distribution being uniform.
     for (let i = 0; i < 500; i++) dealt.add(assignedStartId(`SEED${i}`));
     expect([...dealt].sort()).toEqual(STARTS.map((s) => s.id).slice().sort());
+  });
+
+  it('leaves the entry credit score exactly where it was', () => {
+    // `startingDraw` is consumed as names-then-score, and until now nothing
+    // could see a shift in it: the scripted run never opens a credit line, so
+    // the score stays null, and the names reach only Logbook prose, which
+    // `serializeState` excludes on purpose. A start that opens a line at week 0
+    // is the first thing that makes the draw order observable — so it is pinned
+    // here. If this number moves, a draw was inserted before `drawEntryScore`.
+    const run = createScenarioRun({ seed: SEED, runLengthYears: 30, startId: 'behind-the-line' });
+    expect(run.world.entryCreditScore).toBe(ENTRY_SCORE_FOR_SEED);
+
+    // And it is genuinely reachable, rather than pinned somewhere inert.
+    const later = runWeeks(run, 30, () => ({ allocation: DEFAULT_ALLOCATION }));
+    expect(later.state.credit.score).not.toBeNull();
   });
 
   it('moves no stream, whichever start it deals', () => {
