@@ -11,6 +11,7 @@
  * a test asserts it.
  */
 import type { Allocation } from './vitals.ts';
+import type { AssetId } from './market.ts';
 import type { RunState, StandingOrders } from './state.ts';
 import type { StorageAdapter } from './storage.ts';
 import { RULESET_VERSION } from './version.ts';
@@ -33,8 +34,13 @@ export const SAVE_KEY_PREFIX = 'finme:run:';
 export type DecisionRecord =
   | { readonly w: number; readonly t: 'alloc'; readonly v: readonly number[] }
   | { readonly w: number; readonly t: 'event'; readonly e: string; readonly c: string }
-  | { readonly w: number; readonly t: 'orders'; readonly v: StandingOrders }
+  // `p` is the retirement contribution rate, which the panel sets beside the
+  // orders even though it lives on `state.retirement` — see `setStandingOrders`.
+  | { readonly w: number; readonly t: 'orders'; readonly v: StandingOrders; readonly p: number }
   | { readonly w: number; readonly t: 'bankruptcy'; readonly c: string }
+  // Trades (§3.2). `v` is the cents spent on a buy, `s` the shares sold.
+  | { readonly w: number; readonly t: 'buy'; readonly a: AssetId; readonly v: number }
+  | { readonly w: number; readonly t: 'sell'; readonly a: AssetId; readonly s: number }
   // Chains (§9.6). A save is the seed plus this log, so a search in flight
   // replays from these three records and nothing else — `k` is the chain id,
   // `g` its target, `s` the step, `c` the choice.

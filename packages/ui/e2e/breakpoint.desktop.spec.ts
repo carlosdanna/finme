@@ -51,3 +51,21 @@ test('the event modal is a centred dialog above md:, not a full-width sheet', as
   expect(box.width).toBeLessThan(viewport.width * 0.7);
   expect(box.x).toBeGreaterThan(viewport.width * 0.1);
 });
+
+test('the trade sheet is a centred dialog above md:, like the event modal', async ({ page }) => {
+  await page.goto('/');
+  await beginRun(page);
+  await page.getByRole('tab', { name: 'Money' }).click();
+  await page.getByRole('button', { name: /^Investing/ }).click();
+  await page.getByRole('button', { name: 'Buy' }).first().click();
+
+  // The Investing panel itself is the sheet underneath; the trade is the dialog
+  // on top of it, which is the swap under test.
+  const trade = page.locator('[data-slot="dialog-content"]');
+  await expect(trade).toBeVisible();
+
+  const box = (await trade.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.width).toBeLessThan(viewport.width * 0.7);
+  expect(box.x).toBeGreaterThan(viewport.width * 0.1);
+});

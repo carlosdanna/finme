@@ -1901,3 +1901,59 @@ moved yet.
    `vitals.ts`, `tick.ts`, `jobs.ts`, `state.ts` and `run.ts` — including
    `clampAllocation` itself. Steps 1 and 2 above (quitting; overtime and side
    hustle) each fix a live bug independently and can ship on their own.
+
+## 2026-09-09 — Buying and selling are actions, and cost the ruleset nothing
+**Context:** GDD §3.2 says the player can buy or sell any time, and §6.3 lists
+buy/sell as part of the Investing panel. Neither existed. `sellLotsFifo` and the
+short/long split had no caller outside their own tests, so TDD §4.1's mandatory
+holding-period split had never been computed in a real run.
+**Decision:** `buyAsset` and `sellAsset` in `packages/engine/src/trade.ts`,
+modelled on `beginChain`/`abandonChain` and for the same reason (2026-09-08,
+"Starting a search is an action, not a tick input"): a trade happens inside the
+week the player is already in, so it must not advance time and must not touch
+that week's card. Both return `evaluateInterrupts(next, previous)`, because that
+function is edge-triggered and a floor crossed outside the tick is otherwise
+swallowed. **No `RULESET_VERSION` bump.** The price is a lookup into the
+pre-drawn market path and the only stream touched is `flavor`, so a run that
+takes no trade is byte-identical — the unchanged golden fixtures are the
+evidence, and `trade.test.ts` asserts the draw counts directly.
+**Consequences:**
+1. **No commission and no per-week limit.** §3.2 says "any time", and a fee
+   would be a new [T] constant that moves C1. FIFO is the only friction, and it
+   is a tax rule rather than a toll. If a fee is ever wanted, it is a balance
+   change with a bump and a C1 re-run, not a UI tweak.
+2. A manual buy is the auto-invest branch of `applyStandingOrders` arithmetic
+   for arithmetic — `shares = amount / price`, the whole amount as the lot's
+   basis. A test pins it, because the two drifting apart would be invisible.
+3. Two new `DecisionRecord` variants, `buy` and `sell`. A save is the seed plus
+   the log (§14), so a trade outside it would not replay.
+4. First-time Logbook entries (`first_trade_buy`, `first_trade_sell`) are gated
+   on the new `has_bought` / `has_sold` flags rather than emitted every trade —
+   the chain actions narrate every time, which is right for something that
+   happens twice a run and wrong for something a rebalancer does monthly.
+5. `templateVarsFor` is exported from `tick.ts` so `trade.ts` shares it. It is
+   the third caller; a fourth should move it out of `tick.ts` entirely.
+
+## 2026-09-09 — Standing orders are written through the engine, and carry the contribution rate
+**Context:** the Investing panel's contribution slider and auto-reinvest switch
+were declared and never wired — they moved under the finger and sprang back —
+and `StandingOrders.autoInvest` had no UI at all. The `orders` decision record
+existed and nothing emitted it.
+**Decision:** `setStandingOrders` in `packages/engine/src/orders.ts`, called by a
+store action of the same name. The issue asked for this on the store; it is in
+the engine because the store contains zero simulation logic (CLAUDE.md) and
+because the clamping — contribution to 0–1, weekly amounts to whole non-negative
+cents — is a rule, not a formatting concern. The `orders` record gains a `p`
+field carrying `retirement.contributionPct`, which is set beside the orders even
+though the state field lives on `retirement`.
+**Consequences:**
+1. GDD §6.8's "all recurring behaviours in one place" is now one call. If the
+   emergency-fund and savings weekly amounts get controls, they route through
+   the same function and need no new record.
+2. An auto-invest order of zero is stored as `null`, so `applyStandingOrders`'
+   `autoInvest !== null` keeps meaning "the player set one".
+3. Nothing here draws, emits or moves money, so no bump and no fixture movement.
+   The employer match landing is asserted by advancing a month in a UI test.
+4. The auto-invest control has **no pre-selected asset**. A default would read as
+   the game's opinion (GDD §1); an asset is chosen by tapping it and cleared by
+   tapping it again.

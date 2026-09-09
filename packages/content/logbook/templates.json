@@ -50,6 +50,16 @@
       "Autumn arrived. So did {{amount}} \u2014 more than the spring number.",
       "It was a filling in March. In September it was {{amount}}."
     ],
+    "first_trade_buy": [
+      "You put money into {{assetName}} on a Tuesday afternoon, between two other things.",
+      "Bought {{assetName}} at whatever the screen said at the time. It said something else by Friday.",
+      "The confirmation took nine seconds. You owned a piece of {{assetName}}, and then you made dinner."
+    ],
+    "first_trade_sell": [
+      "Sold the {{assetName}}. The money is back in the account, and so is the question of where to put it.",
+      "Out of {{assetName}}. The chart carried on without you, which is what charts do.",
+      "You sold. The price you got is a fact now; Thursday's price belongs to somebody else."
+    ],
     "home_agent_review": [
       "Four came through. You opened all of them and closed three.",
       "You went through what she had sent. Most of it was not close.",

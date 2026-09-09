@@ -7,6 +7,7 @@ import {
   interpolate,
   monthOfYear,
   portfolioValueCents,
+  standingOrderChangeFrom,
   totalLiabilitiesCents,
   yearIndex,
 } from '@finme/engine';
@@ -75,6 +76,7 @@ export default function App() {
   const { start, setTab, openPanel, setGranularity, setAllocation, advanceTime, resolveEvent } =
     useGameStore();
   const { startChain, abandonChain, resolveChainStep } = useGameStore();
+  const { buyAsset, sellAsset, setStandingOrders } = useGameStore();
 
   if (run === null) return <NewRunPanel onBegin={start} />;
 
@@ -227,7 +229,32 @@ export default function App() {
                 }
               />
             )}
-            {panel === 'investing' && <InvestingPanel state={state} world={world} />}
+            {panel === 'investing' && (
+              <InvestingPanel
+                state={state}
+                world={world}
+                onBuy={buyAsset}
+                onSell={sellAsset}
+                onContributionChange={(pct) =>
+                  setStandingOrders({
+                    ...standingOrderChangeFrom(state),
+                    retirementContributionPct: pct,
+                  })
+                }
+                onAutoReinvestChange={(enabled) =>
+                  setStandingOrders({
+                    ...standingOrderChangeFrom(state),
+                    orders: { ...state.standingOrders, autoReinvestDividends: enabled },
+                  })
+                }
+                onAutoInvestChange={(autoInvest) =>
+                  setStandingOrders({
+                    ...standingOrderChangeFrom(state),
+                    orders: { ...state.standingOrders, autoInvest },
+                  })
+                }
+              />
+            )}
             {panel === 'balance-sheet' && <BalanceSheetPanel sheet={sheet} />}
             {panel === 'jobs' && (
               <JobsPanel

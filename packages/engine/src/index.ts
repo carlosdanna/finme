@@ -329,6 +329,10 @@ export * from './state.ts';
 export * from './tick.ts';
 export * from './run.ts';
 
+// Player actions taken inside a week, never through the tick (GDD §3.2, §6.8).
+export * from './trade.ts';
+export * from './orders.ts';
+
 // Epilogue projection (TDD §12).
 export * from './epilogue.ts';
 

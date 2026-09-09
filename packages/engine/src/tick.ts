@@ -1314,7 +1314,8 @@ function mergeRecurring(
     .sort((a, b) => a.category.localeCompare(b.category));
 }
 
-function templateVarsFor(state: RunState, world: RunWorld, netWorth: number): Record<string, string> {
+/** The `{{placeholder}}` values every Logbook emission shares. Read by `trade.ts` too. */
+export function templateVarsFor(state: RunState, world: RunWorld, netWorth: number): Record<string, string> {
   return {
     age: String(state.startAge + yearIndex(state.weekIndex)),
     cash: String(state.cashCents),

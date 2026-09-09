@@ -26,8 +26,16 @@ import {
   yearIndex,
 } from '@finme/engine';
 import { DEFAULT_ALLOCATION, assignedStartId, createScenarioRun } from '@finme/content';
-import type { ActiveChain, Allocation, EventDef } from '@finme/engine';
-import { abandonChain, beginChain, chainById, stepById } from '@finme/engine';
+import type { ActiveChain, Allocation, AssetId, EventDef, StandingOrderChange } from '@finme/engine';
+import {
+  abandonChain,
+  beginChain,
+  buyAsset,
+  chainById,
+  sellAsset,
+  setStandingOrders,
+  stepById,
+} from '@finme/engine';
 import { create } from 'zustand';
 import { chainDisplayVars, eventDisplayVars } from '@/lib/eventVars';
 
@@ -123,6 +131,9 @@ interface GameStore {
   resolveEvent: (choiceId: string) => void;
   startChain: (chainId: string, target?: string) => void;
   abandonChain: (chainId: string) => void;
+  buyAsset: (assetId: AssetId, cashCents: number) => void;
+  sellAsset: (assetId: AssetId, shares: number) => void;
+  setStandingOrders: (change: StandingOrderChange) => void;
   resolveChainStep: (choiceId: string) => void;
   loadSave: (raw: string) => void;
   dismissInterrupts: () => void;
@@ -253,6 +264,32 @@ export const useGameStore = create<GameStore>((set, get) => ({
     // edge-trigger would see it as already below and say nothing.
     const result = abandonChain(run.world, run.streams, run.state, chainId);
     set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+  },
+
+  // Trades and standing orders are engine *actions* too, for the reason the
+  // chain actions are: they happen inside the week the player is already in.
+  // Going through `tick` would advance time and resolve that week's card with
+  // its first-listed choice, unseen.
+  buyAsset: (assetId, cashCents) => {
+    const { run, pendingEvent, pendingChainStep } = get();
+    if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
+    const result = buyAsset(run.world, run.streams, run.state, assetId, cashCents);
+    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+  },
+
+  sellAsset: (assetId, shares) => {
+    const { run, pendingEvent, pendingChainStep } = get();
+    if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
+    const result = sellAsset(run.world, run.streams, run.state, assetId, shares);
+    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+  },
+
+  setStandingOrders: (change) => {
+    const { run } = get();
+    if (run === null) return;
+    // Nothing moves until the next tick reads the orders, so this needs no
+    // pending-card guard and reports no interrupts.
+    set({ run: { ...run, state: setStandingOrders(run.state, change) } });
   },
 
   resolveChainStep: (choiceId) => {
