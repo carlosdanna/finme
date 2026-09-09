@@ -108,24 +108,6 @@ test('a buy and a sell move the run by the amounts the sheet quoted', async ({ p
   await expect(page.locator('[data-slot="item"]', { hasText: 'Investments' })).toHaveCount(0);
 });
 
-test('the trade sheet states a loss with no destructive styling', async ({ page }) => {
-  // GDD §1: `destructive` is for destructive *user actions*, never for a figure.
-  await openPanel(page, 'Investing');
-  await page.getByRole('button', { name: 'Buy' }).first().tap();
-
-  const buy = tradeSheet(page);
-  await buy.getByLabel('Amount to spend').fill('100');
-  const colours = await buy.locator('[data-slot="money"]').evaluateAll((nodes) =>
-    nodes.map((node) => getComputedStyle(node).color),
-  );
-  const destructive = await page.evaluate(() =>
-    getComputedStyle(document.documentElement).getPropertyValue('--destructive').trim(),
-  );
-
-  expect(colours.length).toBeGreaterThan(0);
-  for (const colour of colours) expect(colour).not.toBe(destructive);
-});
-
 test('the standing-order controls stick rather than springing back', async ({ page }) => {
   // The bug this closes was that `App` passed neither handler, so every control
   // here moved under the finger and reverted on the next render. A component

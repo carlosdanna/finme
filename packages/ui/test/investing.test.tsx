@@ -7,6 +7,7 @@
  * the decision log, because a control that changes neither is the bug.
  */
 import { WEEKS_PER_YEAR, sellLotsFifo } from '@finme/engine';
+import type { AssetId, Run } from '@finme/engine';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { InvestingPanel } from '../src/panels/InvestingPanel.tsx';
@@ -86,6 +87,53 @@ const state = () => useGameStore.getState().run!.state;
  */
 function contributionSlider(container: HTMLElement): HTMLElement {
   return container.querySelector('[data-slot="slider"] input[type="range"]') as HTMLElement;
+}
+
+/**
+ * Put the run on a real loss. The week pair comes from the seed's own price
+ * series rather than being invented, so this is a state the sim could reach.
+ */
+function holdAtALoss(assetId: AssetId = 'BOND'): void {
+  const run = useGameStore.getState().run as Run;
+  const prices = run.world.market.series[assetId].priceCents;
+
+  let bought = -1;
+  let now = -1;
+  for (let a = 0; a < 260 && bought < 0; a++) {
+    for (let b = a + 1; b < 260; b++) {
+      if (prices[b] < prices[a]) {
+        bought = a;
+        now = b;
+        break;
+      }
+    }
+  }
+  expect(bought, 'no falling stretch in the first five years').toBeGreaterThanOrEqual(0);
+
+  const shares = 4;
+  useGameStore.setState({
+    run: {
+      ...run,
+      state: {
+        ...run.state,
+        weekIndex: now,
+        holdings: {
+          ...run.state.holdings,
+          [assetId]: {
+            shares,
+            lots: [
+              {
+                assetId,
+                shares,
+                purchasedWeek: bought,
+                costBasisCents: Math.round(shares * prices[bought]),
+              },
+            ],
+          },
+        },
+      },
+    },
+  });
 }
 
 beforeEach(() => {
@@ -235,4 +283,57 @@ describe('buying and selling (GDD §3.2)', () => {
 
     expect(state().decisionLog.at(-1)).toMatchObject({ t: 'sell', a: 'BOND' });
   });
+});
+
+describe('the tone of a trade (GDD §1)', () => {
+  /**
+   * The sell sheet is the one screen that must state a realized loss, so it is
+   * the likeliest to reach for red — which GDD §1 reserves for destructive
+   * *actions*, never a figure.
+   *
+   * On class names, not computed colour: `getComputedStyle().color` resolves to
+   * `rgb(...)` while `--destructive` is authored as `oklch(...)`, so comparing
+   * the two is a test that cannot fail. **Both sides are swept**, or a
+   * `text-destructive` on the buy branch slips past the sell branch's guard.
+   */
+  function openSheet(side: 'Buy' | 'Sell'): HTMLElement {
+    const { rerender } = render(panel());
+    holdAtALoss();
+    rerender(panel());
+    fireEvent.click(screen.getAllByRole('button', { name: side })[0]);
+    if (side === 'Buy') {
+      fireEvent.change(sheet().getByLabelText('Amount to spend'), { target: { value: '50' } });
+    } else {
+      fireEvent.click(sheet().getByRole('button', { name: 'Everything' }));
+    }
+    return document.querySelector('[data-slot="sheet-content"]') as HTMLElement;
+  }
+
+  it('states the loss at all, so the assertions below have something to guard', () => {
+    const content = openSheet('Sell');
+    const row = within(content).getByText('Realized gain').closest('div');
+
+    // Guards the guard: a sheet that quoted no loss would pass the styling
+    // check vacuously, which is exactly how the first version of this went wrong.
+    expect(row?.textContent).toMatch(/^Realized gain-\$\d/);
+  });
+
+  for (const side of ['Buy', 'Sell'] as const) {
+    it(`carries no destructive styling on any figure in the ${side} sheet`, () => {
+      const content = openSheet(side);
+      const figures = content.querySelectorAll('[data-slot="money"], [data-slot="pct"]');
+
+      expect(figures.length).toBeGreaterThan(0);
+      for (const node of figures) {
+        const classes = `${node.className} ${node.parentElement?.className ?? ''}`;
+        expect(classes).not.toMatch(/destructive|text-red|bg-red|danger|warning/);
+      }
+    });
+
+    it(`never says whether the ${side} is a good one`, () => {
+      expect(openSheet(side).textContent ?? '').not.toMatch(
+        /should|mistake|wisely|smart|well done|good job|careful|warning|are you sure/i,
+      );
+    });
+  }
 });
