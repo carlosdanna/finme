@@ -248,6 +248,7 @@ export {
   emptyAllocation,
   allocationPoints,
   availableTimePoints,
+  clampAllocation,
   isValidAllocation,
   moodEnergyCoupling,
   nextEnergy,
@@ -286,6 +287,9 @@ export {
   APPLICATION_MAX_PROBABILITY,
   APPLICATION_TIME_POINTS,
   APPLICATION_FAILURE_MOOD_COST,
+  STUDY_WEEKS_PER_YEAR,
+  MAX_EDUCATION_YEARS,
+  educationYearsEarned,
   tierRank,
   weeklyGrossCents,
   ineligibleReasons,
@@ -307,6 +311,10 @@ export type {
   ApplicationResult,
   IneligibleReason,
 } from './jobs.ts';
+
+// Starting positions (GDD §3.7).
+export { assignedStart, resolveStart, buildStartingDebts } from './starts.ts';
+export type { StartDef, StartPosition, StartingDebtDef } from './starts.ts';
 
 // Event system (TDD §9.1-9.3).
 export * from './events/index.ts';

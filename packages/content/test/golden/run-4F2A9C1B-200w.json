@@ -1,6 +1,7 @@
 {
   "seed": "4F2A9C1B",
   "playerName": "",
+  "startId": "stable-ground",
   "rulesetVersion": "0.5.0",
   "weekIndex": 200,
   "startAge": 22,
@@ -71,6 +72,9 @@
     "skilled": 0,
     "specialist": 0
   },
+  "educationYears": 0,
+  "studyWeeks": 0,
+  "committedTimePoints": 0,
   "energy": 100,
   "mood": 100,
   "consecutiveLowMoodWeeks": 0,

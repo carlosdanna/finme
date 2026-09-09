@@ -61,7 +61,7 @@ export function JobsPanel({
     state.chains.find((entry) => entry.chainId === 'JOB_SEARCH') ?? null;
 
   const applicant = {
-    educationYears: 0,
+    educationYears: state.educationYears,
     experienceYears: Object.values(state.experienceWeeks).reduce((a, b) => a + b, 0) / WEEKS_PER_YEAR,
     hasVehicle: state.car !== null,
   };

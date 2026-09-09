@@ -39,6 +39,18 @@ export {
   namesFileSchema,
 } from './logbook.ts';
 
+export {
+  STARTS,
+  DEFAULT_START_ID,
+  startById,
+  assignedStartId,
+  resolveStart,
+  startSchema,
+  startingDebtSchema,
+  startsFileSchema,
+} from './starts.ts';
+export type { StartsFile } from './starts.ts';
+
 export { DEFAULT_ALLOCATION, scenarioConfig, createScenarioRun } from './scenario.ts';
 export type { ScenarioOptions } from './scenario.ts';
 

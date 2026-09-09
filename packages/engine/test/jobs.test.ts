@@ -12,6 +12,8 @@ import {
   JOB_TIERS,
   type JobDef,
   LONG_UNEMPLOYMENT_WEEKS,
+  STUDY_WEEKS_PER_YEAR,
+  educationYearsEarned,
   applicableJobs,
   applicationProbability,
   availableJobIds,
@@ -280,5 +282,21 @@ describe('the seeded availability timeline (GDD §3.1)', () => {
     expect(leadTotal / seeds).toBeGreaterThan(8);
     expect(leadTotal / seeds).toBeLessThan(16);
     expect(deliveryTotal / seeds).toBeGreaterThan(60);
+  });
+});
+
+describe('study converts to education (docs/DECISIONS.md)', () => {
+  it('buys a year every STUDY_WEEKS_PER_YEAR point-weeks, and nothing before', () => {
+    expect(educationYearsEarned(0)).toBe(0);
+    expect(educationYearsEarned(STUDY_WEEKS_PER_YEAR - 1)).toBe(0);
+    expect(educationYearsEarned(STUDY_WEEKS_PER_YEAR)).toBe(1);
+    expect(educationYearsEarned(STUDY_WEEKS_PER_YEAR * 4)).toBe(4);
+  });
+
+  it('is monotone and never negative', () => {
+    expect(educationYearsEarned(-5)).toBe(0);
+    for (let weeks = 1; weeks < 200; weeks++) {
+      expect(educationYearsEarned(weeks)).toBeGreaterThanOrEqual(educationYearsEarned(weeks - 1));
+    }
   });
 });

@@ -119,6 +119,11 @@ export interface RunState {
    * `serializeState` excludes on purpose. Empty if the run was built without one.
    */
   readonly playerName: string;
+  /**
+   * Which of GDD §3.7's positions this run was dealt — a hash of the seed, never
+   * a draw. Empty when built without one; content names `stable-ground`.
+   */
+  readonly startId: string;
   readonly rulesetVersion: string;
   readonly weekIndex: number;
   readonly startAge: number;
@@ -142,6 +147,18 @@ export interface RunState {
    * `applicationProbability` had nothing behind its strongest term.
    */
   readonly experienceWeeks: Readonly<Record<JobTier, number>>;
+  /**
+   * Granted by a starting position, then bought a point-week at a time — see
+   * `STUDY_WEEKS_PER_YEAR`. What `ineligibleReasons` reads.
+   */
+  readonly educationYears: number;
+  /** Study accumulated, in point-weeks. Mirrors `experienceWeeks`. */
+  readonly studyWeeks: number;
+  /**
+   * Spoken for before the player allocates anything (GDD §3.7's Caregiver).
+   * `tick` clamps the week to what is left.
+   */
+  readonly committedTimePoints: number;
 
   readonly energy: number;
   readonly mood: number;

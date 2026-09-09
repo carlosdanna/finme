@@ -8,7 +8,8 @@
  * schedule. Adding a draw to any of them shifts every seed.
  */
 import type { ChainDef } from './chains/index.ts';
-import { drawEntryScore, emptyCreditState } from './credit.ts';
+import { drawEntryScore, emptyCreditState, openCreditLine } from './credit.ts';
+import type { Debt } from './debt/types.ts';
 import { generateEventSchedule } from './events/index.ts';
 import type { EventDef } from './events/index.ts';
 import { type JobDef, generateJobTimeline } from './jobs.ts';
@@ -43,6 +44,13 @@ export interface RunConfig {
   readonly drawNames: (rng: () => number) => RunNames;
   readonly startingCashCents?: number;
   readonly startingJobId?: string;
+  /** Names GDD §3.7's position; the fields below *are* it. */
+  readonly startId?: string;
+  readonly educationYears?: number;
+  readonly studyWeeks?: number;
+  readonly committedTimePoints?: number;
+  /** Built by the caller. Each also opens a credit line at week 0. */
+  readonly startingDebts?: readonly Debt[];
 }
 
 export interface Run {
@@ -91,9 +99,17 @@ export function createRun(config: RunConfig): Run {
 
   const startingJob = config.jobs.find((job) => job.id === config.startingJobId);
 
+  // Declared order, for a stable `debtTypesEverHeld`. Nothing here draws.
+  const startingDebts = config.startingDebts ?? [];
+  const credit = startingDebts.reduce(
+    (state, debt) => openCreditLine(state, debt.kind, 0),
+    emptyCreditState(),
+  );
+
   const state: RunState = {
     seed: config.seed,
     playerName: config.playerName ?? '',
+    startId: config.startId ?? '',
     rulesetVersion: RULESET_VERSION,
     weekIndex: 0,
     startAge: config.startAge ?? 18,
@@ -125,14 +141,17 @@ export function createRun(config: RunConfig): Run {
     weeksUnemployed: 0,
     consecutiveOvertimeWeeks: 0,
     experienceWeeks: emptyExperienceWeeks(),
+    educationYears: config.educationYears ?? 0,
+    studyWeeks: config.studyWeeks ?? 0,
+    committedTimePoints: config.committedTimePoints ?? 0,
     energy: 80,
     mood: 60,
     consecutiveLowMoodWeeks: 0,
     lastReachOutWeek: null,
 
-    debts: [],
+    debts: startingDebts,
     accruedUnpaidBillsCents: 0,
-    credit: emptyCreditState(),
+    credit,
 
     car: null,
     home: null,

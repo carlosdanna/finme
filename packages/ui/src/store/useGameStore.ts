@@ -17,6 +17,7 @@ import {
   type TickInput,
   advance,
   cardVariant,
+  clampAllocation,
   pendingEventWeek,
   defaultGranularity,
   parseSave,
@@ -24,7 +25,7 @@ import {
   tick,
   yearIndex,
 } from '@finme/engine';
-import { createScenarioRun, DEFAULT_ALLOCATION } from '@finme/content';
+import { DEFAULT_ALLOCATION, assignedStartId, createScenarioRun } from '@finme/content';
 import type { ActiveChain, Allocation, EventDef } from '@finme/engine';
 import { abandonChain, beginChain, chainById, stepById } from '@finme/engine';
 import { create } from 'zustand';
@@ -44,11 +45,17 @@ export interface RunSetup {
   /** TDD §4.1's run lengths: 10, 30, 40 or 50. */
   readonly runLengthYears: number;
   readonly startAge: number;
+  /**
+   * §3.7's Custom Start, or `null` to take the one the seed deals. Choosing is
+   * what makes a run non-comparable, and nothing records it separately:
+   * `startId !== assignedStartId(seed)` is exactly that fact.
+   */
+  readonly chosenStartId: string | null;
 }
 
 /** [T] What the new-run screen opens on, and what a test that only cares about the seed can pass. */
 export function defaultSetup(seed: string): RunSetup {
-  return { seed, playerName: '', runLengthYears: 30, startAge: 22 };
+  return { seed, playerName: '', runLengthYears: 30, startAge: 22, chosenStartId: null };
 }
 
 /** The four primary destinations in the bottom tab bar. */
@@ -138,9 +145,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playerName: setup.playerName,
       runLengthYears: setup.runLengthYears,
       startAge: setup.startAge,
+      startId: setup.chosenStartId ?? assignedStartId(setup.seed),
     });
     set({
       run,
+      // Fitted to the run's budget, or the panel projects a mood the tick
+      // refuses to produce.
+      allocation: clampAllocation(DEFAULT_ALLOCATION, run.state.committedTimePoints),
       interrupts: [],
       pendingEvent: null,
       pendingChainStep: null,
@@ -152,7 +163,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setTab: (tab) => set({ tab, panel: null }),
   openPanel: (panel) => set({ panel }),
   setGranularity: (granularity) => set({ granularity }),
-  setAllocation: (allocation) => set({ allocation }),
+  // Clamped on the way in too, so no path can hold an allocation the tick
+  // would not run.
+  setAllocation: (allocation) =>
+    set({ allocation: clampAllocation(allocation, get().run?.state.committedTimePoints ?? 0) }),
   dismissInterrupts: () => set({ interrupts: [] }),
 
   advanceTime: () => {

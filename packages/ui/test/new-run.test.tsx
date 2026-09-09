@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SEED_ALPHABET, isValidSeed } from '@finme/engine';
+import { DEFAULT_ALLOCATION, STARTS, assignedStartId } from '@finme/content';
+import {
+  allocationPoints,
+  availableTimePoints,
+  isValidAllocation,
+  nextEnergy,
+  nextMood,
+  tick,
+} from '@finme/engine';
 import { normalizeSeedInput, randomSeed } from '@/lib/seed';
 import { NewRunPanel } from '@/panels/NewRunPanel';
 import { defaultSetup, useGameStore } from '@/store/useGameStore';
@@ -91,6 +100,7 @@ describe('the new-run screen', () => {
       playerName: 'Rosa',
       runLengthYears: 50,
       startAge: 23,
+      chosenStartId: null,
     });
   });
 
@@ -121,6 +131,161 @@ describe('the new-run screen', () => {
     expect(container.textContent).not.toMatch(
       /recommended|suggested|best|optimal|easier|harder|safer|riskier|should/i,
     );
+  });
+});
+
+/** GDD §3.7 deals rather than offers, so the list is a statement and every row looks the same. */
+describe('the six starting positions', () => {
+  const rows = (container: HTMLElement) =>
+    [...container.querySelectorAll('li > div, li > button')] as HTMLElement[];
+
+  it('lists all six in declaration order', () => {
+    const { container } = render(<NewRunPanel onBegin={() => {}} />);
+    expect(rows(container).length).toBe(STARTS.length);
+    for (const start of STARTS) expect(screen.getByText(start.label)).toBeDefined();
+  });
+
+  it('gives every option identical styling, and no destructive class anywhere', () => {
+    const { container } = render(<NewRunPanel onBegin={() => {}} />);
+    const classNames = rows(container).map((row) =>
+      row.className.replace(/\s*ring-2 ring-ring/, '').trim(),
+    );
+    expect(new Set(classNames).size).toBe(1);
+    // Scoped to the rows: the vendored `Input` and `Switch` carry their own
+    // `aria-invalid:border-destructive`, which is validation, not a judgement.
+    for (const row of rows(container)) expect(row.outerHTML).not.toMatch(/destructive/);
+  });
+
+  it('marks the one the seed dealt, and nothing else', () => {
+    const { container } = render(<NewRunPanel onBegin={() => {}} />);
+    const seed = (screen.getByLabelText('Seed') as HTMLInputElement).value;
+    const marked = rows(container).filter((row) => row.getAttribute('aria-current') === 'true');
+    expect(marked.length).toBe(1);
+    expect(marked[0].textContent).toContain(
+      STARTS.find((start) => start.id === assignedStartId(seed))!.label,
+    );
+  });
+
+  it('deals a different start when the seed is rerolled to one that has another', () => {
+    render(<NewRunPanel onBegin={() => {}} />);
+    const field = screen.getByLabelText('Seed') as HTMLInputElement;
+
+    fireEvent.change(field, { target: { value: '4F2A9C1B' } });
+    const first = screen.getAllByText('This seed').length;
+    expect(first).toBe(1);
+
+    // Two seeds that §3.7 deals different rows to; the screen must follow.
+    const seeds = ['4F2A9C1B', '4F2A9C1C', 'QUIET1', 'ZZZZ0001', 'ABCDEFGH'];
+    const dealt = new Set(
+      seeds.map((seed) => {
+        fireEvent.change(field, { target: { value: seed } });
+        return screen
+          .getAllByRole('listitem')
+          .find((row) => row.textContent?.includes('This seed'))!.textContent;
+      }),
+    );
+    expect(dealt.size).toBeGreaterThan(1);
+  });
+
+  it('is a statement until the player asks to choose, and a control after', () => {
+    const { container } = render(<NewRunPanel onBegin={() => {}} />);
+    expect(container.querySelectorAll('li > button').length).toBe(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'I choose' }));
+    expect(container.querySelectorAll('li > button').length).toBe(STARTS.length);
+  });
+
+  it('hands back the chosen start, and null when the seed is deciding', () => {
+    const onBegin = vi.fn();
+    render(<NewRunPanel onBegin={onBegin} />);
+    fireEvent.change(screen.getByLabelText('Seed'), { target: { value: '4F2A9C1B' } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
+    expect(onBegin.mock.calls[0][0].chosenStartId).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'I choose' }));
+    const other = STARTS.find((start) => start.id !== assignedStartId('4F2A9C1B'))!;
+    fireEvent.click(screen.getByText(other.label));
+    fireEvent.click(screen.getByRole('button', { name: 'Begin' }));
+    expect(onBegin.mock.calls[1][0].chosenStartId).toBe(other.id);
+  });
+
+  it('states the non-comparability as a fact about the run, not a warning', () => {
+    const { container } = render(<NewRunPanel onBegin={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'I choose' }));
+    expect(container.textContent).toMatch(/not comparable/i);
+    expect(container.textContent).not.toMatch(/warning|cheat|invalid|unfair|careful/i);
+  });
+});
+
+describe('the start reaches the run', () => {
+  it('deals the seed\'s start when the player did not choose', () => {
+    useGameStore.getState().start(defaultSetup('4F2A9C1B'));
+    expect(useGameStore.getState().run!.state.startId).toBe(assignedStartId('4F2A9C1B'));
+  });
+
+  it('carries a chosen start through instead', () => {
+    const chosen = STARTS.find((start) => start.id !== assignedStartId('4F2A9C1B'))!;
+    useGameStore.getState().start({ ...defaultSetup('4F2A9C1B'), chosenStartId: chosen.id });
+
+    const state = useGameStore.getState().run!.state;
+    expect(state.startId).toBe(chosen.id);
+    // Which is exactly how the run is known to be non-comparable — no flag.
+    expect(state.startId).not.toBe(assignedStartId(state.seed));
+  });
+});
+
+/** The clamp binds `tick`; the screen has to agree with it. */
+describe('a start that commits time reaches the screen too', () => {
+  // Dealt caregiver by the hash; `starts.test.ts` pins that mapping.
+  const CAREGIVER_SEED = 'QUIET1';
+
+  it('opens on an allocation that fits the run\'s budget, not the flat ten', () => {
+    useGameStore.getState().start(defaultSetup(CAREGIVER_SEED));
+    const { run, allocation } = useGameStore.getState();
+
+    expect(run!.state.committedTimePoints).toBe(2);
+    expect(allocationPoints(allocation)).toBe(availableTimePoints(2));
+    expect(isValidAllocation(allocation, run!.state.committedTimePoints)).toBe(true);
+  });
+
+  it('projects the mood and energy the tick actually produces', () => {
+    useGameStore.getState().start(defaultSetup(CAREGIVER_SEED));
+    const { run, allocation } = useGameStore.getState();
+    const state = run!.state;
+
+    // Computed exactly as AllocationPanel does.
+    const projectedEnergy = nextEnergy(state.energy, state.mood, allocation);
+    const projectedMood = nextMood(state.mood, allocation, {
+      discretionarySpendCents: 0,
+      discretionaryBaselineCents: 40_000,
+      housingTier: state.housingTier,
+      unsecuredDebtCents: 0,
+      annualGrossCents: 0,
+    });
+
+    const after = tick(run!.world, run!.streams, state, { allocation }).state;
+
+    expect(projectedEnergy).toBe(after.energy);
+    expect(projectedMood).toBe(after.mood);
+  });
+
+  it('never lets an over-budget allocation into the store', () => {
+    useGameStore.getState().start(defaultSetup(CAREGIVER_SEED));
+    // The flat ten-point week, pushed past the panel's own arithmetic.
+    useGameStore.getState().setAllocation(DEFAULT_ALLOCATION);
+
+    const { run, allocation } = useGameStore.getState();
+    expect(allocationPoints(allocation)).toBeLessThanOrEqual(availableTimePoints(2));
+    expect(isValidAllocation(allocation, run!.state.committedTimePoints)).toBe(true);
+  });
+
+  it('leaves a run that commits nothing on the full ten', () => {
+    // The other direction: this must not shrink every other run's week.
+    useGameStore.getState().start(defaultSetup('4F2A9C1B'));
+    const { run, allocation } = useGameStore.getState();
+    expect(run!.state.committedTimePoints).toBe(0);
+    expect(allocation).toEqual(DEFAULT_ALLOCATION);
   });
 });
 

@@ -67,6 +67,23 @@ export interface Applicant {
 
 export type IneligibleReason = 'education' | 'experience' | 'vehicle';
 
+/**
+ * [T] Study effort that buys one year of education. The TDD is silent on the
+ * conversion; see docs/DECISIONS.md.
+ *
+ * The unit is a *point-week*: one point of study for one week. Two points in a
+ * week move the counter by two, so studying harder is faster.
+ */
+export const STUDY_WEEKS_PER_YEAR = 30;
+
+/** [T] The ceiling the content schema also enforces on a job's requirement. */
+export const MAX_EDUCATION_YEARS = 12;
+
+/** Whole education years bought by `studyWeeks` of accumulated study. */
+export function educationYearsEarned(studyWeeks: number): number {
+  return Math.floor(Math.max(0, studyWeeks) / STUDY_WEEKS_PER_YEAR);
+}
+
 /** Why an applicant cannot apply, or an empty list if they can. */
 export function ineligibleReasons(job: JobDef, applicant: Applicant): IneligibleReason[] {
   const reasons: IneligibleReason[] = [];

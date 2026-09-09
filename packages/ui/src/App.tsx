@@ -10,6 +10,7 @@ import {
   totalLiabilitiesCents,
   yearIndex,
 } from '@finme/engine';
+import { assignedStartId } from '@finme/content';
 import { AdvanceControl } from '@/components/finme/AdvanceControl';
 import { nextGranularity } from '@/lib/granularity';
 import { TabBar } from '@/components/finme/TabBar';
@@ -130,6 +131,18 @@ export default function App() {
           taking the overflow off. */}
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-2xl px-4 py-3">
+          {state.startId !== assignedStartId(state.seed) && (
+            /* A fact about the run, never a warning about the player: the same
+               plain `Alert` the ruleset banner uses (GDD §1). */
+            <Alert className="mb-3">
+              <AlertTitle>A start you set yourself</AlertTitle>
+              <AlertDescription>
+                This seed deals a different beginning, so this run is not the one someone else
+                gets from it.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {rulesetBanner !== null && (
             /* Non-blocking, and `default` rather than `destructive`: a version
                mismatch is a fact about the save, not an error the player caused. */
@@ -155,6 +168,7 @@ export default function App() {
           {tab === 'life' && (
             <div className="space-y-4">
               <AllocationPanel
+                committedPoints={state.committedTimePoints}
                 allocation={allocation}
                 energy={state.energy}
                 mood={state.mood}
