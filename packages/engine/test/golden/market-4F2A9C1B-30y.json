@@ -65,24 +65,21 @@
       "startWeek": 331,
       "declineWeeks": 14,
       "recoveryWeeks": 35,
-      "depth": 0.380706485196,
-      "assetId": null
+      "depth": 0.380706485196
     },
     {
       "kind": "crash",
       "startWeek": 487,
       "declineWeeks": 10,
       "recoveryWeeks": 22,
-      "depth": 0.376912145608,
-      "assetId": null
+      "depth": 0.376912145608
     },
     {
       "kind": "crash",
       "startWeek": 1473,
       "declineWeeks": 19,
       "recoveryWeeks": 26,
-      "depth": 0.338867341501,
-      "assetId": null
+      "depth": 0.338867341501
     }
   ],
   "inflationRates": [
