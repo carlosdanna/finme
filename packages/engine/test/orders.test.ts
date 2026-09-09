@@ -67,6 +67,49 @@ describe('setting standing orders', () => {
     });
   });
 
+  it('collapses a run of order writes in one week into the last one', () => {
+    // A slider writes once per step, and §14 calls the log "deliberately terse".
+    const { state } = run();
+    const change = standingOrderChangeFrom(state);
+
+    let next = { ...state, weekIndex: 12 };
+    for (const pct of [0.01, 0.02, 0.03, 0.04, 0.05, 0.06]) {
+      next = setStandingOrders(next, { ...change, retirementContributionPct: pct });
+    }
+
+    const orders = next.decisionLog.filter((record) => record.t === 'orders');
+    expect(orders).toHaveLength(1);
+    // Last write wins, which is what makes collapsing them replay identically.
+    expect(orders[0]).toMatchObject({ w: 12, p: 0.06 });
+    expect(next.retirement.contributionPct).toBeCloseTo(0.06, 10);
+  });
+
+  it('keeps an earlier order that another decision has already followed', () => {
+    // Only a *trailing* order is superseded: collapsing across an intervening
+    // decision would move the earlier one out of the order the player made it.
+    const { state } = run();
+    const change = standingOrderChangeFrom(state);
+
+    const first = setStandingOrders({ ...state, weekIndex: 12 }, change);
+    const withTrade = {
+      ...first,
+      decisionLog: [...first.decisionLog, { w: 12, t: 'buy', a: 'SAFE', v: 1_000 } as const],
+    };
+    const second = setStandingOrders(withTrade, { ...change, retirementContributionPct: 0.05 });
+
+    expect(second.decisionLog.map((record) => record.t)).toEqual(['orders', 'buy', 'orders']);
+  });
+
+  it('keeps an order made in a different week', () => {
+    const { state } = run();
+    const change = standingOrderChangeFrom(state);
+
+    const first = setStandingOrders({ ...state, weekIndex: 12 }, change);
+    const second = setStandingOrders({ ...first, weekIndex: 13 }, change);
+
+    expect(second.decisionLog.filter((record) => record.t === 'orders')).toHaveLength(2);
+  });
+
   it('clamps the contribution rate and floors weekly amounts at zero', () => {
     const { state } = run();
     const change = standingOrderChangeFrom(state);

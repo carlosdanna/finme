@@ -24,6 +24,13 @@ import { emitEntries } from './logbook/index.ts';
 import { longTermGainsCents, sellLotsFifo, shortTermGainsCents } from './tax.ts';
 import { type Interrupt, evaluateInterrupts, templateVarsFor } from './tick.ts';
 
+/**
+ * `interrupts` is **always empty today**: §2.1's halt conditions are energy,
+ * mood, DTI and life stage, and a trade moves none of them. It is evaluated
+ * anyway because `evaluateInterrupts` is edge-triggered, so the day a rule does
+ * respond to a trade the next tick would see the floor already crossed and
+ * report nothing.
+ */
 export interface TradeResult {
   readonly state: RunState;
   readonly interrupts: readonly Interrupt[];

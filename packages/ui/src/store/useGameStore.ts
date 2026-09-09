@@ -139,6 +139,14 @@ interface GameStore {
   dismissInterrupts: () => void;
 }
 
+/** Keep the standing interrupts when an action raised none of its own. */
+function keepUnlessRaised(
+  raised: readonly Interrupt[],
+  standing: readonly Interrupt[],
+): readonly Interrupt[] {
+  return raised.length > 0 ? raised : standing;
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   run: null,
   tab: 'dashboard',
@@ -270,18 +278,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // chain actions are: they happen inside the week the player is already in.
   // Going through `tick` would advance time and resolve that week's card with
   // its first-listed choice, unseen.
+  //
+  // A trade raises no interrupt of its own (see `TradeResult`), so writing its
+  // empty list would clear a halt condition the player has not answered yet.
   buyAsset: (assetId, cashCents) => {
     const { run, pendingEvent, pendingChainStep } = get();
     if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
     const result = buyAsset(run.world, run.streams, run.state, assetId, cashCents);
-    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+    set({ run: { ...run, state: result.state }, interrupts: keepUnlessRaised(result.interrupts, get().interrupts) });
   },
 
   sellAsset: (assetId, shares) => {
     const { run, pendingEvent, pendingChainStep } = get();
     if (run === null || pendingEvent !== null || pendingChainStep !== null) return;
     const result = sellAsset(run.world, run.streams, run.state, assetId, shares);
-    set({ run: { ...run, state: result.state }, interrupts: result.interrupts });
+    set({ run: { ...run, state: result.state }, interrupts: keepUnlessRaised(result.interrupts, get().interrupts) });
   },
 
   setStandingOrders: (change) => {

@@ -1911,9 +1911,11 @@ holding-period split had never been computed in a real run.
 modelled on `beginChain`/`abandonChain` and for the same reason (2026-09-08,
 "Starting a search is an action, not a tick input"): a trade happens inside the
 week the player is already in, so it must not advance time and must not touch
-that week's card. Both return `evaluateInterrupts(next, previous)`, because that
-function is edge-triggered and a floor crossed outside the tick is otherwise
-swallowed. **No `RULESET_VERSION` bump.** The price is a lookup into the
+that week's card. Both return `evaluateInterrupts(next, previous)` — **always
+empty today**, since §2.1's halt conditions are energy, mood, DTI and life stage
+and a trade moves none of them. It is called anyway because the function is
+edge-triggered, so the day a rule does respond to a trade the next tick would
+see a floor already crossed and report nothing. **No `RULESET_VERSION` bump.** The price is a lookup into the
 pre-drawn market path and the only stream touched is `flavor`, so a run that
 takes no trade is byte-identical — the unchanged golden fixtures are the
 evidence, and `trade.test.ts` asserts the draw counts directly.
@@ -1933,6 +1935,16 @@ evidence, and `trade.test.ts` asserts the draw counts directly.
    happens twice a run and wrong for something a rebalancer does monthly.
 5. `templateVarsFor` is exported from `tick.ts` so `trade.ts` shares it. It is
    the third caller; a fourth should move it out of `tick.ts` entirely.
+6. **Trading shifts Logbook prose for the same seed, and that is compliant.**
+   The two first-time entries draw from `flavor` and reset `weeksSinceEntry`,
+   redrawing `quietGap`, so two runs of one seed differing only in whether the
+   player traded get different quiet entries at different weeks. No simulated
+   number moves — which is exactly what §2.2 asks of `flavor` — but it will look
+   like a determinism break to whoever meets it first, so: it is not one.
+7. A trade must not clear a halt condition it did not cause. The store keeps the
+   standing interrupts when an action raises none. The chain actions have the
+   same shape and `abandonChain` can genuinely raise one, so they were left
+   alone rather than changed blind.
 
 ## 2026-09-09 — Standing orders are written through the engine, and carry the contribution rate
 **Context:** the Investing panel's contribution slider and auto-reinvest switch
@@ -1956,4 +1968,12 @@ though the state field lives on `retirement`.
    The employer match landing is asserted by advancing a month in a UI test.
 4. The auto-invest control has **no pre-selected asset**. A default would read as
    the game's opinion (GDD §1); an asset is chosen by tapping it and cleared by
-   tapping it again.
+   tapping it again. The asset pills stay disabled until a weekly amount is set,
+   because an order of zero is stored as no order and a pill that silently did
+   nothing was worse than one that plainly cannot yet be pressed.
+5. **A consecutive `orders` record in the same week supersedes its predecessor.**
+   A slider writes once per step, so one drag from 0% to 6% appended six full
+   `StandingOrders` snapshots, and §14 calls the log "deliberately terse" because
+   it travels in a shared JSON blob. Replay is last-write-wins, so the collapsed
+   log replays identically; only a *trailing* order is dropped, so an order the
+   player made before some other decision stays where they made it.

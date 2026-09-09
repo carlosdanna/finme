@@ -17,6 +17,7 @@
  * next tick reads the orders.
  */
 import { clamp } from './math.ts';
+import type { DecisionRecord } from './persistence.ts';
 import { type RunState, type StandingOrders } from './state.ts';
 
 export interface StandingOrderChange {
@@ -58,10 +59,25 @@ export function setStandingOrders(state: RunState, change: StandingOrderChange):
     standingOrders: orders,
     retirement: { ...state.retirement, contributionPct },
     decisionLog: [
-      ...state.decisionLog,
+      ...withoutTrailingOrder(state.decisionLog, state.weekIndex),
       { w: state.weekIndex, t: 'orders', v: orders, p: contributionPct },
     ],
   };
+}
+
+/**
+ * Drop a trailing `orders` record from the same week: a slider writes once per
+ * step, and §14 calls the log "deliberately terse". Replay is last-write-wins,
+ * so collapsing them replays identically. Only a *trailing* one goes, so an
+ * order made before some other decision stays where the player made it.
+ */
+function withoutTrailingOrder(
+  log: readonly DecisionRecord[],
+  weekIndex: number,
+): readonly DecisionRecord[] {
+  const last = log[log.length - 1];
+  const supersedes = last !== undefined && last.t === 'orders' && last.w === weekIndex;
+  return supersedes ? log.slice(0, -1) : log;
 }
 
 function wholeCents(value: number): number {
