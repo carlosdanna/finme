@@ -68,16 +68,11 @@ export interface Applicant {
 export type IneligibleReason = 'education' | 'experience' | 'vehicle';
 
 /**
- * [T] Study effort that buys one year of education.
+ * [T] Study effort that buys one year of education. The TDD is silent on the
+ * conversion; see docs/DECISIONS.md.
  *
- * The TDD is silent on the conversion, and without one the `study` allocation
- * costs 8 energy and 2 mood a point and accumulates nothing — which makes GDD
- * §3.7's Student path a permanent lock rather than the investment the row
- * describes. See docs/DECISIONS.md.
- *
- * The unit is a *point-week*: one point of study sustained for one week. Two
- * points in a week move the counter by two, so studying harder is faster —
- * which is the whole reason the allocation has a number on it.
+ * The unit is a *point-week*: one point of study for one week. Two points in a
+ * week move the counter by two, so studying harder is faster.
  */
 export const STUDY_WEEKS_PER_YEAR = 30;
 

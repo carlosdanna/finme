@@ -120,12 +120,8 @@ export interface RunState {
    */
   readonly playerName: string;
   /**
-   * Which of GDD §3.7's starting positions this run was dealt. A pure function
-   * of the seed (see `assignedStartId` in @finme/content), never a draw — a
-   * draw would shift every stream that follows it.
-   *
-   * Empty when a run was built without one, which is what the engine's own
-   * defaults produce; content names `stable-ground` for the scripted run.
+   * Which of GDD §3.7's positions this run was dealt — a hash of the seed, never
+   * a draw. Empty when built without one; content names `stable-ground`.
    */
   readonly startId: string;
   readonly rulesetVersion: string;
@@ -152,18 +148,15 @@ export interface RunState {
    */
   readonly experienceWeeks: Readonly<Record<JobTier, number>>;
   /**
-   * Whole years of education held. Granted by a starting position and then
-   * bought a point-week at a time — see `STUDY_WEEKS_PER_YEAR`. This is what
-   * `ineligibleReasons` reads; before it existed the applicant was pinned at 0
-   * and seven of the thirteen jobs were unreachable.
+   * Granted by a starting position, then bought a point-week at a time — see
+   * `STUDY_WEEKS_PER_YEAR`. What `ineligibleReasons` reads.
    */
   readonly educationYears: number;
   /** Study accumulated, in point-weeks. Mirrors `experienceWeeks`. */
   readonly studyWeeks: number;
   /**
-   * Time points permanently spoken for, before the player allocates anything
-   * (GDD §3.7's Caregiver start). `tick` clamps the week's allocation to what
-   * is left, so the commitment binds the harness as well as the screen.
+   * Spoken for before the player allocates anything (GDD §3.7's Caregiver).
+   * `tick` clamps the week to what is left.
    */
   readonly committedTimePoints: number;
 

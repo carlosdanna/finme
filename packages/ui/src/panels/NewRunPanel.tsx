@@ -63,13 +63,9 @@ function Segmented<T extends string | number>({
 }
 
 /**
- * GDD §3.7's six starting positions.
- *
- * Listed in declaration order, which is the file's order and not a ranking, and
- * every row carries the identical class string — the dealt one is marked by a
- * word and `aria-current`, never by weight, colour or position. No row says
- * whether it is the easier one to be handed, because §3.7's closing line is
- * that the game does not editorialize about which start is harder.
+ * GDD §3.7's six positions, in declaration order — which is the file's order,
+ * not a ranking. Every row carries an identical class string; the dealt one is
+ * marked by a word, never by weight, colour or position.
  */
 function Starts({
   dealtId,
@@ -106,9 +102,6 @@ function Starts({
           </>
         );
 
-        // One class string for all six, in both modes: the marker is the word
-        // above and the ring, and the ring is a selection cue rather than an
-        // endorsement.
         const className = cn(
           'w-full space-y-1 rounded-xl border bg-card p-4 text-left',
           active && 'ring-2 ring-ring',
@@ -149,8 +142,7 @@ export function NewRunPanel({ onBegin }: { onBegin: (setup: RunSetup) => void })
   const [setup, setSetup] = useState<RunSetup>(() => defaultSetup(randomSeed()));
 
   const seedIsUsable = isValidSeed(setup.seed);
-  // Re-derived on every keystroke, so a rerolled seed deals a different life
-  // in front of the player rather than after Begin.
+  // Re-derived per keystroke, so a reroll deals in front of the player.
   const dealtStartId = seedIsUsable ? assignedStartId(setup.seed) : STARTS[0].id;
 
   return (
@@ -280,8 +272,6 @@ export function NewRunPanel({ onBegin }: { onBegin: (setup: RunSetup) => void })
 
             <Field>
               <FieldTitle>Who decides</FieldTitle>
-              {/* The same segmented rail as run length, rather than a switch:
-                  one 44px control, and neither half of it is the default. */}
               <Segmented
                 label="Who decides the starting position"
                 options={[

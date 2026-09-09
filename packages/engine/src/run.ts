@@ -44,19 +44,12 @@ export interface RunConfig {
   readonly drawNames: (rng: () => number) => RunNames;
   readonly startingCashCents?: number;
   readonly startingJobId?: string;
-  /**
-   * Which of GDD §3.7's starting positions this is. Cosmetic to the engine —
-   * it names the position, the other fields *are* the position.
-   */
+  /** Names GDD §3.7's position; the fields below *are* it. */
   readonly startId?: string;
   readonly educationYears?: number;
   readonly studyWeeks?: number;
   readonly committedTimePoints?: number;
-  /**
-   * Debts the run opens with, already built by the caller. Each one also opens
-   * a credit line at week 0: a start that hands the player a balance and no
-   * credit file would be a debt no bureau has heard of.
-   */
+  /** Built by the caller. Each also opens a credit line at week 0. */
   readonly startingDebts?: readonly Debt[];
 }
 
@@ -106,8 +99,7 @@ export function createRun(config: RunConfig): Run {
 
   const startingJob = config.jobs.find((job) => job.id === config.startingJobId);
 
-  // In declared order, which is an array — never a map iteration. Nothing here
-  // draws, so the order is about a stable `debtTypesEverHeld`, not about RNG.
+  // Declared order, for a stable `debtTypesEverHeld`. Nothing here draws.
   const startingDebts = config.startingDebts ?? [];
   const credit = startingDebts.reduce(
     (state, debt) => openCreditLine(state, debt.kind, 0),

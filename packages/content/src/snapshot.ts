@@ -20,8 +20,6 @@ export function serializeState(state: RunState): Record<string, unknown> {
     // the name never reaches simulation. What proves that is the paired-run
     // assertion in `engine/test/scaffold.test.ts`, not this line.
     playerName: state.playerName,
-    // Which of §3.7's positions the seed dealt. A hash of the seed, never a
-    // draw, so this key names the run's start without any stream having moved.
     startId: state.startId,
     rulesetVersion: state.rulesetVersion,
     weekIndex: state.weekIndex,

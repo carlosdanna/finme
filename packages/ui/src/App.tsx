@@ -132,11 +132,8 @@ export default function App() {
       <main className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
         <div className="mx-auto max-w-2xl px-4 py-3">
           {state.startId !== assignedStartId(state.seed) && (
-            /* GDD §3.7's Custom Start, stated as a fact about the run rather
-               than a warning about the player — the same plain `Alert` the
-               ruleset banner uses, and for the same reason: `default`, never
-               `destructive`. Derived, not stored: a chosen start is exactly one
-               the seed would not have dealt. */
+            /* A fact about the run, never a warning about the player: the same
+               plain `Alert` the ruleset banner uses (GDD §1). */
             <Alert className="mb-3">
               <AlertTitle>A start you set yourself</AlertTitle>
               <AlertDescription>

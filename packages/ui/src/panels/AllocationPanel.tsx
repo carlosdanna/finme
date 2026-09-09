@@ -104,10 +104,7 @@ export function AllocationPanel({
   mood: number;
   /** The tier the player actually lives in — it feeds the projected mood. */
   housingTier: number;
-  /**
-   * Points a starting position has permanently spoken for (GDD §3.7). The
-   * budget shown is what is left, so the screen and `tick`'s clamp agree.
-   */
+  /** Spoken for by the starting position (GDD §3.7), so the screen agrees with `tick`. */
   committedPoints?: number;
   onChange: (allocation: Allocation) => void;
 }) {
@@ -150,8 +147,6 @@ export function AllocationPanel({
         </Typography>
       </div>
 
-      {/* Why the budget is not ten. Stated once, as a fact about the week — the
-          steppers stop at 8 and the reason should not have to be guessed. */}
       {committedPoints > 0 && (
         <Typography variant="caption" color="muted" className="px-4 pt-1">
           {committedPoints} of your {TIME_POINTS_PER_WEEK} points are committed every week.

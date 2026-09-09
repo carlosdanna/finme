@@ -33,32 +33,24 @@ export interface ScenarioOptions {
   /** Cosmetic only, and defaulted to empty so the scripted runs stay nameless. */
   readonly playerName?: string;
   /**
-   * Which of GDD §3.7's starting positions to deal. Omitted means
-   * `stable-ground` — the position every scripted run has always had, so the
-   * no-argument call is byte-identical to what it produced before starts
-   * existed.
+   * Omitted means `stable-ground`, so the no-argument call is byte-identical to
+   * what it produced before starts existed.
    *
-   * §3.7's Custom Start is not a seventh position: it is one of these six,
-   * named by a player rather than dealt by the seed. What makes that run
-   * non-comparable is that `startId` no longer equals `assignedStartId(seed)`,
-   * which needs no field of its own.
+   * §3.7's Custom Start is one of these six named by a player rather than dealt.
+   * That run is non-comparable precisely because `startId` no longer equals
+   * `assignedStartId(seed)` — no field of its own is needed.
    */
   readonly startId?: string;
-  /**
-   * Overrides the start's job. Explicit `null` begins the run out of work —
-   * distinct from omitting it, which takes whatever the start deals.
-   */
+  /** Explicit `null` begins the run out of work; omitting it takes the start's. */
   readonly startingJobId?: string | null;
   readonly startingCashCents?: number;
 }
 
 /** Everything a run needs, with content wired in. */
 export function scenarioConfig(options: ScenarioOptions): RunConfig {
-  // An id the file does not define falls back to the baseline rather than
-  // beginning a run with no position at all — and `startId` below records the
-  // start the run actually got, not the id that was asked for. Recording the
+  // `startId` records the start the run actually got, not the id asked for: an
   // unknown id would leave the state naming a position that does not exist, and
-  // `App` would then show the custom-start notice for what is really a typo.
+  // `App` reads that as a hand-set start.
   const start = startById(options.startId ?? DEFAULT_START_ID) ?? startById(DEFAULT_START_ID)!;
   const position = resolveStart(start, options.seed);
 

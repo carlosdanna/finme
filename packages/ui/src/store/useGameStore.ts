@@ -46,14 +46,9 @@ export interface RunSetup {
   readonly runLengthYears: number;
   readonly startAge: number;
   /**
-   * §3.7's Custom Start: a starting position chosen by hand, or `null` to take
-   * the one the seed deals.
-   *
-   * Choosing is the whole of what makes a run non-comparable — the seed no
-   * longer determines where it began, so two people running it do not run the
-   * same life. Nothing records the choice separately, because nothing has to:
-   * `startId !== assignedStartId(seed)` is exactly that fact, and it survives
-   * into a save for free.
+   * §3.7's Custom Start, or `null` to take the one the seed deals. Choosing is
+   * what makes a run non-comparable, and nothing records it separately:
+   * `startId !== assignedStartId(seed)` is exactly that fact.
    */
   readonly chosenStartId: string | null;
 }
@@ -145,8 +140,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
   rulesetBanner: null,
 
   start: (setup) => {
-    // The start is a pure function of the seed (GDD §3.7 deals, it does not
-    // offer) unless the player deliberately set one by hand.
     const run = createScenarioRun({
       seed: setup.seed,
       playerName: setup.playerName,
@@ -156,9 +149,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
     set({
       run,
-      // Fitted to the run's own budget, not the flat ten. A start that commits
-      // time (GDD §3.7) makes week 1 an 8-point week, and an unfitted default
-      // would have the panel project a mood the tick then refuses to produce.
+      // Fitted to the run's budget, or the panel projects a mood the tick
+      // refuses to produce.
       allocation: clampAllocation(DEFAULT_ALLOCATION, run.state.committedTimePoints),
       interrupts: [],
       pendingEvent: null,
@@ -171,9 +163,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setTab: (tab) => set({ tab, panel: null }),
   openPanel: (panel) => set({ panel }),
   setGranularity: (granularity) => set({ granularity }),
-  // Clamped on the way in as well, so no path into the store can hold an
-  // allocation the tick would not run. The panel already spends against the
-  // right budget; this is what makes that a guarantee rather than a habit.
+  // Clamped on the way in too, so no path can hold an allocation the tick
+  // would not run.
   setAllocation: (allocation) =>
     set({ allocation: clampAllocation(allocation, get().run?.state.committedTimePoints ?? 0) }),
   dismissInterrupts: () => set({ interrupts: [] }),

@@ -22,14 +22,10 @@ import { serializeState } from '../src/snapshot.ts';
 const SEED = '4F2A9C1B';
 
 /**
- * What `drawEntryScore` returns for `SEED` on the second draw of
- * `startingDraw`. A literal on purpose: it is the only assertion in the repo
- * that would notice a draw being inserted into that stream.
- *
- * It is a real draw and not the floor leaking through — other seeds give 640,
- * 650, 621. That it happens to equal `ENTRY_SCORE_MIN` is a coincidence, and
- * one worth knowing: an inserted draw has roughly a 1-in-80 chance of landing
- * back on this number, so this test is a strong signal and not a proof.
+ * The only assertion in the repo that would notice a draw inserted into
+ * `startingDraw`. A real draw, not the floor leaking through — other seeds give
+ * 640, 650, 621 — but it coincidentally equals `ENTRY_SCORE_MIN`, so an
+ * inserted draw has ~1-in-80 odds of landing back on it. A signal, not a proof.
  */
 const ENTRY_SCORE_FOR_SEED = 620;
 
@@ -71,9 +67,7 @@ describe('starts.json', () => {
   });
 
   it('deals only jobs the run can actually hold on day one', () => {
-    // A start grants its job rather than applying for it, so nothing checks the
-    // requirements. A start that granted a job the player could never have
-    // reached would be handing out an unreachable salary.
+    // A start grants its job rather than applying, so nothing checks requirements.
     const applicant = { educationYears: 0, experienceYears: 0, hasVehicle: false };
     for (const start of STARTS) {
       const jobIds = [
@@ -111,22 +105,16 @@ describe('the assignment is a hash, not a draw', () => {
   });
 
   it('deals every start to some seed', () => {
+    // Coverage, not uniformity.
     const dealt = new Set<string>();
-    // Enough seeds that a start reachable at all is reached; the assertion is
-    // about coverage, not about the distribution being uniform.
     for (let i = 0; i < 500; i++) dealt.add(assignedStartId(`SEED${i}`));
     expect([...dealt].sort()).toEqual(STARTS.map((s) => s.id).slice().sort());
   });
 
   it('deals these exact seeds these exact starts', () => {
-    // `starts.length` is load-bearing the way an event id is: the assignment is
-    // `fnv1a(...) % starts.length`, so **adding a seventh start silently
-    // re-deals every existing seed** — and every save whose `startId` no longer
-    // matches its seed would start showing the custom-start notice. The set-based
-    // assertions above would all survive that. This is the one that would not.
-    //
-    // If this fails and the change was intended, it is a ruleset change: bump
-    // `RULESET_VERSION` and record it in docs/DECISIONS.md.
+    // The assignment is `fnv1a(...) % starts.length`, so adding a seventh start
+    // silently re-deals every existing seed. The set-based assertions above
+    // would survive that; this one will not. A failure here is a ruleset change.
     expect({
       PIN11: assignedStartId('PIN11'),
       PIN3: assignedStartId('PIN3'),
@@ -145,8 +133,7 @@ describe('the assignment is a hash, not a draw', () => {
   });
 
   it('deals life-draw these exact positions', () => {
-    // The same hazard one level down: `resolveStart` is `% positions.length`,
-    // so a sixth variant re-deals every life-draw seed. Nothing else pins this.
+    // Same hazard one level down: `resolveStart` is `% positions.length`.
     const dealt = (seed: string) => {
       const state = createScenarioRun({ seed, runLengthYears: 30, startId: 'life-draw' }).state;
       return {
@@ -181,23 +168,19 @@ describe('the assignment is a hash, not a draw', () => {
   });
 
   it('leaves the entry credit score exactly where it was', () => {
-    // `startingDraw` is consumed as names-then-score, and until now nothing
-    // could see a shift in it: the scripted run never opens a credit line, so
-    // the score stays null, and the names reach only Logbook prose, which
-    // `serializeState` excludes on purpose. A start that opens a line at week 0
-    // is the first thing that makes the draw order observable — so it is pinned
-    // here. If this number moves, a draw was inserted before `drawEntryScore`.
+    // Nothing could see this stream move before: the scripted run opens no
+    // credit line, so the score stays null, and the names it draws reach only
+    // Logbook prose, which `serializeState` excludes. A start that opens a line
+    // at week 0 is the first thing that makes the draw order observable.
     const run = createScenarioRun({ seed: SEED, runLengthYears: 30, startId: 'behind-the-line' });
     expect(run.world.entryCreditScore).toBe(ENTRY_SCORE_FOR_SEED);
 
-    // And it is genuinely reachable, rather than pinned somewhere inert.
+    // Reachable, rather than pinned somewhere inert.
     const later = runWeeks(run, 30, () => ({ allocation: DEFAULT_ALLOCATION }));
     expect(later.state.credit.score).not.toBeNull();
   });
 
   it('moves no stream, whichever start it deals', () => {
-    // The proof that RULESET_VERSION holds: every pre-drawn stream lands
-    // identically no matter which position the run begins in.
     const base = createScenarioRun({ seed: SEED, runLengthYears: 30 });
     for (const start of STARTS) {
       const other = createScenarioRun({ seed: SEED, runLengthYears: 30, startId: start.id });
@@ -234,15 +217,13 @@ describe('all six starts build a run', () => {
       const run = createScenarioRun({ seed: SEED, runLengthYears: 30, startId: start.id });
       expect(run.state.startId).toBe(start.id);
       expect(run.state.cashCents).toBeGreaterThanOrEqual(0);
-      // A start that hands over a balance also hands over a credit file: a debt
-      // no bureau has heard of would be a hole in §5.5.
+      // A balance without a credit file would be a debt no bureau has heard of.
       if (run.state.debts.length > 0) {
         expect(run.state.credit.firstLineWeek).toBe(0);
         expect(run.state.credit.debtTypesEverHeld.length).toBeGreaterThan(0);
       } else {
         expect(run.state.credit.firstLineWeek).toBeNull();
       }
-      // And it survives a stretch of weeks rather than only initializing.
       const later = runWeeks(run, 60, () => ({ allocation: DEFAULT_ALLOCATION }));
       expect(later.state.weekIndex).toBe(60);
       expect(Number.isFinite(later.state.cashCents)).toBe(true);
@@ -268,8 +249,7 @@ describe('the positions the table describes', () => {
     const card = position('behind-the-line').debts[0] as CreditCard;
     expect(card.kind).toBe('credit-card');
     expect(card.balanceCents).toBe(140_000);
-    // Carried means the first statement charges interest. A card opened in
-    // grace would make the start free for a month.
+    // In grace would make the start's first month free.
     expect(card.inGracePeriod).toBe(false);
     expect(card.statementBalanceCents).toBe(140_000);
   });
@@ -287,8 +267,8 @@ describe('the positions the table describes', () => {
     const run = createScenarioRun({ seed: SEED, runLengthYears: 30, startId: 'caregiver' });
     expect(run.state.committedTimePoints).toBe(2);
 
-    // The scripted allocation spends all ten. A caregiver week has eight, and
-    // `tick` is what enforces that — nothing about this run touches the screen.
+    // The scripted allocation spends all ten; a caregiver week has eight, and
+    // nothing about this run touches the screen.
     expect(allocationPoints(DEFAULT_ALLOCATION)).toBe(TIME_POINTS_PER_WEEK);
     const committed = runWeeks(run, 8, () => ({ allocation: DEFAULT_ALLOCATION }));
     const free = runWeeks(
@@ -366,8 +346,6 @@ describe('a start set by hand', () => {
   });
 
   it('is distinguishable from a dealt one without a field of its own', () => {
-    // How §3.7's "flagged as non-comparable" is surfaced: a chosen start is
-    // exactly one the seed would not have dealt.
     const dealt = assignedStartId(SEED);
     const chosen = STARTS.find((start) => start.id !== dealt)!.id;
     expect(createScenarioRun({ seed: SEED, startId: dealt }).state.startId).toBe(dealt);
@@ -377,9 +355,7 @@ describe('a start set by hand', () => {
   it('falls back to the baseline rather than opening a run with no position', () => {
     const config = scenarioConfig({ seed: SEED, startId: 'not-a-start' });
     expect(config.startingCashCents).toBe(startById('stable-ground')!.startingCashCents);
-    // And records the start it actually got. A state naming a position that
-    // does not exist would read as a hand-set start to `App`, which shows the
-    // non-comparable notice — a typo must not produce that.
+    // A state naming a position that does not exist reads as a hand-set start.
     expect(config.startId).toBe('stable-ground');
     expect(STARTS.some((start) => start.id === config.startId)).toBe(true);
   });

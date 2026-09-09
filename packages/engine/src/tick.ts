@@ -891,9 +891,8 @@ export function tick(
   }
 
   // ---- 9. Apply the time allocation → energy, mood, performance, side hustle
-  // Clamped before anything reads it: a permanent commitment (GDD §3.7) has to
-  // bind the harness and a replayed save, not only the allocation screen. A
-  // no-op for every run that commits nothing, which is the default.
+  // Clamped before anything reads it, so a commitment (GDD §3.7) binds the
+  // harness and a replayed save, not only the screen.
   const allocation = clampAllocation(
     input.allocation ?? state.standingOrders.defaultAllocation,
     state.committedTimePoints,
@@ -919,9 +918,7 @@ export function tick(
   const workedTier =
     workedThisWeek ? world.jobs.find((job) => job.id === state.job!.jobId)?.tier : undefined;
 
-  // Study accumulates the same way, in point-weeks, and buys whole education
-  // years as it crosses them. Monotone: education already granted by a starting
-  // position is never re-derived away.
+  // Monotone, so education a start granted is never re-derived away.
   const studyWeeks = state.studyWeeks + allocation.study;
   const educationYears = Math.min(
     MAX_EDUCATION_YEARS,

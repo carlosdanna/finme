@@ -134,11 +134,7 @@ describe('the new-run screen', () => {
   });
 });
 
-/**
- * GDD §3.7: the player is dealt a start, not offered one, and the game does not
- * editorialize about which start is harder. The list is therefore a statement,
- * and every row of it looks the same.
- */
+/** GDD §3.7 deals rather than offers, so the list is a statement and every row looks the same. */
 describe('the six starting positions', () => {
   const rows = (container: HTMLElement) =>
     [...container.querySelectorAll('li > div, li > button')] as HTMLElement[];
@@ -239,14 +235,9 @@ describe('the start reaches the run', () => {
   });
 });
 
-/**
- * The clamp binds `tick`, and the screen has to agree with it. A panel that
- * projects a mood the tick will not produce is worse than no projection: the
- * panel's whole job is to say what next week looks like.
- */
+/** The clamp binds `tick`; the screen has to agree with it. */
 describe('a start that commits time reaches the screen too', () => {
-  // Dealt caregiver by the hash — no hand-picking, and if that ever stops being
-  // true `starts.test.ts`'s seed→start literal fails first and says so.
+  // Dealt caregiver by the hash; `starts.test.ts` pins that mapping.
   const CAREGIVER_SEED = 'QUIET1';
 
   it('opens on an allocation that fits the run\'s budget, not the flat ten', () => {
@@ -263,7 +254,7 @@ describe('a start that commits time reaches the screen too', () => {
     const { run, allocation } = useGameStore.getState();
     const state = run!.state;
 
-    // What the panel renders, computed exactly as AllocationPanel does.
+    // Computed exactly as AllocationPanel does.
     const projectedEnergy = nextEnergy(state.energy, state.mood, allocation);
     const projectedMood = nextMood(state.mood, allocation, {
       discretionarySpendCents: 0,
@@ -273,7 +264,6 @@ describe('a start that commits time reaches the screen too', () => {
       annualGrossCents: 0,
     });
 
-    // What the week actually does with it.
     const after = tick(run!.world, run!.streams, state, { allocation }).state;
 
     expect(projectedEnergy).toBe(after.energy);
@@ -282,7 +272,7 @@ describe('a start that commits time reaches the screen too', () => {
 
   it('never lets an over-budget allocation into the store', () => {
     useGameStore.getState().start(defaultSetup(CAREGIVER_SEED));
-    // The flat ten-point week, pushed in past the panel's own arithmetic.
+    // The flat ten-point week, pushed past the panel's own arithmetic.
     useGameStore.getState().setAllocation(DEFAULT_ALLOCATION);
 
     const { run, allocation } = useGameStore.getState();
@@ -291,8 +281,7 @@ describe('a start that commits time reaches the screen too', () => {
   });
 
   it('leaves a run that commits nothing on the full ten', () => {
-    // The regression guard in the other direction: this must not quietly shrink
-    // every other run's week.
+    // The other direction: this must not shrink every other run's week.
     useGameStore.getState().start(defaultSetup('4F2A9C1B'));
     const { run, allocation } = useGameStore.getState();
     expect(run!.state.committedTimePoints).toBe(0);
