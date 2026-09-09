@@ -199,7 +199,7 @@ The 0.72 factor **[T]** means crashes are not fully recovered by the overlay alo
 
 **Booms** use the same machinery with λ = 0.09, `depth` negative (−0.15 to −0.30), and no recovery phase.
 
-**Sector events** apply the same overlay to a single asset with beta 1.0 and short duration (2–6 weeks).
+**Sector events are not part of the model.** Rev 1 gave them a beta of 1.0 and a 2–6 week duration but never an arrival rate, a depth range, or a rule for which asset they hit, and they were never scheduled. They were dropped rather than specified — see `docs/DECISIONS.md` (2026-09-09). Every regime episode is market-wide; per-asset texture belongs to the event catalogue, not to this overlay.
 
 ### 3.5 Dividends
 

@@ -1977,3 +1977,45 @@ though the state field lives on `retirement`.
    it travels in a shared JSON blob. Replay is last-write-wins, so the collapsed
    log replays identically; only a *trailing* order is dropped, so an order the
    player made before some other decision stays where they made it.
+
+## 2026-09-09 — Sector events are dropped, not specified (supersedes 2026-09-03)
+**Context:** TDD §3.4's last line gave sector events a beta of 1.0 and a 2-6 week
+duration but no arrival rate, no depth range, and no rule for which asset they
+hit. On 2026-09-03 the machinery was built and left unscheduled rather than
+guessing those three numbers immediately before C1. `RegimeEpisode` has carried a
+permanently-`null` `assetId` and `buildOverlay` an unreachable single-asset
+branch ever since. Issue #4 asked whether to specify the numbers or drop the
+feature.
+**Decision:** dropped. `RegimeKind` is `'crash' | 'boom'`, `RegimeEpisode` loses
+`assetId`, and `buildOverlay` applies every episode market-wide at the asset's
+own beta. §3.4 says so instead of describing a mechanism that does not exist.
+The market already produces correlated crashes and booms; per-asset texture did
+not earn a mid-sequence draw, a ruleset bump, and a permanent balance liability
+on top of the beta-scaled boom subsidy in issue #16.
+**Consequences:**
+1. **No `RULESET_VERSION` bump** — it stays `0.5.0`, under `version.ts`'s
+   effect-not-marker carve-out. `assetId` was `null` on every episode ever
+   constructed, so both sides of the deleted branch were already taken
+   unconditionally. The evidence is the golden fixture: with the code change in
+   and the fixture untouched, three of `market.golden.test.ts`'s four cases still
+   passed — prices, run shape and inflation are byte-identical — and the fourth
+   failed on nothing but the absent `assetId` key. The fixture edit removes that
+   key from three episodes and changes no number, the same shape as the
+   2026-09-05 entry's "four lines became one with an identical total".
+2. **The reserved draw-order slot is released.** The 2026-09-03 draw-order and
+   home-path entries both describe the order as crashes → booms → (sector) →
+   inflation → GBM → home. It is now crashes → booms → inflation → GBM → home
+   with no reserved gap, and a future insertion there carries no prior claim.
+   Those entries stay as written; this one supersedes them.
+3. **`MKT_SECTOR_BOOM` now has no underlying market mechanism.** The catalogue
+   (`docs/EVENT-CATALOGUE.md` §Market) specifies it as "one asset × [1.15-1.60]",
+   while that same section's preamble says an event "must never inject a return
+   the market model did not produce". The two already contradicted each other;
+   dropping the overlay removes the only reading under which they might not have.
+   When issue #5 builds it, it must either narrate a move the market already made
+   or reopen this decision. `MKT_MOONSHOT_SPIKE` and `MKT_MOONSHOT_COLLAPSE` are
+   the same shape. Not resolved here, recorded so it is not rediscovered.
+4. **No C1 re-run.** No market or tax parameter moved, and no stream gains, loses
+   or reorders a draw. GDD §95's "event-driven shocks (crash, boom, sector news)"
+   stands unamended: sector news survives as a catalogue event, which is exactly
+   the distinction this entry draws.

@@ -75,7 +75,7 @@ export const CRASH_DEPTH_MAX = 0.45;
 export const BOOM_DEPTH_MIN = -0.3;
 export const BOOM_DEPTH_MAX = -0.15;
 
-export type RegimeKind = 'crash' | 'boom' | 'sector';
+export type RegimeKind = 'crash' | 'boom';
 
 export interface RegimeEpisode {
   readonly kind: RegimeKind;
@@ -86,11 +86,6 @@ export interface RegimeEpisode {
   readonly recoveryWeeks: number;
   /** Market-wide depth on the SAFE reference. Negative for booms. */
   readonly depth: number;
-  /**
-   * `null` for market-wide episodes. A sector event names a single asset and is
-   * applied with beta 1.0 regardless of that asset's own beta (TDD §3.4).
-   */
-  readonly assetId: AssetId | null;
 }
 
 export interface AssetSeries {
@@ -114,7 +109,7 @@ export interface MarketHistory {
   readonly runLengthYears: number;
   readonly weeks: number;
   readonly series: Readonly<Record<AssetId, AssetSeries>>;
-  /** In construction order: crashes, then booms, then sector events. */
+  /** In construction order: crashes, then booms. */
   readonly episodes: readonly RegimeEpisode[];
   readonly inflation: InflationPath;
   /**
@@ -131,10 +126,9 @@ export interface MarketHistory {
  * Draw order (contractual, part of the ruleset version):
  *   1. crash timeline    — per crash: gap, declineWeeks, recoveryWeeks, depth
  *   2. boom timeline     — per boom:  gap, declineWeeks, depth
- *   3. sector events     — currently consumes nothing; see docs/DECISIONS.md
- *   4. inflation path    — 2 draws per year after the first
- *   5. GBM shocks        — asset-major, then week-major; 2 draws per Z
- *   6. home value path   — appended last, so adding it left every series above
+ *   3. inflation path    — 2 draws per year after the first
+ *   4. GBM shocks        — asset-major, then week-major; 2 draws per Z
+ *   5. home value path   — appended last, so adding it left every series above
  *                          byte-identical and the golden fixture valid
  */
 export function generateMarket(seed: string, runLengthYears: number): MarketHistory {
@@ -151,9 +145,6 @@ export function generateMarketFrom(rng: Rng, seed: string, runLengthYears: numbe
   const episodes: RegimeEpisode[] = [
     ...scheduleEpisodes(rng, weeks, 'crash'),
     ...scheduleEpisodes(rng, weeks, 'boom'),
-    // 3. Sector events would be scheduled here. They are not, yet — TDD §3.4
-    //    names the beta and duration but not the arrival rate or depth range,
-    //    and inventing those would move C1. See docs/DECISIONS.md.
   ];
 
   const inflation = generateInflationPath(rng, runLengthYears);
@@ -175,7 +166,7 @@ export function generateMarketFrom(rng: Rng, seed: string, runLengthYears: numbe
  * Inter-arrival in years is exponential with rate λ, floored at a 3-year
  * separation: `gap = max(3, -ln(U) / λ)`.
  */
-function scheduleEpisodes(rng: Rng, weeks: number, kind: 'crash' | 'boom'): RegimeEpisode[] {
+function scheduleEpisodes(rng: Rng, weeks: number, kind: RegimeKind): RegimeEpisode[] {
   const lambda = kind === 'crash' ? CRASH_LAMBDA : BOOM_LAMBDA;
   const episodes: RegimeEpisode[] = [];
 
@@ -195,7 +186,7 @@ function scheduleEpisodes(rng: Rng, weeks: number, kind: 'crash' | 'boom'): Regi
         ? uniform(rng, CRASH_DEPTH_MIN, CRASH_DEPTH_MAX)
         : uniform(rng, BOOM_DEPTH_MIN, BOOM_DEPTH_MAX);
 
-    episodes.push({ kind, startWeek: week, declineWeeks, recoveryWeeks, depth, assetId: null });
+    episodes.push({ kind, startWeek: week, declineWeeks, recoveryWeeks, depth });
   }
 
   return episodes;
@@ -218,11 +209,9 @@ function buildOverlay(
   for (const episode of episodes) {
     // ln(1 - depth): negative for a crash, positive for a boom.
     const logMove = Math.log(1 - episode.depth);
-    const targets = episode.assetId === null ? ASSET_IDS : [episode.assetId];
 
-    for (const id of targets) {
-      // A sector event is applied at beta 1.0 regardless of the asset's own beta.
-      const beta = episode.assetId === null ? ASSETS[id].regimeBeta : 1;
+    for (const id of ASSET_IDS) {
+      const beta = ASSETS[id].regimeBeta;
       const drag = (beta * logMove) / episode.declineWeeks;
       const declineEnd = Math.min(episode.startWeek + episode.declineWeeks, weeks);
       for (let t = episode.startWeek; t < declineEnd; t++) overlay[id][t] += drag;
