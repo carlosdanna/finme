@@ -1,7 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { SEED_ALPHABET, isValidSeed } from '@finme/engine';
-import { STARTS, assignedStartId } from '@finme/content';
+import { DEFAULT_ALLOCATION, STARTS, assignedStartId } from '@finme/content';
+import {
+  allocationPoints,
+  availableTimePoints,
+  isValidAllocation,
+  nextEnergy,
+  nextMood,
+  tick,
+} from '@finme/engine';
 import { normalizeSeedInput, randomSeed } from '@/lib/seed';
 import { NewRunPanel } from '@/panels/NewRunPanel';
 import { defaultSetup, useGameStore } from '@/store/useGameStore';
@@ -228,6 +236,67 @@ describe('the start reaches the run', () => {
     expect(state.startId).toBe(chosen.id);
     // Which is exactly how the run is known to be non-comparable — no flag.
     expect(state.startId).not.toBe(assignedStartId(state.seed));
+  });
+});
+
+/**
+ * The clamp binds `tick`, and the screen has to agree with it. A panel that
+ * projects a mood the tick will not produce is worse than no projection: the
+ * panel's whole job is to say what next week looks like.
+ */
+describe('a start that commits time reaches the screen too', () => {
+  // Dealt caregiver by the hash — no hand-picking, and if that ever stops being
+  // true `starts.test.ts`'s seed→start literal fails first and says so.
+  const CAREGIVER_SEED = 'QUIET1';
+
+  it('opens on an allocation that fits the run\'s budget, not the flat ten', () => {
+    useGameStore.getState().start(defaultSetup(CAREGIVER_SEED));
+    const { run, allocation } = useGameStore.getState();
+
+    expect(run!.state.committedTimePoints).toBe(2);
+    expect(allocationPoints(allocation)).toBe(availableTimePoints(2));
+    expect(isValidAllocation(allocation, run!.state.committedTimePoints)).toBe(true);
+  });
+
+  it('projects the mood and energy the tick actually produces', () => {
+    useGameStore.getState().start(defaultSetup(CAREGIVER_SEED));
+    const { run, allocation } = useGameStore.getState();
+    const state = run!.state;
+
+    // What the panel renders, computed exactly as AllocationPanel does.
+    const projectedEnergy = nextEnergy(state.energy, state.mood, allocation);
+    const projectedMood = nextMood(state.mood, allocation, {
+      discretionarySpendCents: 0,
+      discretionaryBaselineCents: 40_000,
+      housingTier: state.housingTier,
+      unsecuredDebtCents: 0,
+      annualGrossCents: 0,
+    });
+
+    // What the week actually does with it.
+    const after = tick(run!.world, run!.streams, state, { allocation }).state;
+
+    expect(projectedEnergy).toBe(after.energy);
+    expect(projectedMood).toBe(after.mood);
+  });
+
+  it('never lets an over-budget allocation into the store', () => {
+    useGameStore.getState().start(defaultSetup(CAREGIVER_SEED));
+    // The flat ten-point week, pushed in past the panel's own arithmetic.
+    useGameStore.getState().setAllocation(DEFAULT_ALLOCATION);
+
+    const { run, allocation } = useGameStore.getState();
+    expect(allocationPoints(allocation)).toBeLessThanOrEqual(availableTimePoints(2));
+    expect(isValidAllocation(allocation, run!.state.committedTimePoints)).toBe(true);
+  });
+
+  it('leaves a run that commits nothing on the full ten', () => {
+    // The regression guard in the other direction: this must not quietly shrink
+    // every other run's week.
+    useGameStore.getState().start(defaultSetup('4F2A9C1B'));
+    const { run, allocation } = useGameStore.getState();
+    expect(run!.state.committedTimePoints).toBe(0);
+    expect(allocation).toEqual(DEFAULT_ALLOCATION);
   });
 });
 

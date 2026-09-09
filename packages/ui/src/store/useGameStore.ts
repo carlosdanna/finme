@@ -17,6 +17,7 @@ import {
   type TickInput,
   advance,
   cardVariant,
+  clampAllocation,
   pendingEventWeek,
   defaultGranularity,
   parseSave,
@@ -155,6 +156,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
     set({
       run,
+      // Fitted to the run's own budget, not the flat ten. A start that commits
+      // time (GDD §3.7) makes week 1 an 8-point week, and an unfitted default
+      // would have the panel project a mood the tick then refuses to produce.
+      allocation: clampAllocation(DEFAULT_ALLOCATION, run.state.committedTimePoints),
       interrupts: [],
       pendingEvent: null,
       pendingChainStep: null,
@@ -166,7 +171,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
   setTab: (tab) => set({ tab, panel: null }),
   openPanel: (panel) => set({ panel }),
   setGranularity: (granularity) => set({ granularity }),
-  setAllocation: (allocation) => set({ allocation }),
+  // Clamped on the way in as well, so no path into the store can hold an
+  // allocation the tick would not run. The panel already spends against the
+  // right budget; this is what makes that a guarantee rather than a habit.
+  setAllocation: (allocation) =>
+    set({ allocation: clampAllocation(allocation, get().run?.state.committedTimePoints ?? 0) }),
   dismissInterrupts: () => set({ interrupts: [] }),
 
   advanceTime: () => {

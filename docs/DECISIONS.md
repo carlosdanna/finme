@@ -1759,8 +1759,12 @@ specs do not make:
    with a 1- or 2-year requirement cannot widen this start silently.
 4. **[F] The clamp sheds points in a fixed order, and work goes last.**
    `clampAllocation` is in `vitals.ts` and `tick` applies it at the top of step
-   9, so a Caregiver's commitment binds `packages/sim` and a replayed save and
-   not only the allocation screen. The order is `sideHustle, overtime,
+   9, so a Caregiver's commitment binds `packages/sim` and a replayed save. The
+   **store clamps too**, in `start` and in `setAllocation` — the engine clamp
+   alone left the screen behind, projecting a mood the tick then refused to
+   produce (10 points spent against a budget of 8, mood 74 shown against 60
+   actual, on week 1). The engine is where the rule lives; the store is what
+   keeps the panel's projection honest. The order is `sideHustle, overtime,
    paidSocial, freeSocial, study, rest`, then work downgraded a step at a time:
    a start that commits time takes the week apart *around* the job rather than
    taking the job away. It is contractual because two runs of one seed must shed
@@ -1804,6 +1808,18 @@ specs do not make:
 6. The setup screen's "who decides" control is the same segmented rail as run
    length rather than a `Switch`: the vendored switch renders a 1×1 hidden input
    and a 34px overlay, both of which the e2e 44px sweep catches.
+7. **`starts.length` is load-bearing the way an event id is.** The assignment is
+   `fnv1a(...) % starts.length` and `resolveStart` is `% positions.length`, so
+   adding a seventh start — or a sixth `life-draw` variant — silently re-deals
+   every existing seed, and every save whose `startId` no longer matches its seed
+   would begin showing the custom-start notice. The set-based tests would all
+   survive that, so `starts.test.ts` pins literal seed→start and
+   seed→position mappings. Adding a start is a ruleset change: bump
+   `RULESET_VERSION` and record it here.
+8. An id `starts.json` does not define falls back to the baseline **and records
+   the baseline's id**. Recording the id that was asked for would leave the state
+   naming a position that does not exist, which `App` reads as a hand-set start —
+   so a typo would raise the non-comparable notice.
 
 ---
 

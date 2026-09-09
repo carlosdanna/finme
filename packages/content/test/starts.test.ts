@@ -25,6 +25,11 @@ const SEED = '4F2A9C1B';
  * What `drawEntryScore` returns for `SEED` on the second draw of
  * `startingDraw`. A literal on purpose: it is the only assertion in the repo
  * that would notice a draw being inserted into that stream.
+ *
+ * It is a real draw and not the floor leaking through — other seeds give 640,
+ * 650, 621. That it happens to equal `ENTRY_SCORE_MIN` is a coincidence, and
+ * one worth knowing: an inserted draw has roughly a 1-in-80 chance of landing
+ * back on this number, so this test is a strong signal and not a proof.
  */
 const ENTRY_SCORE_FOR_SEED = 620;
 
@@ -111,6 +116,68 @@ describe('the assignment is a hash, not a draw', () => {
     // about coverage, not about the distribution being uniform.
     for (let i = 0; i < 500; i++) dealt.add(assignedStartId(`SEED${i}`));
     expect([...dealt].sort()).toEqual(STARTS.map((s) => s.id).slice().sort());
+  });
+
+  it('deals these exact seeds these exact starts', () => {
+    // `starts.length` is load-bearing the way an event id is: the assignment is
+    // `fnv1a(...) % starts.length`, so **adding a seventh start silently
+    // re-deals every existing seed** — and every save whose `startId` no longer
+    // matches its seed would start showing the custom-start notice. The set-based
+    // assertions above would all survive that. This is the one that would not.
+    //
+    // If this fails and the change was intended, it is a ruleset change: bump
+    // `RULESET_VERSION` and record it in docs/DECISIONS.md.
+    expect({
+      PIN11: assignedStartId('PIN11'),
+      PIN3: assignedStartId('PIN3'),
+      PIN4: assignedStartId('PIN4'),
+      PIN5: assignedStartId('PIN5'),
+      PIN0: assignedStartId('PIN0'),
+      PIN1: assignedStartId('PIN1'),
+    }).toEqual({
+      PIN11: 'stable-ground',
+      PIN3: 'head-start',
+      PIN4: 'behind-the-line',
+      PIN5: 'student-path',
+      PIN0: 'caregiver',
+      PIN1: 'life-draw',
+    });
+  });
+
+  it('deals life-draw these exact positions', () => {
+    // The same hazard one level down: `resolveStart` is `% positions.length`,
+    // so a sixth variant re-deals every life-draw seed. Nothing else pins this.
+    const dealt = (seed: string) => {
+      const state = createScenarioRun({ seed, runLengthYears: 30, startId: 'life-draw' }).state;
+      return {
+        cashCents: state.cashCents,
+        jobId: state.job?.jobId ?? null,
+        debts: state.debts.length,
+        educationYears: state.educationYears,
+        committedTimePoints: state.committedTimePoints,
+      };
+    };
+    expect(dealt('PIN9')).toEqual({
+      cashCents: 80_000,
+      jobId: 'line-cook',
+      debts: 0,
+      educationYears: 0,
+      committedTimePoints: 0,
+    });
+    expect(dealt('PIN1')).toEqual({
+      cashCents: 450_000,
+      jobId: 'retail-associate',
+      debts: 0,
+      educationYears: 1,
+      committedTimePoints: 0,
+    });
+    expect(dealt('PIN12')).toEqual({
+      cashCents: 25_000,
+      jobId: 'warehouse-picker',
+      debts: 0,
+      educationYears: 0,
+      committedTimePoints: 2,
+    });
   });
 
   it('leaves the entry credit score exactly where it was', () => {
@@ -310,6 +377,10 @@ describe('a start set by hand', () => {
   it('falls back to the baseline rather than opening a run with no position', () => {
     const config = scenarioConfig({ seed: SEED, startId: 'not-a-start' });
     expect(config.startingCashCents).toBe(startById('stable-ground')!.startingCashCents);
-    expect(config.startId).toBe('not-a-start');
+    // And records the start it actually got. A state naming a position that
+    // does not exist would read as a hand-set start to `App`, which shows the
+    // non-comparable notice — a typo must not produce that.
+    expect(config.startId).toBe('stable-ground');
+    expect(STARTS.some((start) => start.id === config.startId)).toBe(true);
   });
 });

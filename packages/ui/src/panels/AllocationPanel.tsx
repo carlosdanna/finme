@@ -1,5 +1,6 @@
 import {
   type Allocation,
+  TIME_POINTS_PER_WEEK,
   WORK_TIME_POINTS,
   type WorkMode,
   allocationPoints,
@@ -148,6 +149,14 @@ export function AllocationPanel({
           {used} of {budget} points
         </Typography>
       </div>
+
+      {/* Why the budget is not ten. Stated once, as a fact about the week — the
+          steppers stop at 8 and the reason should not have to be guessed. */}
+      {committedPoints > 0 && (
+        <Typography variant="caption" color="muted" className="px-4 pt-1">
+          {committedPoints} of your {TIME_POINTS_PER_WEEK} points are committed every week.
+        </Typography>
+      )}
 
       <div className="space-y-3 p-4">
         {/* A segmented track — a recessed rail with one raised pill — rather than

@@ -55,7 +55,10 @@ export interface ScenarioOptions {
 /** Everything a run needs, with content wired in. */
 export function scenarioConfig(options: ScenarioOptions): RunConfig {
   // An id the file does not define falls back to the baseline rather than
-  // beginning a run with no position at all.
+  // beginning a run with no position at all — and `startId` below records the
+  // start the run actually got, not the id that was asked for. Recording the
+  // unknown id would leave the state naming a position that does not exist, and
+  // `App` would then show the custom-start notice for what is really a typo.
   const start = startById(options.startId ?? DEFAULT_START_ID) ?? startById(DEFAULT_START_ID)!;
   const position = resolveStart(start, options.seed);
 
@@ -64,7 +67,7 @@ export function scenarioConfig(options: ScenarioOptions): RunConfig {
     runLengthYears: options.runLengthYears ?? 30,
     startAge: options.startAge ?? 22,
     playerName: options.playerName ?? '',
-    startId: options.startId ?? DEFAULT_START_ID,
+    startId: start.id,
     jobs: JOBS,
     eventDefs: EVENTS,
     chainDefs: CHAINS,
